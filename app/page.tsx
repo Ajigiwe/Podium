@@ -36,7 +36,7 @@ export default function LandingPage() {
         ease: "easeInOut"
       }
     }
-  } as const;
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-black overflow-hidden selection:bg-indigo-500 selection:text-white">
