@@ -4,6 +4,9 @@ import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { sendPaymentConfirmation } from '@/lib/email/send';
 
+export const dynamic = 'force-dynamic';
+
+
 /**
  * Paystack Webhook Handler
  * CRITICAL: This endpoint verifies payment completion and grants classroom access
