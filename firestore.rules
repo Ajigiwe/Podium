@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user profile
+    function getUserProfile() {
+      return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;
+    }
+    
+    // Helper function to check if user is lecturer
+    function isLecturer() {
+      return isSignedIn() && getUserProfile().role == 'lecturer';
+    }
+    
+    // Helper function to check if user is student
+    function isStudent() {
+      return isSignedIn() && getUserProfile().role == 'student';
+    }
+    
+    // Profiles collection
+    match /profiles/{userId} {
+      // Anyone can read profiles
+      allow read: if isSignedIn();
+      
+      // Users can create their own profile
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      
+      // Users can update their own profile, but cannot change role or email
+      allow update: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.email == resource.data.email;
+        
+      allow delete: if false; // Prevent profile deletion
+    }
+    
+    // Sessions collection
+    match /sessions/{sessionId} {
+      // Anyone authenticated can read sessions
+      allow read: if isSignedIn();
+      
+      // Only lecturers can create sessions
+      allow create: if isLecturer() && request.resource.data.lecturerId == request.auth.uid;
+      
+      // Only the session owner (lecturer) can update or delete
+      allow update: if isSignedIn() && resource.data.lecturerId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.lecturerId == request.auth.uid;
+    }
+    
+    // Transactions collection
+    match /transactions/{transactionId} {
+      // Lecturers can read all transactions for their sessions
+      // Students can only read their own transactions
+      allow read: if isSignedIn() && (
+        isLecturer() || 
+        resource.data.userId == request.auth.uid
+      );
+      
+      // Only server (Admin SDK) can write transactions
+      // This prevents client-side manipulation
+      allow write: if false;
+    }
+    
+    // Attendance logs collection
+    match /attendance_logs/{logId} {
+      // Anyone authenticated can read attendance logs
+      allow read: if isSignedIn();
+      
+      // Students can create their own attendance logs
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Only lecturers can update/delete attendance logs
+      allow update, delete: if isLecturer();
+    }
+  }
+}
