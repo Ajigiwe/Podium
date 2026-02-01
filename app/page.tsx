@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, Variants } from 'framer-motion';
 import {
   GraduationCap,
   Users,
@@ -26,7 +26,7 @@ export default function LandingPage() {
   const headerShadow = useTransform(scrollY, [0, 100], ["none", "0 4px 6px -1px rgb(0 0 0 / 0.1)"]);
 
   // Floating animation variants
-  const floatAnimation = {
+  const floatAnimation: Variants = {
     initial: { y: 0 },
     animate: {
       y: [-20, 20, -20],
