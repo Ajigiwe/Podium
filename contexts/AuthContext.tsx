@@ -9,6 +9,8 @@ import {
     onAuthStateChanged,
     GoogleAuthProvider,
     signInWithPopup,
+    sendPasswordResetEmail,
+    sendEmailVerification,
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -20,8 +22,10 @@ interface AuthContextType {
     loading: boolean;
     signIn: (email: string, password: string) => Promise<void>;
     signUp: (email: string, password: string, fullName: string, role: 'student' | 'lecturer') => Promise<void>;
-    signInWithGoogle: () => Promise<void>;
+    signInWithGoogle: (role?: 'student' | 'lecturer') => Promise<void>;
     signOut: () => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
+    resendVerification: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,7 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const signIn = async (email: string, password: string) => {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+        if (!userCredential.user.emailVerified) {
+            await firebaseSignOut(auth);
+            throw new Error('Please verify your email address before logging in.');
+        }
     };
 
     const signUp = async (
@@ -65,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const user = userCredential.user;
 
         // Create user profile in Firestore
+        // Create user profile in Firestore
         await setDoc(doc(db, 'profiles', user.uid), {
             id: user.uid,
             email: user.email,
@@ -72,9 +82,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role,
             createdAt: new Date(),
         });
+
+        // Send email verification
+        await sendEmailVerification(user);
+        await firebaseSignOut(auth); // Sign out immediately so they have to login (and check verification)
     };
 
-    const signInWithGoogle = async () => {
+    const signInWithGoogle = async (role: 'student' | 'lecturer' = 'student') => {
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
@@ -82,12 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Check if profile exists, if not create one
         const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
         if (!profileDoc.exists()) {
-            // Default to student role for Google sign-in
             await setDoc(doc(db, 'profiles', user.uid), {
                 id: user.uid,
                 email: user.email,
                 fullName: user.displayName || 'User',
-                role: 'student',
+                role: role,
                 createdAt: new Date(),
             });
         }
@@ -95,6 +108,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signOut = async () => {
         await firebaseSignOut(auth);
+    };
+
+    const resetPassword = async (email: string) => {
+        await sendPasswordResetEmail(auth, email);
+    };
+
+    const resendVerification = async () => {
+        if (auth.currentUser) {
+            await sendEmailVerification(auth.currentUser);
+        }
     };
 
     return (
@@ -107,6 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 signUp,
                 signInWithGoogle,
                 signOut,
+                resetPassword,
+                resendVerification,
             }}
         >
             {children}

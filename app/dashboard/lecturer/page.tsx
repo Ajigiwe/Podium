@@ -31,7 +31,7 @@ export default function LecturerDashboard() {
     const [title, setTitle] = useState('');
     const [price, setPrice] = useState('');
     const [isFree, setIsFree] = useState(false);
-    const [youtubeVideoId, setYoutubeVideoId] = useState('');
+
 
     useEffect(() => {
         if (!user || profile?.role !== 'lecturer') {
@@ -74,7 +74,6 @@ export default function LecturerDashboard() {
             await addDoc(collection(db, 'sessions'), {
                 title,
                 lecturerId: user.uid,
-                youtubeVideoId: youtubeVideoId || null,
                 isActive: false,
                 price: priceInPesewas,
                 currency: 'GHS',
@@ -86,7 +85,7 @@ export default function LecturerDashboard() {
             setTitle('');
             setPrice('');
             setIsFree(false);
-            setYoutubeVideoId('');
+
             setShowCreateModal(false);
         } catch (error) {
             console.error('Error creating session:', error);
@@ -104,15 +103,7 @@ export default function LecturerDashboard() {
         }
     };
 
-    const handleUpdateYoutubeId = async (sessionId: string, videoId: string) => {
-        try {
-            await updateDoc(doc(db, 'sessions', sessionId), {
-                youtubeVideoId: videoId,
-            });
-        } catch (error) {
-            console.error('Error updating YouTube ID:', error);
-        }
-    };
+
 
     const handleDeleteSession = async (sessionId: string) => {
         if (!confirm('Are you sure you want to delete this session?')) return;
@@ -208,8 +199,8 @@ export default function LecturerDashboard() {
                                 <div key={session.id} className="group bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-800 transition-all duration-300">
                                     <div className="flex justify-between items-start mb-6">
                                         <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${session.isActive
-                                                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse'
-                                                : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400'
+                                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse'
+                                            : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400'
                                             }`}>
                                             {session.isActive ? '● Live Now' : 'Offline'}
                                         </div>
@@ -239,29 +230,14 @@ export default function LecturerDashboard() {
                                         </span>
                                     </div>
 
-                                    {/* YouTube ID Input */}
-                                    <div className="mb-6">
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={session.youtubeVideoId || ''}
-                                                onChange={(e) => handleUpdateYoutubeId(session.id, e.target.value)}
-                                                placeholder="YouTube Video ID"
-                                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                            />
-                                            <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                            </svg>
-                                        </div>
-                                    </div>
+
 
                                     <div className="flex gap-3">
                                         <button
                                             onClick={() => handleToggleActive(session.id, session.isActive)}
-                                            disabled={!session.youtubeVideoId}
                                             className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all shadow-lg ${session.isActive
-                                                    ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-900/20'
-                                                    : 'bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-gray-900 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed'
+                                                ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                                : 'bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-gray-900 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed'
                                                 }`}
                                         >
                                             {session.isActive ? 'Stop' : 'Go Live'}
@@ -341,17 +317,7 @@ export default function LecturerDashboard() {
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">YouTube Video ID (Optional)</label>
-                                <input
-                                    type="text"
-                                    value={youtubeVideoId}
-                                    onChange={(e) => setYoutubeVideoId(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                                    placeholder="e.g. dQw4w9WgXcQ"
-                                />
-                                <p className="text-xs text-gray-500 mt-2">You can add this later when you start the class.</p>
-                            </div>
+
 
                             <button
                                 type="submit"

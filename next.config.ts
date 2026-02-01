@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     ],
   },
   // Enable React strict mode
-  reactStrictMode: true,
+  reactStrictMode: false,
 };
 
 export default nextConfig;

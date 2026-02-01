@@ -9,15 +9,19 @@ export default function LoginPage() {
     const router = useRouter();
     const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
     const redirectUrl = searchParams.get('redirect') || '/dashboard';
-    const { signIn, signInWithGoogle } = useAuth();
+    const { signIn, signInWithGoogle, resendVerification } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showResend, setShowResend] = useState(false);
+    const [resendMessage, setResendMessage] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setResendMessage('');
+        setShowResend(false);
         setLoading(true);
 
         try {
@@ -25,6 +29,22 @@ export default function LoginPage() {
             router.push(redirectUrl);
         } catch (err: any) {
             setError(err.message || 'Failed to sign in');
+            if (err.message && err.message.includes('verify your email')) {
+                setShowResend(true);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResend = async () => {
+        setLoading(true);
+        try {
+            await resendVerification();
+            setResendMessage('Verification email sent! Check your inbox.');
+            setShowResend(false);
+        } catch (err: any) {
+            setError('Failed to resend verification email. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -74,6 +94,20 @@ export default function LoginPage() {
                         {error && (
                             <div className="rounded-xl bg-red-500/20 backdrop-blur-sm border border-red-500/30 p-4">
                                 <p className="text-sm text-white font-medium">{error}</p>
+                                {showResend && (
+                                    <button
+                                        type="button"
+                                        onClick={handleResend}
+                                        className="mt-2 text-xs text-white underline hover:text-white/80"
+                                    >
+                                        Resend Verification Email
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        {resendMessage && (
+                            <div className="rounded-xl bg-green-500/20 backdrop-blur-sm border border-green-500/30 p-4">
+                                <p className="text-sm text-white font-medium">{resendMessage}</p>
                             </div>
                         )}
 
@@ -95,9 +129,17 @@ export default function LoginPage() {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-white/90 mb-2">
-                                    Password
-                                </label>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label htmlFor="password" className="block text-sm font-medium text-white/90">
+                                        Password
+                                    </label>
+                                    <Link
+                                        href="/auth/forgot-password"
+                                        className="text-sm font-medium text-indigo-200 hover:text-white transition-colors"
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                </div>
                                 <input
                                     id="password"
                                     name="password"
