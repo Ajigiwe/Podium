@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/config';
 import { doc, updateDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
-import { uploadProfilePicture, compressImage } from '@/lib/firebase/storage';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function ProfilePage() {
@@ -14,7 +13,6 @@ export default function ProfilePage() {
     const { user, profile, signOut } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
     // Profile data
     const [fullName, setFullName] = useState('');
@@ -125,37 +123,7 @@ export default function ProfilePage() {
         }
     };
 
-    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !user) return;
 
-        setUploadingPhoto(true);
-        try {
-            // Compress image
-            const compressedFile = await compressImage(file);
-
-            // Upload to Firebase Storage
-            const downloadURL = await uploadProfilePicture(user.uid, compressedFile);
-
-            // Update Firestore
-            await updateDoc(doc(db, 'profiles', user.uid), {
-                photoURL: downloadURL,
-                updatedAt: Timestamp.now(),
-            });
-
-            setPhotoURL(downloadURL);
-            alert('Profile picture updated successfully!');
-        } catch (error: any) {
-            console.error('Error uploading photo (Full details):', error);
-            if (error.code === 'storage/unauthorized') {
-                alert('Permission denied. Please check your storage rules.');
-            } else {
-                alert(`Failed to upload photo: ${error.message}`);
-            }
-        } finally {
-            setUploadingPhoto(false);
-        }
-    };
 
     const handleSaveProfile = async () => {
         if (!user) return;
@@ -241,8 +209,8 @@ export default function ProfilePage() {
             {/* Main Content */}
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
                 {/* Profile Card */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200/50 dark:border-gray-700/50">
-                    <div className="flex items-start gap-6">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 border border-gray-200/50 dark:border-gray-700/50">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
                         {/* Profile Picture */}
                         <div className="flex-shrink-0">
                             <div className="relative">
@@ -255,32 +223,14 @@ export default function ProfilePage() {
                                         </span>
                                     )}
                                 </div>
-                                <label className="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full cursor-pointer shadow-lg transition-colors">
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handlePhotoUpload}
-                                        disabled={uploadingPhoto}
-                                        className="hidden"
-                                    />
-                                </label>
-                                {uploadingPhoto && (
-                                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-white/30 border-t-white"></div>
-                                    </div>
-                                )}
                             </div>
                         </div>
 
                         {/* Profile Info */}
                         <div className="flex-1">
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{fullName}</h2>
-                            <p className="text-gray-600 dark:text-gray-400">{profile?.email}</p>
-                            <div className="mt-2 flex items-center gap-2">
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white break-all">{fullName}</h2>
+                            <p className="text-gray-600 dark:text-gray-400 break-all">{profile?.email}</p>
+                            <div className="mt-2 flex flex-wrap justify-center sm:justify-start items-center gap-2">
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${profile?.role === 'lecturer'
                                     ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                                     : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'

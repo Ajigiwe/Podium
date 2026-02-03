@@ -13,8 +13,11 @@ import {
     updateDoc,
     deleteDoc,
     doc,
+    getDocs,
+    orderBy,
     Timestamp,
 } from 'firebase/firestore';
+import { AttendanceLog } from '@/lib/firebase/types';
 import { Session } from '@/lib/firebase/types';
 import { getSessionRevenue } from '@/lib/payments/verifyPayment';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -144,6 +147,51 @@ export default function LecturerDashboard() {
         alert("Class link copied to clipboard!");
     };
 
+    const handleDownloadAttendance = async (sessionId: string, title: string) => {
+        try {
+            const logsRef = collection(db, 'attendance_logs');
+            const q = query(
+                logsRef,
+                where('sessionId', '==', sessionId),
+                orderBy('joinedAt', 'desc')
+            );
+
+            const snapshot = await getDocs(q);
+            const logs = snapshot.docs.map(doc => doc.data() as AttendanceLog);
+
+            if (logs.length === 0) {
+                alert("No attendance records found for this class.");
+                return;
+            }
+
+            // Generate CSV
+            const headers = ['Name', 'Index Number', 'Joined At'];
+            const csvRows = [headers.join(',')];
+
+            logs.forEach(log => {
+                const date = log.joinedAt?.toDate ? log.joinedAt.toDate().toLocaleString() : 'N/A';
+                // Escape quotes in name
+                const name = `"${(log.userName || 'Unknown').replace(/"/g, '""')}"`;
+                const index = `"${(log.userIndexNumber || 'N/A').replace(/"/g, '""')}"`;
+                csvRows.push([name, index, `"${date}"`].join(','));
+            });
+
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${title.replace(/[^a-z0-9]/gi, '_')}_attendance.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error("Error downloading attendance:", error);
+            alert("Failed to download attendance.");
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
@@ -244,6 +292,15 @@ export default function LecturerDashboard() {
                                                 </svg>
                                             </button>
                                             <button
+                                                onClick={() => handleDownloadAttendance(session.id, session.title)}
+                                                className="p-2 text-gray-400 hover:text-indigo-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+                                                title="Download Attendance"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                                </svg>
+                                            </button>
+                                            <button
                                                 onClick={() => handleDeleteSession(session.id)}
                                                 className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
                                                 title="Delete Class"
@@ -298,75 +355,77 @@ export default function LecturerDashboard() {
             </div>
 
             {/* Create Session Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
-                    <div className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create New Class</h2>
-                            <button onClick={() => setShowCreateModal(false)} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateSession} className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Class Title</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                                    placeholder="e.g. Advanced Mathematics"
-                                />
+            {
+                showCreateModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+                        <div className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
+                            <div className="flex justify-between items-center mb-8">
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create New Class</h2>
+                                <button onClick={() => setShowCreateModal(false)} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                    <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             </div>
 
-                            <div>
-                                <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl cursor-pointer border border-transparent hover:border-indigo-500 transition-colors">
+                            <form onSubmit={handleCreateSession} className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Class Title</label>
                                     <input
-                                        type="checkbox"
-                                        checked={isFree}
-                                        onChange={(e) => setIsFree(e.target.checked)}
-                                        className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                                        type="text"
+                                        required
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        placeholder="e.g. Advanced Mathematics"
                                     />
-                                    <span className="font-bold text-gray-700 dark:text-gray-300">This class is free</span>
-                                </label>
-                            </div>
-
-                            {!isFree && (
-                                <div className="animate-in slide-in-from-top-2 duration-200">
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Price (GHS)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-3.5 text-gray-400 font-bold">₵</span>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            required={!isFree}
-                                            value={price}
-                                            onChange={(e) => setPrice(e.target.value)}
-                                            className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
                                 </div>
-                            )}
+
+                                <div>
+                                    <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl cursor-pointer border border-transparent hover:border-indigo-500 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={isFree}
+                                            onChange={(e) => setIsFree(e.target.checked)}
+                                            className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                                        />
+                                        <span className="font-bold text-gray-700 dark:text-gray-300">This class is free</span>
+                                    </label>
+                                </div>
+
+                                {!isFree && (
+                                    <div className="animate-in slide-in-from-top-2 duration-200">
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Price (GHS)</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-3.5 text-gray-400 font-bold">₵</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                required={!isFree}
+                                                value={price}
+                                                onChange={(e) => setPrice(e.target.value)}
+                                                className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
 
 
-                            <button
-                                type="submit"
-                                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transform hover:-translate-y-0.5 transition-all text-lg"
-                            >
-                                Create Class
-                            </button>
-                        </form>
+                                <button
+                                    type="submit"
+                                    className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transform hover:-translate-y-0.5 transition-all text-lg"
+                                >
+                                    Create Class
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

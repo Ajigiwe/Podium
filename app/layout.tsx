@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ClassroomProvider } from "@/contexts/ClassroomContext";
+import GlobalClassroom from "@/components/GlobalClassroom";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,7 +28,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
+            <ClassroomProvider>
+              {children}
+              <GlobalClassroom />
+            </ClassroomProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

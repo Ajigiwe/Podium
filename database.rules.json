@@ -8,6 +8,12 @@
                     ".validate": "newData.hasChildren(['userId', 'userName', 'userRole', 'content', 'createdAt'])"
                 }
             }
+        },
+        "reactions": {
+            "$sessionId": {
+                ".read": "auth != null",
+                ".write": "auth != null"
+            }
         }
     }
 }

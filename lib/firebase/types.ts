@@ -8,6 +8,7 @@ export interface Profile {
     role: 'student' | 'lecturer';
     bio?: string;
     photoURL?: string;
+    indexNumber?: string; // Student Index Number
     createdAt: Timestamp;
     updatedAt?: Timestamp;
 }
@@ -45,6 +46,8 @@ export interface AttendanceLog {
     id: string;
     sessionId: string;
     userId: string;
+    userName: string;
+    userIndexNumber?: string;
     joinedAt: Timestamp;
 }
 
