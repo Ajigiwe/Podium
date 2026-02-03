@@ -21,7 +21,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 
 export default function LecturerDashboard() {
     const router = useRouter();
-    const { user, profile, signOut } = useAuth();
+    const { user, profile, loading: authLoading } = useAuth();
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -34,6 +34,8 @@ export default function LecturerDashboard() {
 
 
     useEffect(() => {
+        if (authLoading) return;
+
         if (!user || profile?.role !== 'lecturer') {
             router.push('/auth/login');
             return;
@@ -49,6 +51,8 @@ export default function LecturerDashboard() {
                 ...doc.data(),
             })) as Session[];
 
+            console.log('Fetched sessions:', sessionsData.map(s => ({ id: s.id, lecturerId: s.lecturerId })));
+
             setSessions(sessionsData);
 
             // Fetch revenue for each session
@@ -59,10 +63,16 @@ export default function LecturerDashboard() {
             setRevenueData(revenue);
 
             setLoading(false);
+        }, (error) => {
+            console.error("Error fetching sessions:", error);
+            setLoading(false);
+            if (error.code === 'permission-denied') {
+                alert("Error: You do not have permission to view these sessions.");
+            }
         });
 
         return () => unsubscribe();
-    }, [user, profile, router]);
+    }, [user, profile, authLoading, router]);
 
     const handleCreateSession = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -108,11 +118,30 @@ export default function LecturerDashboard() {
     const handleDeleteSession = async (sessionId: string) => {
         if (!confirm('Are you sure you want to delete this session?')) return;
 
+        console.log('Attempting to delete session:', sessionId);
+        const sessionToDelete = sessions.find(s => s.id === sessionId);
+        console.log('Session data:', sessionToDelete);
+        console.log('Current user:', user?.uid);
+
+        if (sessionToDelete?.lecturerId !== user?.uid) {
+            console.error('Mismatch in lecturerId:', sessionToDelete?.lecturerId, 'vs', user?.uid);
+            alert('Error: You do not appear to be the owner of this session.');
+            return;
+        }
+
         try {
             await deleteDoc(doc(db, 'sessions', sessionId));
-        } catch (error) {
+            console.log('Session deleted successfully');
+        } catch (error: any) {
             console.error('Error deleting session:', error);
+            alert(`Failed to delete session: ${error.message} (Code: ${error.code})`);
         }
+    };
+
+    const handleCopyLink = (sessionId: string) => {
+        const link = `${window.location.origin}/classroom/${sessionId}`;
+        navigator.clipboard.writeText(link);
+        alert("Class link copied to clipboard!");
     };
 
     if (loading) {
@@ -124,14 +153,14 @@ export default function LecturerDashboard() {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 max-w-7xl mx-auto">
             {/* Header / Welcome */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">
                         Good afternoon, {profile?.fullName?.split(' ')[0]} 👋
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                    <p className="text-lg text-gray-600 dark:text-gray-400 mt-2 font-medium">
                         Here's what's happening with your classes today.
                     </p>
                 </div>
@@ -146,10 +175,10 @@ export default function LecturerDashboard() {
 
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-white/20 dark:border-white/5 flex items-center justify-between ring-1 ring-black/5">
                     <div>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Classes</p>
-                        <p className="text-4xl font-bold text-gray-900 dark:text-white mt-2">{sessions.length}</p>
+                        <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Classes</p>
+                        <p className="text-5xl font-black text-gray-900 dark:text-white mt-2">{sessions.length}</p>
                     </div>
                     <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
                         <svg className="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -157,10 +186,10 @@ export default function LecturerDashboard() {
                         </svg>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-white/20 dark:border-white/5 flex items-center justify-between ring-1 ring-black/5">
                     <div>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Now</p>
-                        <p className="text-4xl font-bold text-gray-900 dark:text-white mt-2">{sessions.filter(s => s.isActive).length}</p>
+                        <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Active Now</p>
+                        <p className="text-5xl font-black text-gray-900 dark:text-white mt-2">{sessions.filter(s => s.isActive).length}</p>
                     </div>
                     <div className="w-16 h-16 rounded-2xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
                         <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -172,10 +201,10 @@ export default function LecturerDashboard() {
 
             {/* Sessions Grid */}
             <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Your Sessions</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Your Sessions</h2>
 
                 {sessions.length === 0 ? (
-                    <div className="text-center py-20 bg-white/50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700">
+                    <div className="text-center py-20 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md rounded-3xl border border-dashed border-gray-300 dark:border-gray-700">
                         <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
                             <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -196,26 +225,37 @@ export default function LecturerDashboard() {
                             const priceInCedis = session.price / 100;
 
                             return (
-                                <div key={session.id} className="group bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-800 transition-all duration-300">
+                                <div key={session.id} className="group bg-white/60 dark:bg-gray-900/60 backdrop-blur-lg rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 border border-white/20 dark:border-white/5 transition-all duration-300">
                                     <div className="flex justify-between items-start mb-6">
                                         <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${session.isActive
                                             ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse'
-                                            : 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400'
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
                                             }`}>
                                             {session.isActive ? '● Live Now' : 'Offline'}
                                         </div>
-                                        <button
-                                            onClick={() => handleDeleteSession(session.id)}
-                                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                                            title="Delete Class"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleCopyLink(session.id)}
+                                                className="p-2 text-gray-400 hover:text-indigo-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+                                                title="Copy Link"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteSession(session.id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+                                                title="Delete Class"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{session.title}</h3>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{session.title}</h3>
 
                                     <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
                                         <span className="flex items-center gap-1.5">
@@ -230,17 +270,15 @@ export default function LecturerDashboard() {
                                         </span>
                                     </div>
 
-
-
                                     <div className="flex gap-3">
                                         <button
                                             onClick={() => handleToggleActive(session.id, session.isActive)}
                                             className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all shadow-lg ${session.isActive
-                                                ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                                ? 'bg-white dark:bg-gray-800 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20'
                                                 : 'bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-gray-900 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed'
                                                 }`}
                                         >
-                                            {session.isActive ? 'Stop' : 'Go Live'}
+                                            {session.isActive ? 'Stop Stream' : 'Go Live'}
                                         </button>
 
                                         {session.isActive && (

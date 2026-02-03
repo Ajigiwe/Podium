@@ -146,8 +146,12 @@ export default function ProfilePage() {
             setPhotoURL(downloadURL);
             alert('Profile picture updated successfully!');
         } catch (error: any) {
-            console.error('Error uploading photo:', error);
-            alert(error.message || 'Failed to upload photo');
+            console.error('Error uploading photo (Full details):', error);
+            if (error.code === 'storage/unauthorized') {
+                alert('Permission denied. Please check your storage rules.');
+            } else {
+                alert(`Failed to upload photo: ${error.message}`);
+            }
         } finally {
             setUploadingPhoto(false);
         }

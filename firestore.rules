@@ -60,9 +60,20 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid
       );
       
-      // Only server (Admin SDK) can write transactions
-      // This prevents client-side manipulation
-      allow write: if false;
+      // Only server (Admin SDK) can create transactions
+      allow create: if false;
+
+      // Users can update their own transaction ONLY to hide it
+      allow update: if isSignedIn() 
+        && resource.data.userId == request.auth.uid
+        // Ensure critical fields are not changed
+        && request.resource.data.amount == resource.data.amount
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.sessionId == resource.data.sessionId
+        && request.resource.data.paystackReference == resource.data.paystackReference;
+
+      // Only server can delete
+      allow delete: if false;
     }
     
     // Attendance logs collection

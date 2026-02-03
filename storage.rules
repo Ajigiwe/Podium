@@ -15,7 +15,7 @@ service firebase.storage {
       allow write: if isSignedIn() 
         && request.auth.uid == userId
         && request.resource.size < 5 * 1024 * 1024 // 5MB max
-        && request.resource.contentType.matches('image/.*'); // Must be image
+        && request.resource.contentType == 'image/jpeg'; // Enforce JPEG
     }
     
     // Default deny

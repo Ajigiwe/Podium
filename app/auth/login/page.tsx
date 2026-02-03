@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -12,10 +13,12 @@ export default function LoginPage() {
     const { signIn, signInWithGoogle, resendVerification } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showResend, setShowResend] = useState(false);
     const [resendMessage, setResendMessage] = useState('');
+    const [role, setRole] = useState<'student' | 'lecturer'>('student');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,7 +58,7 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            await signInWithGoogle();
+            await signInWithGoogle(role);
             router.push(redirectUrl);
         } catch (err: any) {
             setError(err.message || 'Failed to sign in with Google');
@@ -140,17 +143,30 @@ export default function LoginPage() {
                                         Forgot password?
                                     </Link>
                                 </div>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="appearance-none relative block w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 placeholder-white/50 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all sm:text-sm"
-                                    placeholder="••••••••"
-                                />
+                                <div className="relative">
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        autoComplete="current-password"
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="appearance-none relative block w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 placeholder-white/50 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all sm:text-sm pr-10"
+                                        placeholder="••••••••"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-white/70 hover:text-white transition-colors"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="h-5 w-5" />
+                                        ) : (
+                                            <Eye className="h-5 w-5" />
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -178,6 +194,36 @@ export default function LoginPage() {
                             </div>
                             <div className="relative flex justify-center text-sm">
                                 <span className="px-2 bg-transparent text-white/90">Or continue with</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="block text-sm font-medium text-white/90 text-center">
+                                Joining us for the first time? Select your role:
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <label className={`relative flex items-center justify-center px-4 py-2 rounded-xl border-2 cursor-pointer transition-all ${role === 'student' ? 'bg-white/20 border-white/50 shadow-lg' : 'bg-white/5 border-white/20 hover:bg-white/10'}`}>
+                                    <input
+                                        type="radio"
+                                        name="role"
+                                        value="student"
+                                        checked={role === 'student'}
+                                        onChange={(e) => setRole(e.target.value as 'student')}
+                                        className="sr-only"
+                                    />
+                                    <span className="text-sm font-medium text-white">Student</span>
+                                </label>
+                                <label className={`relative flex items-center justify-center px-4 py-2 rounded-xl border-2 cursor-pointer transition-all ${role === 'lecturer' ? 'bg-white/20 border-white/50 shadow-lg' : 'bg-white/5 border-white/20 hover:bg-white/10'}`}>
+                                    <input
+                                        type="radio"
+                                        name="role"
+                                        value="lecturer"
+                                        checked={role === 'lecturer'}
+                                        onChange={(e) => setRole(e.target.value as 'lecturer')}
+                                        className="sr-only"
+                                    />
+                                    <span className="text-sm font-medium text-white">Lecturer</span>
+                                </label>
                             </div>
                         </div>
 

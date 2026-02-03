@@ -58,9 +58,14 @@ export default function DashboardLayout({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+        <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-300 relative overflow-hidden">
+            {/* Animated Background */}
+            <div className="bg-noise" />
+            <div className="fixed top-0 right-0 -z-10 w-[800px] h-[800px] bg-purple-500/20 dark:bg-purple-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob" />
+            <div className="fixed bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-indigo-500/20 dark:bg-indigo-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob animation-delay-2000" />
+
             {/* Mobile Header */}
-            <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20">
+            <div className="lg:hidden flex items-center justify-between p-4 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
                         <GraduationCap className="w-5 h-5 text-white" />
@@ -93,7 +98,7 @@ export default function DashboardLayout({
                             animate={{ x: 0 }}
                             exit={{ x: -280 }}
                             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-black border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 ease-in-out ${!isSidebarOpen ? 'hidden lg:flex' : 'flex'}`}
+                            className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 ease-in-out ${!isSidebarOpen ? 'hidden lg:flex' : 'flex'}`}
                         >
                             {/* Sidebar Header */}
                             <div className="p-6 flex items-center justify-between">
@@ -113,12 +118,12 @@ export default function DashboardLayout({
 
                             {/* User Info */}
                             <div className="px-6 mb-8">
-                                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 backdrop-blur-sm shadow-sm">
                                     <div className="flex items-center gap-3 mb-3">
                                         {profile?.photoURL ? (
-                                            <img src={profile.photoURL} alt={profile.fullName} className="w-10 h-10 rounded-full object-cover" />
+                                            <img src={profile.photoURL} alt={profile.fullName} className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-500/20" />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold ring-2 ring-indigo-500/20">
                                                 {profile?.fullName?.charAt(0)}
                                             </div>
                                         )}
@@ -149,8 +154,8 @@ export default function DashboardLayout({
                                             href={item.href}
                                             onClick={() => setIsSidebarOpen(false)}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive
-                                                ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-gray-200'
+                                                ? 'bg-indigo-50/80 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-800'
+                                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50/50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-gray-200'
                                                 }`}
                                         >
                                             <item.icon className="w-5 h-5" />
@@ -161,7 +166,7 @@ export default function DashboardLayout({
                             </nav>
 
                             {/* Footer / Actions */}
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+                            <div className="p-4 border-t border-gray-200/50 dark:border-gray-800/50 space-y-2">
                                 <div className="flex items-center justify-between px-4 py-2">
                                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Dark Mode</span>
                                     <ThemeToggle />
@@ -181,7 +186,7 @@ export default function DashboardLayout({
 
             {/* Main Content Area */}
             <div className="flex-1 lg:pl-72 flex flex-col min-h-screen transition-all duration-300">
-                <main className="flex-1 p-4 sm:p-6 lg:p-8">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 relative z-10">
                     {children}
                 </main>
             </div>

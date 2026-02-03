@@ -40,6 +40,8 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black overflow-hidden selection:bg-indigo-500 selection:text-white">
+      <div className="bg-noise" />
+
       {/* Navigation */}
       <motion.nav
         style={{
@@ -61,17 +63,14 @@ export default function LandingPage() {
               </span>
             </div>
 
-            {/* Desktop Links */}
+            {/* Desktop Links - Only valid links */}
             <div className="hidden md:flex items-center gap-8">
-              {["Features", "Pricing", "Testimonials", "FAQ"].map((item) => (
-                <a
-                  key={item}
-                  href={`#${item.toLowerCase()}`}
-                  className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                >
-                  {item}
-                </a>
-              ))}
+              <a
+                href="#features"
+                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                Features
+              </a>
             </div>
 
             {/* Actions */}
@@ -112,9 +111,10 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-        {/* Abstract Background Elements */}
-        <div className="absolute top-0 right-0 -z-10 w-[800px] h-[800px] bg-purple-500/10 dark:bg-purple-500/20 rounded-full blur-3xl opacity-50 animate-pulse" />
-        <div className="absolute bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-3xl opacity-50 animate-pulse delay-1000" />
+        {/* Animated Background Elements */}
+        <div className="absolute top-0 right-0 -z-10 w-[800px] h-[800px] bg-purple-500/20 dark:bg-purple-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob" />
+        <div className="absolute top-0 left-0 -z-10 w-[600px] h-[600px] bg-indigo-500/20 dark:bg-indigo-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob animation-delay-2000" />
+        <div className="absolute bottom-0 -left-20 -z-10 w-[600px] h-[600px] bg-pink-500/20 dark:bg-pink-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob animation-delay-4000" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center max-w-4xl mx-auto">
@@ -122,7 +122,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-sm font-medium mb-8 border border-indigo-100 dark:border-indigo-800"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 text-indigo-600 dark:text-indigo-300 text-sm font-medium mb-8 shadow-sm"
             >
               <Sparkles className="w-4 h-4" />
               <span>Teaching Reimagined. Learning Elevated.</span>
@@ -132,11 +132,11 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-5xl lg:text-7xl font-bold tracking-tight text-gray-900 dark:text-white mb-8"
+              className="text-6xl lg:text-8xl font-black tracking-tight text-gray-900 dark:text-white mb-8 leading-[0.9]"
             >
-              The Virtual Classroom for <br />
+              The Virtual <br /> Classroom for <br />
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-gradient">
-                Ghana's Future Leaders
+                Ghana's Future
               </span>
             </motion.h1>
 
@@ -144,7 +144,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xl text-gray-600 dark:text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed"
+              className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed font-light"
             >
               Experience seamless live streaming, instant mobile money payments, and interactive learning tools. Built mainly for Ghanaian education.
             </motion.p>
@@ -164,7 +164,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/#features"
-                className="w-full sm:w-auto px-8 py-4 rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-bold text-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all hover:-translate-y-1 flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/50 dark:bg-white/5 backdrop-blur-sm text-gray-900 dark:text-white font-bold text-lg border border-gray-200/50 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-all hover:-translate-y-1 flex items-center justify-center gap-2"
               >
                 <Video className="w-5 h-5" />
                 See Demo
@@ -177,55 +177,55 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-20 relative"
+            className="mt-24 relative"
           >
             <motion.div
               variants={floatAnimation}
               initial="initial"
               animate="animate"
-              className="relative rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl shadow-2xl p-4 md:p-8"
+              className="relative rounded-2xl border border-white/20 dark:border-white/10 bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl shadow-2xl p-4 md:p-8"
             >
               {/* Fake UI Header */}
-              <div className="flex items-center gap-4 mb-6 border-b border-gray-100 dark:border-gray-800 pb-4">
+              <div className="flex items-center gap-4 mb-6 border-b border-gray-100/20 dark:border-white/5 pb-4">
                 <div className="flex gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-400" />
                   <div className="w-3 h-3 rounded-full bg-yellow-400" />
                   <div className="w-3 h-3 rounded-full bg-green-400" />
                 </div>
-                <div className="h-6 w-32 rounded-full bg-gray-100 dark:bg-gray-800" />
+                <div className="h-6 w-32 rounded-full bg-white/20 dark:bg-white/5" />
               </div>
 
               {/* Fake UI Content */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-4">
-                  <div className="aspect-video rounded-xl bg-gray-900 relative overflow-hidden group">
+                  <div className="aspect-video rounded-xl bg-gray-900/80 relative overflow-hidden group shadow-inner">
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
+                      <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer border border-white/10">
                         <div className="w-0 h-0 border-t-8 border-t-transparent border-l-[16px] border-l-white border-b-8 border-b-transparent ml-1" />
                       </div>
                     </div>
                     <div className="absolute bottom-4 left-4 right-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-700" />
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500" />
                       <div className="flex-1">
-                        <div className="h-3 w-24 rounded bg-gray-700 mb-2" />
-                        <div className="h-2 w-16 rounded bg-gray-700/50" />
+                        <div className="h-3 w-24 rounded bg-white/20 mb-2" />
+                        <div className="h-2 w-16 rounded bg-white/10" />
                       </div>
                       <div className="flex gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gray-700/50 flex items-center justify-center">👍</div>
-                        <div className="w-8 h-8 rounded-full bg-gray-700/50 flex items-center justify-center">❤️</div>
+                        <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">👍</div>
+                        <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">❤️</div>
                       </div>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 h-full">
-                    <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700 mb-4" />
+                  <div className="p-4 rounded-xl bg-white/30 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/5 h-full">
+                    <div className="h-4 w-20 rounded bg-gray-200 dark:bg-white/10 mb-4" />
                     <div className="space-y-3">
                       {[1, 2, 3, 4].map((i) => (
                         <div key={i} className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 opacity-50" />
                           <div className="flex-1">
-                            <div className="h-3 w-full rounded bg-gray-200 dark:bg-gray-700" />
+                            <div className="h-3 w-full rounded bg-gray-200 dark:bg-white/5" />
                           </div>
                         </div>
                       ))}
@@ -239,7 +239,7 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 border-y border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+      <section className="py-20 border-y border-gray-100 dark:border-gray-800 bg-white/30 dark:bg-black/20 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
@@ -255,7 +255,7 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
               >
-                <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                <div className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-white dark:to-gray-400 mb-2 font-mono">
                   {stat.value}
                 </div>
                 <div className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -271,9 +271,9 @@ export default function LandingPage() {
       <section id="features" className="py-32 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-20">
-            <h2 className="text-3xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+            <h2 className="text-3xl lg:text-6xl font-black text-gray-900 dark:text-white mb-6 tracking-tight">
               Everything you need to <br />
-              <span className="text-indigo-600 dark:text-indigo-400">run your digital classroom</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">run your digital classroom</span>
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
               Podium brings together streaming, payments, and student management in one powerful platform.
@@ -284,7 +284,7 @@ export default function LandingPage() {
             <FeatureCard
               icon={<Video className="w-8 h-8 text-indigo-500" />}
               title="HD Live Streaming"
-              description="Crystal clear video quality using YouTube Live integration. Screen sharing, webcams, and OBS support included."
+              description="Crystal clear video quality using LiveKit integration. Screen sharing, webcams, and OBS support included."
               delay={0}
             />
             <FeatureCard
@@ -324,28 +324,28 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-3xl overflow-hidden bg-gray-900 dark:bg-indigo-950 px-8 py-16 md:px-16 md:py-24 text-center">
+          <div className="relative rounded-3xl overflow-hidden bg-gray-900 dark:bg-black border border-white/10 px-8 py-16 md:px-16 md:py-24 text-center shadow-2xl">
             {/* Background Gradients */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+            <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-blob" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 animate-blob animation-delay-2000" />
 
             <div className="relative z-10">
-              <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight">
                 Ready to elevate your teaching?
               </h2>
-              <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
+              <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto font-light">
                 Join hundreds of lecturers using Podium to reach more students and monetize their knowledge.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
                   href="/auth/register"
-                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-white text-gray-900 font-bold text-lg hover:bg-gray-100 transition-all shadow-xl hover:-translate-y-1"
+                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-white text-gray-900 font-bold text-lg hover:scale-105 transition-all shadow-xl"
                 >
                   Get Started for Free
                 </Link>
                 <Link
                   href="/auth/login"
-                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-transparent border border-white/20 text-white font-bold text-lg hover:bg-white/10 transition-all hover:-translate-y-1"
+                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white font-bold text-lg hover:bg-white/20 transition-all hover:scale-105 backdrop-blur-md"
                 >
                   Log in
                 </Link>
@@ -356,7 +356,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-50 dark:bg-gray-900 py-12 border-t border-gray-200 dark:border-gray-800">
+      <footer className="bg-white/50 dark:bg-black/50 backdrop-blur-md py-12 border-t border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex items-center gap-2">
@@ -365,11 +365,7 @@ export default function LandingPage() {
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white">Podium</span>
             </div>
-            <div className="flex gap-8 text-sm text-gray-600 dark:text-gray-400">
-              <a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400">Privacy</a>
-              <a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400">Terms</a>
-              <a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400">Contact</a>
-            </div>
+            {/* Removed inactive links for Privacy, Terms, Contact */}
             <div className="text-sm text-gray-500">
               © 2024 Podium. All rights reserved.
             </div>

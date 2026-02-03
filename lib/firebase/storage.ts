@@ -1,5 +1,5 @@
-import { storage } from './config';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { app } from './config';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 /**
  * Upload profile picture to Firebase Storage
@@ -21,12 +21,22 @@ export async function uploadProfilePicture(userId: string, file: File): Promise<
     }
 
     try {
-        // Create storage reference
-        const fileExtension = file.name.split('.').pop();
-        const storageRef = ref(storage, `profile-pictures/${userId}.${fileExtension}`);
+        // Get storage instance dynamically to ensure app is initialized
+        const storage = getStorage(app);
 
-        // Upload file
-        await uploadBytes(storageRef, file);
+        // Since we compress to JPEG, we'll force the extension to .jpg
+        // This ensures consistency between MIME type and extension
+        const fullPath = `profile-pictures/${userId}.jpg`;
+        console.log(`[Upload] Attempting to upload to: ${fullPath}`);
+        console.log(`[Upload] File size: ${file.size}, Type: ${file.type}`);
+
+        const storageRef = ref(storage, fullPath);
+
+        // Upload file with explicit content type
+        await uploadBytes(storageRef, file, {
+            contentType: 'image/jpeg',
+            cacheControl: 'public, max-age=31536000'
+        });
 
         // Get download URL
         const downloadURL = await getDownloadURL(storageRef);
@@ -44,7 +54,8 @@ export async function uploadProfilePicture(userId: string, file: File): Promise<
  */
 export async function deleteProfilePicture(userId: string): Promise<void> {
     try {
-        // Try common extensions
+        const storage = getStorage(app);
+        // We now enforce .jpg, but check others for backward compatibility
         const extensions = ['jpg', 'jpeg', 'png', 'webp'];
 
         for (const ext of extensions) {
@@ -112,7 +123,9 @@ export async function compressImage(
                 canvas.toBlob(
                     (blob) => {
                         if (blob) {
-                            const compressedFile = new File([blob], file.name, {
+                            // Ensure the filename has .jpg extension
+                            const fileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                            const compressedFile = new File([blob], fileName, {
                                 type: 'image/jpeg',
                                 lastModified: Date.now(),
                             });

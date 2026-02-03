@@ -49,6 +49,7 @@ export default function ClassroomPage() {
     const [canAccess, setCanAccess] = useState(false);
     const [lastMessageTime, setLastMessageTime] = useState(0);
     const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
+    const [floatingEmojis, setFloatingEmojis] = useState<{ id: string; emoji: string; left: number }[]>([]);
 
     // LiveKit state
     const [token, setToken] = useState('');
@@ -173,6 +174,35 @@ export default function ClassroomPage() {
         };
     }, [canAccess, sessionId]);
 
+    // Optimize: Listen for reactions separately for live effect
+    useEffect(() => {
+        if (!canAccess) return;
+
+        const reactionsRef = ref(rtdb, `reactions/${sessionId}`);
+        const handleNewReactionEvent = (snapshot: any) => {
+            const data = snapshot.val();
+            // Only show if it's new (timestamp check could be added, but for now just show all incoming)
+            if (data && Date.now() - data.timestamp < 5000) {
+                addFloatingEmoji(data.emoji);
+            }
+        };
+        // Use child_added so we get every new reaction pushed
+        onChildAdded(reactionsRef, handleNewReactionEvent);
+
+        return () => {
+            off(reactionsRef, 'child_added', handleNewReactionEvent);
+        };
+    }, [canAccess, sessionId]);
+
+    const addFloatingEmoji = (emoji: string) => {
+        const id = Math.random().toString(36).substr(2, 9);
+        const left = Math.random() * 80 + 10; // 10% to 90%
+        setFloatingEmojis((prev) => [...prev, { id, emoji, left }]);
+        setTimeout(() => {
+            setFloatingEmojis((prev) => prev.filter((e) => e.id !== id));
+        }, 4000); // Remove after 4s animation
+    };
+
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !user || !profile) return;
 
@@ -221,6 +251,16 @@ export default function ClassroomPage() {
                 ...reactions,
                 [emoji]: [...userReactions, user.uid],
             };
+
+            // Push to transient path for live floating effect
+            try {
+                const reactionsRef = ref(rtdb, `reactions/${sessionId}`);
+                push(reactionsRef, {
+                    emoji,
+                    userId: user.uid,
+                    timestamp: Date.now()
+                });
+            } catch (e) { console.error(e); }
         }
 
         try {
@@ -267,6 +307,12 @@ export default function ClassroomPage() {
                         <div className="flex items-center gap-3">
                             <ThemeToggle />
                             <button
+                                onClick={() => router.push('/')}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                            >
+                                Back to Home
+                            </button>
+                            <button
                                 onClick={() => router.back()}
                                 className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                             >
@@ -282,6 +328,21 @@ export default function ClassroomPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
                     {/* Video Conference Area */}
                     <div className="lg:col-span-3 h-full rounded-2xl overflow-hidden bg-black shadow-2xl relative">
+                        {/* Floating Emojis Overlay */}
+                        <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
+                            {floatingEmojis.map((feat) => (
+                                <div
+                                    key={feat.id}
+                                    className="absolute bottom-0 text-5xl animate-float-up opacity-0"
+                                    style={{
+                                        left: `${feat.left}%`,
+                                        animationDuration: `${3 + Math.random()}s`
+                                    }}
+                                >
+                                    {feat.emoji}
+                                </div>
+                            ))}
+                        </div>
                         {token === '' ? (
                             <div className="flex items-center justify-center h-full text-white">
                                 Preparing video connection...
@@ -339,10 +400,10 @@ export default function ClassroomPage() {
 
                                                 {/* Message bubble */}
                                                 <div className={`relative group px-4 py-2.5 rounded-2xl text-sm shadow-sm ${isOwnMessage
-                                                        ? 'bg-indigo-600 text-white rounded-tr-sm'
-                                                        : isLecturer
-                                                            ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-gray-900 dark:text-yellow-100 rounded-tl-sm'
-                                                            : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-tl-sm'
+                                                    ? 'bg-indigo-600 text-white rounded-tr-sm'
+                                                    : isLecturer
+                                                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-gray-900 dark:text-yellow-100 rounded-tl-sm'
+                                                        : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-tl-sm'
                                                     }`}>
                                                     <p className="break-words leading-relaxed">{message.content}</p>
 

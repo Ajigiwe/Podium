@@ -37,6 +37,7 @@ export interface Transaction {
     status: 'pending' | 'succeeded' | 'failed' | 'refunded';
     createdAt: Timestamp;
     paidAt: Timestamp | null;
+    isHidden?: boolean; // New field to support removing/hiding classes
 }
 
 // Attendance Log

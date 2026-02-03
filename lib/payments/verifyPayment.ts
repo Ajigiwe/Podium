@@ -61,6 +61,7 @@ export async function getSessionRevenue(sessionId: string) {
 
         const snapshot = await getDocs(q);
         const transactions = snapshot.docs.map((doc) => doc.data());
+        console.log(`Revenue for session ${sessionId}:`, transactions.length, 'transactions');
 
         const totalRevenue = transactions.reduce(
             (sum, transaction) => sum + (transaction.amount || 0),
