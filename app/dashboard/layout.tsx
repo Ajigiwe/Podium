@@ -61,13 +61,13 @@ export default function DashboardLayout({
         <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-300 relative overflow-hidden">
             {/* Animated Background */}
             <div className="bg-noise" />
-            <div className="fixed top-0 right-0 -z-10 w-[800px] h-[800px] bg-purple-500/20 dark:bg-purple-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob" />
-            <div className="fixed bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-indigo-500/20 dark:bg-indigo-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob animation-delay-2000" />
+            <div className="fixed top-0 right-0 -z-10 w-[800px] h-[800px] bg-orange-500/20 dark:bg-orange-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob" />
+            <div className="fixed bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-pink-500/20 dark:bg-pink-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob animation-delay-2000" />
 
             {/* Mobile Header */}
             <div className="lg:hidden flex items-center justify-between p-4 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center">
                         <GraduationCap className="w-5 h-5 text-white" />
                     </div>
                     <span className="font-bold text-lg text-gray-900 dark:text-white">Podium</span>
@@ -103,7 +103,7 @@ export default function DashboardLayout({
                             {/* Sidebar Header */}
                             <div className="p-6 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
                                         <GraduationCap className="w-6 h-6 text-white" />
                                     </div>
                                     <span className="font-bold text-xl text-gray-900 dark:text-white">Podium</span>
@@ -121,9 +121,9 @@ export default function DashboardLayout({
                                 <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 backdrop-blur-sm shadow-sm">
                                     <div className="flex items-center gap-3 mb-3">
                                         {profile?.photoURL ? (
-                                            <img src={profile.photoURL} alt={profile.fullName} className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-500/20" />
+                                            <img src={profile.photoURL} alt={profile.fullName} className="w-10 h-10 rounded-full object-cover ring-2 ring-orange-500/20" />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold ring-2 ring-indigo-500/20">
+                                            <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center text-orange-600 dark:text-orange-400 font-bold ring-2 ring-orange-500/20">
                                                 {profile?.fullName?.charAt(0)}
                                             </div>
                                         )}
@@ -138,7 +138,7 @@ export default function DashboardLayout({
                                     </div>
                                     <div className="flex gap-2">
                                         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                            <div className="h-full bg-indigo-500 w-3/4 rounded-full" />
+                                            <div className="h-full bg-gradient-to-r from-orange-500 to-pink-500 w-3/4 rounded-full" />
                                         </div>
                                     </div>
                                 </div>
@@ -154,7 +154,7 @@ export default function DashboardLayout({
                                             href={item.href}
                                             onClick={() => setIsSidebarOpen(false)}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive
-                                                ? 'bg-indigo-50/80 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-800'
+                                                ? 'bg-orange-50/80 dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 shadow-sm border border-orange-100 dark:border-orange-800'
                                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50/50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-gray-200'
                                                 }`}
                                         >

@@ -1,40 +1,15 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { db, rtdb } from '@/lib/firebase/config';
-import { doc, updateDoc, addDoc, collection, Timestamp } from 'firebase/firestore';
-import { ref, push, onChildAdded, off, update } from 'firebase/database';
 import { Session } from '@/lib/firebase/types';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useClassroom } from '@/contexts/ClassroomContext';
-import '@livekit/components-styles';
-import {
-    VideoConference,
-    RoomAudioRenderer,
-    ControlBar,
-    useParticipants,
-    GridLayout,
-    ParticipantTile,
-    useTracks,
-} from '@livekit/components-react';
-import { Track } from 'livekit-client';
-import { Participant } from 'livekit-client';
-import ActiveSpeaker from '@/components/ActiveSpeaker';
-
-interface ChatMessage {
-    id: string;
-    userId: string;
-    userName: string;
-    userRole: string;
-    content: string;
-    createdAt: number;
-    reactions?: {
-        [emoji: string]: string[];
-    };
-}
-
-const EMOJI_OPTIONS = ['👍', '❤️', '😂', '🎉', '🔥', '👏'];
+import { Users, MicOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { JitsiParticipant } from '@/contexts/ClassroomContext';
+import { generateMeetingCode } from '@/lib/meetingCode';
+import { db } from '@/lib/firebase/config';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface ClassroomContentProps {
     session: Session;
@@ -45,428 +20,378 @@ interface ClassroomContentProps {
 
 export default function ClassroomContent({ session, user, profile, sessionId }: ClassroomContentProps) {
     const router = useRouter();
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const { leaveClass, participants, isMini } = useClassroom(); // Use global context
+    const { 
+        leaveClass, 
+        isFloating, 
+        toggleFloating,
+        participants,
+        muteParticipant,
+        muteAllParticipants,
+        kickParticipant,
+        askToUnmute,
+    } = useClassroom();
 
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [lastMessageTime, setLastMessageTime] = useState(0);
-    const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
-    const [floatingEmojis, setFloatingEmojis] = useState<{ id: string; emoji: string; left: number }[]>([]);
-
-    // Permission Management State
     const [showParticipantsModal, setShowParticipantsModal] = useState(false);
-    // Note: 'participants' now comes from context
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [copiedCode, setCopiedCode] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
 
-    // Auto-scroll to bottom
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    // Get or generate meeting code
+    const meetingCode = session.meetingCode || generateMeetingCode(sessionId);
+    const fullLink = typeof window !== 'undefined' ? `${window.location.origin}/classroom/${sessionId}` : '';
 
+    // Save meeting code to Firestore if it doesn't exist
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    useEffect(() => {
-        // Subscribe to chat messages
-        const messagesRef = ref(rtdb, `chats/${sessionId}`);
-        const handleNewMessage = (snapshot: any) => {
-            const message = snapshot.val();
-            if (message) {
-                setMessages((prev) => {
-                    if (prev.some((m) => m.id === snapshot.key)) return prev;
-                    return [...prev, { id: snapshot.key!, ...message }];
-                });
+        const saveMeetingCode = async () => {
+            if (!session.meetingCode && profile?.role === 'lecturer') {
+                try {
+                    const generatedCode = generateMeetingCode(sessionId);
+                    await updateDoc(doc(db, 'sessions', sessionId), {
+                        meetingCode: generatedCode
+                    });
+                    console.log('Meeting code saved to Firestore:', generatedCode);
+                } catch (error) {
+                    console.error('Failed to save meeting code:', error);
+                }
             }
         };
-        onChildAdded(messagesRef, handleNewMessage);
-        return () => {
-            off(messagesRef, 'child_added', handleNewMessage);
-        };
-    }, [sessionId]);
+        saveMeetingCode();
+    }, [session.meetingCode, sessionId, profile?.role]);
 
-    useEffect(() => {
-        const reactionsRef = ref(rtdb, `reactions/${sessionId}`);
-        const handleNewReactionEvent = (snapshot: any) => {
-            const data = snapshot.val();
-            if (data && Date.now() - data.timestamp < 5000) {
-                addFloatingEmoji(data.emoji);
-            }
-        };
-        onChildAdded(reactionsRef, handleNewReactionEvent);
-        return () => {
-            off(reactionsRef, 'child_added', handleNewReactionEvent);
-        };
-    }, [sessionId]);
-
-    const addFloatingEmoji = (emoji: string) => {
-        const id = Math.random().toString(36).substr(2, 9);
-        const left = Math.random() * 80 + 10;
-        setFloatingEmojis((prev) => [...prev, { id, emoji, left }]);
-        setTimeout(() => {
-            setFloatingEmojis((prev) => prev.filter((e) => e.id !== id));
-        }, 4000);
+    const handleCopyCode = async () => {
+        await navigator.clipboard.writeText(meetingCode);
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2000);
     };
 
-    const handleTogglePermission = async (p: Participant, type: 'cam' | 'mic') => {
-        const currentCanPublish = p.permissions?.canPublish ?? false;
-        const newCanPublish = !currentCanPublish;
-
-        try {
-            await fetch('/api/livekit/permissions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    room: sessionId,
-                    identity: p.identity,
-                    permissions: { canPublish: newCanPublish }
-                })
-            });
-        } catch (error) {
-            console.error("Failed to update permissions", error);
-            alert("Failed to update permissions");
-        }
-    };
-
-    const handleSendMessage = async () => {
-        if (!newMessage.trim() || !user || !profile) return;
-
-        const now = Date.now();
-        if (now - lastMessageTime < 3000) {
-            alert('Please wait before sending another message');
-            return;
-        }
-
-        try {
-            const messagesRef = ref(rtdb, `chats/${sessionId}`);
-            await push(messagesRef, {
-                userId: user.uid,
-                userName: profile.fullName,
-                userRole: profile.role || 'student',
-                content: newMessage,
-                createdAt: now,
-                reactions: {},
-            });
-
-            setNewMessage('');
-            setLastMessageTime(now);
-        } catch (error) {
-            console.error('Error sending message:', error);
-            alert('Failed to send message');
-        }
-    };
-
-    const handleReaction = async (messageId: string, emoji: string) => {
-        if (!user) return;
-        const message = messages.find((m) => m.id === messageId);
-        if (!message) return;
-
-        const reactions = message.reactions || {};
-        const userReactions = reactions[emoji] || [];
-
-        let updatedReactions;
-        if (userReactions.includes(user.uid)) {
-            updatedReactions = {
-                ...reactions,
-                [emoji]: userReactions.filter((id) => id !== user.uid),
-            };
-        } else {
-            updatedReactions = {
-                ...reactions,
-                [emoji]: [...userReactions, user.uid],
-            };
-            try {
-                const reactionsRef = ref(rtdb, `reactions/${sessionId}`);
-                push(reactionsRef, {
-                    emoji,
-                    userId: user.uid,
-                    timestamp: Date.now()
-                });
-            } catch (e) { console.error(e); }
-        }
-
-        try {
-            const messageRef = ref(rtdb, `chats/${sessionId}/${messageId}`);
-            await update(messageRef, { reactions: updatedReactions });
-            setMessages((prev) =>
-                prev.map((m) =>
-                    m.id === messageId ? { ...m, reactions: updatedReactions } : m
-                )
-            );
-        } catch (error) {
-            console.error('Error updating reaction:', error);
-        }
-        setShowEmojiPicker(null);
+    const handleCopyLink = async () => {
+        await navigator.clipboard.writeText(fullLink);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
     };
 
     const handleLeave = () => {
         leaveClass();
-        router.push('/dashboard/student');
+        if (profile?.role === 'lecturer') {
+            router.push('/dashboard/lecturer');
+        } else {
+            router.push('/dashboard/student');
+        }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-indigo-950 dark:to-purple-950">
-            {/* Header */}
-            <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm border-b border-gray-200/50 dark:border-gray-700/50">
-                <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="min-h-screen bg-gray-900">
+            {/* Mobile Header */}
+            <header className="bg-gray-900/95 backdrop-blur-lg border-b border-gray-800 fixed top-0 left-0 right-0 z-50">
+                <div className="px-3 sm:px-4 py-2 sm:py-3">
                     <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{session.title}</h1>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Live Classroom</p>
+                        {/* Title - truncated on mobile */}
+                        <div className="flex-1 min-w-0 mr-2">
+                            <h1 className="text-base sm:text-lg font-bold text-white truncate">{session.title}</h1>
+                            <p className="text-xs text-gray-400 flex items-center gap-1">
+                                {session.isActive && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+                                {session.isActive ? 'Live' : 'Offline'}
+                            </p>
                         </div>
-                        <div className="flex items-center gap-3">
+
+                        {/* Desktop Controls */}
+                        <div className="hidden md:flex items-center gap-2">
                             <ThemeToggle />
+                            {profile?.role === 'lecturer' && (
+                                <>
+                                    <button
+                                        onClick={() => setShowShareModal(true)}
+                                        className="px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-2"
+                                    >
+                                        <Share2 className="w-4 h-4" />
+                                        <span className="hidden lg:inline">Invite</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setShowParticipantsModal(true)}
+                                        className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                    >
+                                        <Users className="w-4 h-4" />
+                                        <span className="hidden lg:inline">Manage</span>
+                                        <span className="bg-white/20 px-1.5 py-0.5 rounded text-xs">{participants.length}</span>
+                                    </button>
+                                </>
+                            )}
                             <button
                                 onClick={() => router.push('/')}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                                title="Home"
                             >
-                                Back to Home
+                                <Home className="w-5 h-5" />
                             </button>
                             <button
                                 onClick={handleLeave}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                className="px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-2"
                             >
-                                Leave Class
+                                <LogOut className="w-4 h-4" />
+                                <span className="hidden lg:inline">Leave</span>
                             </button>
-                            {profile?.role === 'lecturer' && (
-                                <button
-                                    onClick={() => setShowParticipantsModal(true)}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
-                                >
-                                    Participants ({participants.length})
-                                </button>
-                            )}
+                        </div>
+
+                        {/* Mobile Menu Button */}
+                        <div className="flex md:hidden items-center gap-2">
+                            <ThemeToggle />
+                            <button
+                                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                                className="p-2 text-white bg-gray-800 rounded-lg"
+                            >
+                                {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                            </button>
                         </div>
                     </div>
+
+                    {/* Mobile Menu Dropdown */}
+                    {showMobileMenu && (
+                        <div className="md:hidden mt-3 pt-3 border-t border-gray-800 space-y-2">
+                            {profile?.role === 'lecturer' && (
+                                <>
+                                    <button
+                                        onClick={() => { setShowShareModal(true); setShowMobileMenu(false); }}
+                                        className="w-full px-4 py-3 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <Share2 className="w-4 h-4" />
+                                        Invite Students
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowParticipantsModal(true); setShowMobileMenu(false); }}
+                                        className="w-full px-4 py-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <Users className="w-4 h-4" />
+                                        Manage Participants ({participants.length})
+                                    </button>
+                                </>
+                            )}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => router.push('/')}
+                                    className="flex-1 px-4 py-3 text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-xl transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Home className="w-4 h-4" />
+                                    Home
+                                </button>
+                                <button
+                                    onClick={handleLeave}
+                                    className="flex-1 px-4 py-3 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    Leave
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </header>
 
-            {/* Main Content */}
-            <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4 h-[calc(100vh-80px)]">
-                <div className="flex flex-col lg:flex-row gap-4 h-full">
-                    {/* Video Conference Area (MOUNT POINT FOR PORTAL) */}
-                    <div className="w-full lg:flex-1 h-[45vh] lg:h-full shrink-0 rounded-2xl overflow-hidden bg-black shadow-2xl relative order-1">
+            {/* Main Content - Full Screen Video with header offset */}
+            <div className="pt-[60px] sm:pt-[68px] h-screen">
+                <div className={`${isFloating ? 'hidden' : 'w-full'} h-full bg-gray-900 relative`}>
+                    {/* This ID is CRITICAL - GlobalClassroom mounts Jitsi here */}
+                    <div id="classroom-video-mount" className="w-full h-full" />
 
-                        {/* This ID is CRITICAL - GlobalClassroom looks for this to mount local video */}
-                        <div id="classroom-video-mount" className="w-full h-full relative" />
-
-                        {/* Floating Emojis Overlay */}
-                        <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
-                            {floatingEmojis.map((feat) => (
-                                <div
-                                    key={feat.id}
-                                    className="absolute bottom-0 text-5xl animate-float-up opacity-0"
-                                    style={{
-                                        left: `${feat.left}%`,
-                                        animationDuration: `${3 + Math.random()}s`
-                                    }}
-                                >
-                                    {feat.emoji}
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Reaction Bar Overlay */}
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 z-[60]">
-                            {EMOJI_OPTIONS.map((emoji) => (
-                                <button
-                                    key={emoji}
-                                    onClick={() => {
-                                        const id = Math.random().toString(36).substr(2, 9);
-                                        const left = Math.random() * 80 + 10;
-                                        // 1. Local Immediate Feedback
-                                        setFloatingEmojis((prev) => [...prev, { id, emoji, left }]);
-                                        setTimeout(() => setFloatingEmojis((prev) => prev.filter((e) => e.id !== id)), 4000);
-
-                                        // 2. Network Sync
-                                        try {
-                                            const reactionsRef = ref(rtdb, `reactions/${sessionId}`);
-                                            push(reactionsRef, {
-                                                emoji,
-                                                userId: user.uid,
-                                                timestamp: Date.now()
-                                            });
-                                        } catch (e) { console.error(e); }
-                                    }}
-                                    className="p-2 hover:bg-white/20 rounded-full transition-colors text-2xl hover:scale-125 active:scale-95"
-                                >
-                                    {emoji}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Chat */}
-                    <div className="w-full lg:w-[400px] flex-1 lg:h-full flex flex-col order-2 min-h-0">
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl flex-1 flex flex-col border border-gray-200/50 dark:border-gray-700/50 overflow-hidden h-full">
-                            {/* Chat Header */}
-                            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 z-10 relative">
-                                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    Class Chat
-                                </h2>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{messages.length} messages</p>
-                            </div>
-
-                            {/* Messages */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-gray-900/50 min-h-0">
-                                {messages.map((message) => {
-                                    const isOwnMessage = message.userId === user?.uid;
-                                    const isLecturer = message.userRole === 'lecturer';
-
-                                    return (
-                                        <div key={message.id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[85%] ${isOwnMessage ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                                                {/* User info */}
-                                                <div className="flex items-center gap-2 px-1">
-                                                    <span className={`text-xs font-bold ${isLecturer ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                                                        {message.userName}
-                                                    </span>
-                                                    {isLecturer && (
-                                                        <span className="text-[10px] uppercase tracking-wider bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 px-1.5 py-0.5 rounded font-bold">
-                                                            Lecturer
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Message bubble */}
-                                                <div className={`relative group px-4 py-2.5 rounded-2xl text-sm shadow-sm ${isOwnMessage
-                                                    ? 'bg-indigo-600 text-white rounded-tr-sm'
-                                                    : isLecturer
-                                                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-gray-900 dark:text-yellow-100 rounded-tl-sm'
-                                                        : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-tl-sm'
-                                                    }`}>
-                                                    <p className="break-words leading-relaxed">{message.content}</p>
-
-                                                    {/* Reaction button */}
-                                                    <button
-                                                        onClick={() => setShowEmojiPicker(showEmojiPicker === message.id ? null : message.id)}
-                                                        className={`absolute -bottom-3 ${isOwnMessage ? 'left-0' : 'right-0'} opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 rounded-full p-1 shadow-md border border-gray-100 dark:border-gray-700 hover:scale-110 z-10`}
-                                                    >
-                                                        <span className="text-xs leading-none">😊</span>
-                                                    </button>
-
-                                                    {/* Emoji picker */}
-                                                    {showEmojiPicker === message.id && (
-                                                        <div className={`absolute bottom-full mb-2 ${isOwnMessage ? 'left-0' : 'right-0'} bg-white dark:bg-gray-800 rounded-xl shadow-xl p-2 flex gap-1 z-20 border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200`}>
-                                                            {EMOJI_OPTIONS.map((emoji) => (
-                                                                <button
-                                                                    key={emoji}
-                                                                    onClick={() => handleReaction(message.id, emoji)}
-                                                                    className="hover:scale-125 transition-transform p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                                >
-                                                                    {emoji}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Reactions display */}
-                                                {message.reactions && Object.keys(message.reactions).length > 0 && (
-                                                    <div className="flex flex-wrap gap-1 px-1 mt-0.5">
-                                                        {Object.entries(message.reactions).map(([emoji, userIds]) =>
-                                                            userIds.length > 0 ? (
-                                                                <button
-                                                                    key={emoji}
-                                                                    onClick={() => handleReaction(message.id, emoji)}
-                                                                    className={`text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 transition-all border ${userIds.includes(user?.uid || '')
-                                                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800'
-                                                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                                                        }`}
-                                                                >
-                                                                    <span>{emoji}</span>
-                                                                    <span className="text-gray-500 dark:text-gray-400 font-medium">{userIds.length}</span>
-                                                                </button>
-                                                            ) : null
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                <span className="text-[10px] text-gray-400 px-1">
-                                                    {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                <div ref={messagesEndRef} />
-                            </div>
-
-                            {/* Message Input */}
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={newMessage}
-                                        onChange={(e) => setNewMessage(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                        placeholder="Type a message..."
-                                        className="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-transparent dark:border-gray-700 transition-all"
-                                    />
-                                    <button
-                                        onClick={handleSendMessage}
-                                        disabled={!newMessage.trim()}
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-500/20"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Float Button - Hidden on mobile */}
+                    {!isFloating && (
+                        <button
+                            onClick={() => toggleFloating(true)}
+                            className="hidden sm:block absolute top-4 right-4 z-[70] p-2 bg-black/50 hover:bg-black/70 rounded-lg text-white backdrop-blur-sm transition-colors"
+                            title="Float Video"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {showParticipantsModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowParticipantsModal(false)} />
-                    <div className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[80vh] flex flex-col">
-                        <div className="flex justify-between items-center mb-6 shrink-0">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Participants ({participants.length})</h2>
-                            <button onClick={() => setShowParticipantsModal(false)} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+            {/* Share/Invite Modal - Lecturer Only */}
+            {showShareModal && profile?.role === 'lecturer' && (
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowShareModal(false)} />
+                    <div className="relative w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:fade-in sm:zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4 sm:mb-6">
+                            <div>
+                                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Invite Students</h2>
+                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Share this code with your students</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowShareModal(false)} 
+                                className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto space-y-4">
-                            {participants.map((p) => {
-                                const isLecturer = p.metadata?.includes("lecturer") || p.permissions?.canPublish;
-                                return (
-                                    <div key={p.sid} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm">
-                                                {p.identity?.[0]}
+                        {/* Meeting Code - Big and Bold */}
+                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-2xl p-4 sm:p-6 mb-4 border border-indigo-100 dark:border-indigo-800">
+                            <p className="text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-bold mb-2">Meeting Code</p>
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-2xl sm:text-3xl font-mono font-bold text-gray-900 dark:text-white tracking-wider">
+                                    {meetingCode}
+                                </p>
+                                <button
+                                    onClick={handleCopyCode}
+                                    className={`p-3 rounded-xl transition-all shrink-0 ${
+                                        copiedCode 
+                                            ? 'bg-green-500 text-white' 
+                                            : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900'
+                                    }`}
+                                >
+                                    {copiedCode ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Full Link (Alternative) */}
+                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 mb-4 sm:mb-6 border border-gray-100 dark:border-gray-700">
+                            <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold mb-2">Or share full link</p>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0">
+                                    <Link className="w-4 h-4 text-gray-400 shrink-0" />
+                                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">
+                                        {fullLink}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleCopyLink}
+                                    className={`p-2 rounded-lg transition-all shrink-0 ${
+                                        copiedLink 
+                                            ? 'bg-green-500 text-white' 
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-100 dark:border-amber-800">
+                            <p className="text-sm text-amber-800 dark:text-amber-200 font-medium mb-2">How students join:</p>
+                            <ol className="text-xs sm:text-sm text-amber-700 dark:text-amber-300 space-y-1 list-decimal list-inside">
+                                <li>Go to their Student Dashboard</li>
+                                <li>Enter the meeting code</li>
+                                <li>Fill in name and index number</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Participants Modal - Lecturer Only */}
+            {showParticipantsModal && profile?.role === 'lecturer' && (
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowParticipantsModal(false)} />
+                    <div className="relative w-full sm:max-w-lg bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:fade-in sm:zoom-in duration-200 max-h-[85vh] flex flex-col">
+                        <div className="flex justify-between items-center mb-4 shrink-0">
+                            <div>
+                                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Participants ({participants.length})</h2>
+                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Manage students in your class</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowParticipantsModal(false)} 
+                                className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                            </button>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="flex gap-2 mb-4 shrink-0">
+                            <button
+                                onClick={() => muteAllParticipants()}
+                                className="flex-1 px-4 py-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm font-bold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <MicOff className="w-4 h-4" />
+                                Mute All
+                            </button>
+                        </div>
+
+                        {/* Participants List */}
+                        <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3">
+                            {participants.length === 0 ? (
+                                <div className="text-center py-8 sm:py-12">
+                                    <Users className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                                    <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">No participants yet</p>
+                                    <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">Students will appear here when they join</p>
+                                </div>
+                            ) : (
+                                participants.map((p: JitsiParticipant) => (
+                                    <div 
+                                        key={p.participantId} 
+                                        className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all ${
+                                            p.isLocal 
+                                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' 
+                                                : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shrink-0 ${
+                                                p.isLocal 
+                                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-500' 
+                                                    : 'bg-gradient-to-br from-gray-400 to-gray-500'
+                                            }`}>
+                                                {p.displayName?.[0]?.toUpperCase() || '?'}
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-gray-900 dark:text-white text-sm">{p.identity}</p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                    {p.permissions?.canPublish ? 'Lecturer/Preset' : 'Student'}
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-gray-900 dark:text-white text-xs sm:text-sm flex items-center gap-1 sm:gap-2 truncate">
+                                                    <span className="truncate">{p.displayName || 'Guest'}</span>
+                                                    {p.isLocal && (
+                                                        <span className="text-[9px] sm:text-[10px] uppercase tracking-wider bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-1 sm:px-1.5 py-0.5 rounded font-bold shrink-0">
+                                                            You
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                                    {p.role === 'moderator' ? 'Moderator' : 'Participant'}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <button
-                                            onClick={() => handleTogglePermission(p, 'mic')}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${p.permissions?.canPublish
-                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                                }`}
-                                        >
-                                            {p.permissions?.canPublish ? 'Allowed' : 'Muted'}
-                                        </button>
+                                        {/* Action Buttons - Only for non-local participants */}
+                                        {!p.isLocal && (
+                                            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                                                <button
+                                                    onClick={() => askToUnmute(p.participantId)}
+                                                    className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                                                    title="Ask to Unmute"
+                                                >
+                                                    <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => muteParticipant(p.participantId)}
+                                                    className="p-1.5 sm:p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
+                                                    title="Mute Participant"
+                                                >
+                                                    <MicOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm(`Remove ${p.displayName} from the class?`)) {
+                                                            kickParticipant(p.participantId);
+                                                        }
+                                                    }}
+                                                    className="p-1.5 sm:p-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                                                    title="Remove from Class"
+                                                >
+                                                    <UserX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                );
-                            })}
-                            {participants.length === 0 && (
-                                <p className="text-center text-gray-500 dark:text-gray-400 py-8">No other participants.</p>
+                                ))
                             )}
+                        </div>
+
+                        {/* Info Footer */}
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+                            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center">
+                                You can also use Jitsi&apos;s built-in controls by clicking on participants in the video
+                            </p>
                         </div>
                     </div>
                 </div>

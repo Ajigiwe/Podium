@@ -7,19 +7,24 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Helper function to get user profile
+    // Helper function to check if profile exists
+    function profileExists() {
+      return exists(/databases/$(database)/documents/profiles/$(request.auth.uid));
+    }
+    
+    // Helper function to get user profile (only call after checking profileExists)
     function getUserProfile() {
       return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;
     }
     
-    // Helper function to check if user is lecturer
+    // Helper function to check if user is lecturer (safe version)
     function isLecturer() {
-      return isSignedIn() && getUserProfile().role == 'lecturer';
+      return isSignedIn() && profileExists() && getUserProfile().role == 'lecturer';
     }
     
-    // Helper function to check if user is student
+    // Helper function to check if user is student (safe version)
     function isStudent() {
-      return isSignedIn() && getUserProfile().role == 'student';
+      return isSignedIn() && profileExists() && getUserProfile().role == 'student';
     }
     
     // Profiles collection
@@ -53,15 +58,20 @@ service cloud.firestore {
     
     // Transactions collection
     match /transactions/{transactionId} {
-      // Lecturers can read all transactions for their sessions
-      // Students can only read their own transactions
+      // Users can read their own transactions
+      // Lecturers can read all transactions (for revenue tracking)
       allow read: if isSignedIn() && (
-        isLecturer() || 
-        resource.data.userId == request.auth.uid
+        resource.data.userId == request.auth.uid ||
+        isLecturer()
       );
       
-      // Only server (Admin SDK) can create transactions
-      allow create: if false;
+      // Students can create 0-amount transactions for free class enrollments
+      allow create: if isSignedIn() 
+        && profileExists()
+        && getUserProfile().role == 'student'
+        && request.resource.data.userId == request.auth.uid 
+        && request.resource.data.amount == 0
+        && request.resource.data.status == 'succeeded';
 
       // Users can update their own transaction ONLY to hide it
       allow update: if isSignedIn() 
@@ -81,7 +91,7 @@ service cloud.firestore {
       // Anyone authenticated can read attendance logs
       allow read: if isSignedIn();
       
-      // Students can create their own attendance logs
+      // Users can create their own attendance logs
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       
       // Only lecturers can update/delete attendance logs

@@ -18,6 +18,7 @@ export interface Session {
     id: string;
     title: string;
     lecturerId: string;
+    meetingCode: string; // Google Meet-style code (pod-xxxx-xxxx)
     youtubeVideoId: string | null;
     isActive: boolean;
     price: number; // Amount in pesewas (GH₵20 = 2000 pesewas)

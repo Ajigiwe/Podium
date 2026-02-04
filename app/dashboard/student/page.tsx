@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase/config';
 import { collection, query, where, onSnapshot, orderBy, doc, getDoc, updateDoc, getDocs } from 'firebase/firestore'; // Removed addDoc as student doesn't create
 import { Session, Transaction } from '@/lib/firebase/types';
 import { initializePayment } from '@/lib/payments/initializePayment';
+import { isMeetingCode, normalizeCode } from '@/lib/meetingCode';
 import { Trash2 } from 'lucide-react';
 // Imports updated
 
@@ -135,14 +136,75 @@ export default function StudentDashboard() {
     const handleJoinByLink = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!joinLink.trim()) return;
+        
+        // Ensure user is authenticated before querying
+        if (!user) {
+            alert('Please sign in to join a class.');
+            router.push('/auth/login');
+            return;
+        }
 
         setJoining(true);
         try {
-            // Extract ID from link or use ID directly
             let sessionId = joinLink.trim();
-            if (joinLink.includes('/classroom/')) {
+            
+            // Check if input is a meeting code (pod-xxxx-xxxx format)
+            if (isMeetingCode(sessionId)) {
+                console.log('Detected meeting code format:', sessionId);
+                
+                // Query Firestore to find session by meeting code
+                const sessionsRef = collection(db, 'sessions');
+                const normalizedInput = normalizeCode(sessionId);
+                
+                // Format the code properly for exact match
+                const formattedCode = `pod-${normalizedInput.slice(0, 4)}-${normalizedInput.slice(4, 8)}`;
+                console.log('Searching for meetingCode:', formattedCode);
+                
+                // Try exact match with formatted code
+                let q = query(sessionsRef, where('meetingCode', '==', formattedCode));
+                let querySnapshot = await getDocs(q);
+                
+                // If not found, also try the raw input
+                if (querySnapshot.empty && sessionId !== formattedCode) {
+                    console.log('Trying raw input:', sessionId);
+                    q = query(sessionsRef, where('meetingCode', '==', sessionId.toLowerCase()));
+                    querySnapshot = await getDocs(q);
+                }
+                
+                // If still not found, do a scan of all sessions (fallback)
+                if (querySnapshot.empty) {
+                    console.log('Falling back to scanning all sessions...');
+                    const allSessionsSnap = await getDocs(sessionsRef);
+                    console.log('Total sessions found:', allSessionsSnap.docs.length);
+                    
+                    const matchingSession = allSessionsSnap.docs.find(doc => {
+                        const data = doc.data();
+                        if (data.meetingCode) {
+                            const storedNormalized = normalizeCode(data.meetingCode);
+                            console.log('Comparing:', normalizedInput, 'with', storedNormalized);
+                            return storedNormalized === normalizedInput;
+                        }
+                        return false;
+                    });
+                    
+                    if (matchingSession) {
+                        sessionId = matchingSession.id;
+                        console.log('Found session via scan:', sessionId);
+                    } else {
+                        console.log('No matching session found');
+                        alert('Class not found. Please check the meeting code.');
+                        setJoining(false);
+                        return;
+                    }
+                } else {
+                    sessionId = querySnapshot.docs[0].id;
+                    console.log('Found session via query:', sessionId);
+                }
+            } else if (joinLink.includes('/classroom/')) {
+                // Extract ID from full link
                 sessionId = joinLink.split('/classroom/')[1].split('?')[0];
             }
+            // Otherwise, assume it's a direct session ID
 
             // 1. Check if already enrolled (in local state)
             const enrolledSession = sessions.find(s => s.id === sessionId);
@@ -202,7 +264,7 @@ export default function StudentDashboard() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600/30 border-t-indigo-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-600/30 border-t-orange-600"></div>
             </div>
         );
     }
@@ -218,26 +280,31 @@ export default function StudentDashboard() {
                         Welcome back, {profile?.fullName?.split(' ')[0]} 🚀
                     </h1>
                     <p className="text-lg text-gray-600 dark:text-gray-400 mt-2 font-medium">
-                        Enter a class link to join or view your enrolled classes.
+                        Enter a meeting code or link to join a class.
                     </p>
                 </div>
             </div>
 
             {/* Join by Link Section */}
-            <div className="bg-white/50 dark:bg-black/40 backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 rounded-3xl shadow-xl">
+            <div className="bg-white/50 dark:bg-black/40 backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 pb-12 rounded-3xl shadow-xl">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Join a Class</h2>
                 <form onSubmit={handleJoinByLink} className="flex flex-col sm:flex-row gap-4">
-                    <input
-                        type="text"
-                        value={joinLink}
-                        onChange={(e) => setJoinLink(e.target.value)}
-                        placeholder="Paste class link or ID here..."
-                        className="flex-1 px-6 py-4 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-lg"
-                    />
+                    <div className="flex-1 relative">
+                        <input
+                            type="text"
+                            value={joinLink}
+                            onChange={(e) => setJoinLink(e.target.value)}
+                            placeholder="Enter meeting code (pod-xxxx-xxxx) or link..."
+                            className="w-full px-6 py-4 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium text-lg"
+                        />
+                        <p className="absolute -bottom-6 left-2 text-xs text-gray-500 dark:text-gray-400">
+                            Example: pod-ab3k-9xmz
+                        </p>
+                    </div>
                     <button
                         type="submit"
                         disabled={joining || !joinLink}
-                        className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-8 py-4 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-2xl font-bold text-lg hover:from-orange-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {joining ? 'Checking...' : 'Join Class'}
                     </button>
@@ -252,7 +319,7 @@ export default function StudentDashboard() {
                         {sessions.map((session) => {
                             // Logic for Enrolled Classes (User has access)
                             return (
-                                <div key={session.id} className="group bg-white/60 dark:bg-gray-900/60 backdrop-blur-lg rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 border border-white/20 dark:border-white/5 transition-all duration-300 flex flex-col hover:-translate-y-1 relative">
+                                <div key={session.id} className="group bg-white/60 dark:bg-gray-900/60 backdrop-blur-lg rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 border border-white/20 dark:border-white/5 transition-all duration-300 flex flex-col hover:-translate-y-1 relative">
                                     <button
                                         onClick={(e) => handleRemoveClass(session.id, e)}
                                         className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10"
@@ -275,7 +342,7 @@ export default function StudentDashboard() {
                                         </div>
                                     </div>
 
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{session.title}</h3>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{session.title}</h3>
 
                                     <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-6">
                                         <span>Video Class</span>
@@ -288,7 +355,7 @@ export default function StudentDashboard() {
                                             onClick={() => router.push(`/classroom/${session.id}`)}
                                             className={`w-full py-3 rounded-xl font-bold transition-all shadow-lg ${session.isActive
                                                 ? 'bg-gradient-to-r from-red-600 to-pink-600 text-white hover:from-red-700 hover:to-pink-700 shadow-red-500/25'
-                                                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25'
+                                                : 'bg-gradient-to-r from-orange-500 to-pink-600 text-white hover:from-orange-600 hover:to-pink-700 shadow-orange-500/25'
                                                 }`}
                                         >
                                             {session.isActive ? 'Join Live Class' : 'Enter Classroom'}

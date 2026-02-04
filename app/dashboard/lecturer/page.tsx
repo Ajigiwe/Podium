@@ -20,6 +20,7 @@ import {
 import { AttendanceLog } from '@/lib/firebase/types';
 import { Session } from '@/lib/firebase/types';
 import { getSessionRevenue } from '@/lib/payments/verifyPayment';
+import { generateMeetingCode } from '@/lib/meetingCode';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function LecturerDashboard() {
@@ -29,6 +30,7 @@ export default function LecturerDashboard() {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [revenueData, setRevenueData] = useState<Record<string, any>>({});
+    const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
     // Form state
     const [title, setTitle] = useState('');
@@ -84,15 +86,21 @@ export default function LecturerDashboard() {
         try {
             const priceInPesewas = isFree ? 0 : Math.round(parseFloat(price) * 100);
 
-            await addDoc(collection(db, 'sessions'), {
+            // Create the session first to get the ID
+            const docRef = await addDoc(collection(db, 'sessions'), {
                 title,
                 lecturerId: user.uid,
                 isActive: false,
                 price: priceInPesewas,
                 currency: 'GHS',
                 isFree,
+                meetingCode: '', // Placeholder, will update
                 createdAt: Timestamp.now(),
             });
+
+            // Generate meeting code from the document ID and update
+            const meetingCode = generateMeetingCode(docRef.id);
+            await updateDoc(docRef, { meetingCode });
 
             // Reset form
             setTitle('');
@@ -139,12 +147,6 @@ export default function LecturerDashboard() {
             console.error('Error deleting session:', error);
             alert(`Failed to delete session: ${error.message} (Code: ${error.code})`);
         }
-    };
-
-    const handleCopyLink = (sessionId: string) => {
-        const link = `${window.location.origin}/classroom/${sessionId}`;
-        navigator.clipboard.writeText(link);
-        alert("Class link copied to clipboard!");
     };
 
     const handleDownloadAttendance = async (sessionId: string, title: string) => {
@@ -195,7 +197,7 @@ export default function LecturerDashboard() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600/30 border-t-indigo-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-600/30 border-t-orange-600"></div>
             </div>
         );
     }
@@ -214,7 +216,7 @@ export default function LecturerDashboard() {
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 font-bold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transform hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl hover:from-orange-600 hover:to-pink-700 font-bold shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transform hover:-translate-y-0.5 transition-all flex items-center gap-2"
                 >
                     <span className="text-xl leading-none">+</span>
                     Create New Class
@@ -228,8 +230,8 @@ export default function LecturerDashboard() {
                         <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Classes</p>
                         <p className="text-5xl font-black text-gray-900 dark:text-white mt-2">{sessions.length}</p>
                     </div>
-                    <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-16 h-16 rounded-2xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                         </svg>
                     </div>
@@ -273,7 +275,7 @@ export default function LecturerDashboard() {
                             const priceInCedis = session.price / 100;
 
                             return (
-                                <div key={session.id} className="group bg-white/60 dark:bg-gray-900/60 backdrop-blur-lg rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 border border-white/20 dark:border-white/5 transition-all duration-300">
+                                <div key={session.id} className="group bg-white/60 dark:bg-gray-900/60 backdrop-blur-lg rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 border border-white/20 dark:border-white/5 transition-all duration-300">
                                     <div className="flex justify-between items-start mb-6">
                                         <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${session.isActive
                                             ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse'
@@ -283,17 +285,8 @@ export default function LecturerDashboard() {
                                         </div>
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => handleCopyLink(session.id)}
-                                                className="p-2 text-gray-400 hover:text-indigo-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
-                                                title="Copy Link"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                                </svg>
-                                            </button>
-                                            <button
                                                 onClick={() => handleDownloadAttendance(session.id, session.title)}
-                                                className="p-2 text-gray-400 hover:text-indigo-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+                                                className="p-2 text-gray-400 hover:text-orange-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
                                                 title="Download Attendance"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -312,7 +305,7 @@ export default function LecturerDashboard() {
                                         </div>
                                     </div>
 
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{session.title}</h3>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{session.title}</h3>
 
                                     <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
                                         <span className="flex items-center gap-1.5">
@@ -325,6 +318,36 @@ export default function LecturerDashboard() {
                                         <span className={`font-medium ${session.isFree ? 'text-green-600 dark:text-green-400' : ''}`}>
                                             {session.isFree ? 'Free' : `GH₵ ${priceInCedis.toFixed(2)}`}
                                         </span>
+                                    </div>
+
+                                    {/* Meeting Code - Always visible for sharing */}
+                                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Meeting Code</p>
+                                                <p className="font-mono font-bold text-gray-900 dark:text-white">
+                                                    {session.meetingCode || generateMeetingCode(session.id)}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const code = session.meetingCode || generateMeetingCode(session.id);
+                                                    navigator.clipboard.writeText(code);
+                                                    setCopiedCodeId(session.id);
+                                                    setTimeout(() => setCopiedCodeId(null), 2000);
+                                                }}
+                                                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                                                    copiedCodeId === session.id
+                                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                                        : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50'
+                                                }`}
+                                            >
+                                                {copiedCodeId === session.id ? 'Copied!' : 'Copy'}
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                                            Share this code with students. They can join when you go live.
+                                        </p>
                                     </div>
 
                                     <div className="flex gap-3">
@@ -341,7 +364,7 @@ export default function LecturerDashboard() {
                                         {session.isActive && (
                                             <button
                                                 onClick={() => router.push(`/classroom/${session.id}`)}
-                                                className="px-4 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-sm font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                                                className="px-4 py-3 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors"
                                             >
                                                 Join
                                             </button>
@@ -377,18 +400,18 @@ export default function LecturerDashboard() {
                                         required
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium"
                                         placeholder="e.g. Advanced Mathematics"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl cursor-pointer border border-transparent hover:border-indigo-500 transition-colors">
+                                    <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl cursor-pointer border border-transparent hover:border-orange-500 transition-colors">
                                         <input
                                             type="checkbox"
                                             checked={isFree}
                                             onChange={(e) => setIsFree(e.target.checked)}
-                                            className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                                            className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 border-gray-300"
                                         />
                                         <span className="font-bold text-gray-700 dark:text-gray-300">This class is free</span>
                                     </label>
@@ -406,7 +429,7 @@ export default function LecturerDashboard() {
                                                 required={!isFree}
                                                 value={price}
                                                 onChange={(e) => setPrice(e.target.value)}
-                                                className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                                                className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium"
                                                 placeholder="0.00"
                                             />
                                         </div>
@@ -417,7 +440,7 @@ export default function LecturerDashboard() {
 
                                 <button
                                     type="submit"
-                                    className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transform hover:-translate-y-0.5 transition-all text-lg"
+                                    className="w-full py-4 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transform hover:-translate-y-0.5 transition-all text-lg"
                                 >
                                     Create Class
                                 </button>

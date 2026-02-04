@@ -193,9 +193,9 @@ export default function ProfilePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-indigo-950 dark:to-purple-950">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-orange-50 to-pink-50 dark:from-gray-900 dark:via-orange-950 dark:to-pink-950">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600/30 border-t-indigo-600 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-orange-600/30 border-t-orange-600 mx-auto"></div>
                     <p className="mt-4 text-gray-600 dark:text-gray-400">Loading profile...</p>
                 </div>
             </div>
@@ -203,7 +203,7 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-indigo-950 dark:to-purple-950">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-pink-50 dark:from-gray-900 dark:via-orange-950 dark:to-pink-950">
             {/* Header Removed - Handled by Layout */}
 
             {/* Main Content */}
@@ -214,7 +214,7 @@ export default function ProfilePage() {
                         {/* Profile Picture */}
                         <div className="flex-shrink-0">
                             <div className="relative">
-                                <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
+                                <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center">
                                     {photoURL ? (
                                         <img src={photoURL} alt={fullName} className="w-full h-full object-cover" />
                                     ) : (
@@ -251,8 +251,8 @@ export default function ProfilePage() {
                         <>
                             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 border border-gray-200/50 dark:border-gray-700/50">
                                 <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-xl">
-                                        <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-xl">
+                                        <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                         </svg>
                                     </div>
@@ -339,7 +339,7 @@ export default function ProfilePage() {
                                 type="text"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                             />
                         </div>
 
@@ -353,7 +353,7 @@ export default function ProfilePage() {
                                 maxLength={500}
                                 rows={4}
                                 placeholder="Tell us about yourself..."
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                             />
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                 {bio.length}/500 characters
@@ -363,7 +363,7 @@ export default function ProfilePage() {
                         <button
                             onClick={handleSaveProfile}
                             disabled={saving}
-                            className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all shadow-lg"
+                            className="px-6 py-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-lg hover:from-orange-600 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all shadow-lg"
                         >
                             {saving ? 'Saving...' : 'Save Changes'}
                         </button>
@@ -383,7 +383,7 @@ export default function ProfilePage() {
                                 type="password"
                                 value={currentPassword}
                                 onChange={(e) => setCurrentPassword(e.target.value)}
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                             />
                         </div>
 
@@ -395,7 +395,7 @@ export default function ProfilePage() {
                                 type="password"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                             />
                         </div>
 
@@ -407,7 +407,7 @@ export default function ProfilePage() {
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                             />
                         </div>
 

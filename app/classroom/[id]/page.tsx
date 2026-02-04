@@ -20,6 +20,8 @@ export default function ClassroomPage() {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [canAccess, setCanAccess] = useState(false);
+    const [attendanceSubmitted, setAttendanceSubmitted] = useState(false);
+    const [waitingForLecturer, setWaitingForLecturer] = useState(false);
 
     // Profile Modal State (Only for joining)
     const [showProfileModal, setShowProfileModal] = useState(false);
@@ -29,6 +31,9 @@ export default function ClassroomPage() {
 
     useEffect(() => {
         if (authLoading) return;
+        
+        // Don't re-run if attendance already submitted
+        if (attendanceSubmitted) return;
 
         if (!user || !profile) {
             const currentPath = window.location.pathname + window.location.search;
@@ -49,26 +54,60 @@ export default function ClassroomPage() {
                 const sessionData = { id: sessionDoc.id, ...sessionDoc.data() } as Session;
                 setSession(sessionData);
 
-                // Check access
+                // CRITICAL: Check if class is active FIRST for students
+                // Students cannot join until lecturer starts the class
                 const isLecturer = profile.role === 'lecturer' && sessionData.lecturerId === user.uid;
+                
+                if (!isLecturer && !sessionData.isActive) {
+                    console.log('Class not active - showing waiting room for student');
+                    setWaitingForLecturer(true);
+                    setLoading(false);
+                    return; // Stop here - show waiting room
+                }
+
+                // Check payment access
                 let hasPaidAccess = sessionData.isFree || (await hasUserPaid(user.uid, sessionId));
 
                 // If it's a free class and user hasn't "paid" (enrolled), create a $0 transaction so it shows on dashboard
+                // Only students can create these transactions per Firestore rules
                 if (sessionData.isFree && !hasPaidAccess && profile.role === 'student' && !isLecturer) {
-                    try {
-                        await addDoc(collection(db, 'transactions'), {
-                            userId: user.uid,
-                            sessionId: sessionId,
-                            amount: 0,
-                            reference: `free_${sessionId}_${user.uid}`,
-                            status: 'succeeded',
-                            email: user.email,
-                            createdAt: Timestamp.now(),
-                            isHidden: false
-                        });
+                    // First double-check they don't already have a transaction (race condition prevention)
+                    const existingAccess = await hasUserPaid(user.uid, sessionId);
+                    if (!existingAccess) {
+                        try {
+                            await addDoc(collection(db, 'transactions'), {
+                                userId: user.uid,
+                                sessionId: sessionId,
+                                amount: 0,
+                                currency: 'GHS',
+                                paystackReference: `free_${sessionId}_${user.uid}_${Date.now()}`,
+                                paymentChannel: 'mobile_money_mtn', // Default for free
+                                status: 'succeeded',
+                                email: user.email || '',
+                                createdAt: Timestamp.now(),
+                                paidAt: Timestamp.now(),
+                                isHidden: false
+                            });
+                            hasPaidAccess = true;
+                            console.log('Free class enrollment successful');
+                        } catch (e: any) {
+                            console.error("Failed to enroll in free class:", e?.message || e);
+                            // If permission denied, might be already enrolled or profile issue
+                            if (e?.code === 'permission-denied') {
+                                console.log('Permission denied - checking if already enrolled...');
+                                // Re-check in case of race condition
+                                hasPaidAccess = await hasUserPaid(user.uid, sessionId);
+                                if (!hasPaidAccess) {
+                                    // Profile might not be a student or doesn't exist
+                                    console.error('User profile may not be set as student. Role:', profile.role);
+                                    alert('Unable to enroll. Please ensure your account is set up as a student.');
+                                    router.push('/dashboard/student');
+                                    return;
+                                }
+                            }
+                        }
+                    } else {
                         hasPaidAccess = true;
-                    } catch (e) {
-                        console.error("Failed to enroll in free class", e);
                     }
                 }
 
@@ -96,45 +135,21 @@ export default function ClassroomPage() {
                     return;
                 }
 
-                // Check if student profile is complete (Name & Index Number)
+                // Students MUST enter name and index number for attendance EVERY time they join
                 if (profile.role === 'student') {
-                    if (!profile.fullName || !profile.indexNumber) {
-                        setStudentName(profile.fullName || '');
-                        setShowProfileModal(true);
-                        setLoading(false);
-                        return; // Stop here, wait for modal submit
-                    }
-
-                    // Log attendance
-                    await addDoc(collection(db, 'attendance_logs'), {
-                        sessionId,
-                        userId: user.uid,
-                        userName: profile.fullName,
-                        userIndexNumber: profile.indexNumber,
-                        joinedAt: Timestamp.now(),
-                    });
+                    // Pre-fill with existing data if available
+                    setStudentName(profile.fullName || '');
+                    setStudentIndex(profile.indexNumber || '');
+                    setShowProfileModal(true);
+                    setLoading(false);
+                    return; // Wait for modal submit
                 }
 
                 setCanAccess(true);
 
-                // Connection Logic - Only connect if not already connected to this session
+                // Join the Jitsi room - Only if not already connected to this session
                 if (currentSessionId !== sessionId) {
-                    const roomName = sessionData.id;
-                    try {
-                        const resp = await fetch(
-                            `/api/livekit/token?room=${roomName}&username=${encodeURIComponent(profile.fullName)}&role=${profile.role}`
-                        );
-                        const data = await resp.json();
-                        if (data.token) {
-                            joinClass(sessionId, data.token, sessionData.title);
-                        } else {
-                            console.error('Failed to get token:', data.error);
-                            alert('Failed to connect to video server');
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        alert('Failed to connect to video server');
-                    }
+                    joinClass(sessionId, sessionData.title, profile.fullName, profile.role);
                 }
 
                 setLoading(false);
@@ -146,7 +161,7 @@ export default function ClassroomPage() {
         };
 
         loadSession();
-    }, [user, profile, sessionId, router, authLoading, currentSessionId, joinClass]);
+    }, [user, profile, sessionId, router, authLoading, currentSessionId, joinClass, attendanceSubmitted]);
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -154,12 +169,19 @@ export default function ClassroomPage() {
 
         setSubmittingProfile(true);
         try {
-            await updateDoc(doc(db, 'profiles', user.uid), {
-                fullName: studentName,
-                indexNumber: studentIndex,
-                updatedAt: Timestamp.now()
-            });
+            // Update profile with attendance details
+            try {
+                await updateDoc(doc(db, 'profiles', user.uid), {
+                    fullName: studentName,
+                    indexNumber: studentIndex,
+                    updatedAt: Timestamp.now()
+                });
+            } catch (profileError) {
+                console.warn('Profile update failed (might be new user):', profileError);
+                // Continue anyway - attendance is more important
+            }
 
+            // Log attendance - this is the critical part
             await addDoc(collection(db, 'attendance_logs'), {
                 sessionId,
                 userId: user.uid,
@@ -168,23 +190,20 @@ export default function ClassroomPage() {
                 joinedAt: Timestamp.now(),
             });
 
-            setCanAccess(true);
-            setShowProfileModal(false);
+            console.log('Attendance logged successfully');
 
-            // Connect after profile update
-            const roomName = session?.id || sessionId;
-            try {
-                const resp = await fetch(
-                    `/api/livekit/token?room=${roomName}&username=${encodeURIComponent(studentName)}&role=${profile?.role || 'student'}`
-                );
-                const data = await resp.json();
-                if (data.token) {
-                    joinClass(sessionId, data.token, session?.title);
-                }
-            } catch (e) { console.error("Error refreshing token", e); }
+            // Mark attendance as submitted to prevent modal from reappearing
+            setAttendanceSubmitted(true);
+
+            // Close modal and join class
+            setShowProfileModal(false);
+            setCanAccess(true);
+
+            // Join Jitsi after profile update
+            joinClass(sessionId, session?.title || 'Class', studentName, profile?.role || 'student');
 
         } catch (error) {
-            console.error("Error updating profile:", error);
+            console.error("Error saving attendance:", error);
             alert("Failed to save details. Please try again.");
         } finally {
             setSubmittingProfile(false);
@@ -197,6 +216,52 @@ export default function ClassroomPage() {
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-16 w-16 border-4 border-white/30 border-t-white mx-auto"></div>
                     <p className="mt-4 text-white text-lg font-medium">Loading classroom...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Waiting room for students when class hasn't started
+    if (waitingForLecturer) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-purple-950 p-4">
+                <div className="text-center max-w-md">
+                    <div className="w-24 h-24 mx-auto mb-6 relative">
+                        <div className="absolute inset-0 bg-indigo-500/20 rounded-full animate-ping"></div>
+                        <div className="relative w-full h-full bg-indigo-600/30 rounded-full flex items-center justify-center">
+                            <svg className="w-12 h-12 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">Waiting for Lecturer</h1>
+                    <p className="text-gray-400 mb-6 text-sm sm:text-base">
+                        The class hasn't started yet. Please wait for your lecturer to begin the session.
+                    </p>
+                    <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/10">
+                        <p className="text-white font-semibold text-lg">{session?.title}</p>
+                        <p className="text-gray-400 text-sm mt-1">Class ID: {sessionId.slice(0, 8)}...</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Refresh
+                        </button>
+                        <button
+                            onClick={() => router.push('/dashboard/student')}
+                            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold transition-colors"
+                        >
+                            Back to Dashboard
+                        </button>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-6">
+                        The page will not auto-refresh. Click refresh to check if the class has started.
+                    </p>
                 </div>
             </div>
         );

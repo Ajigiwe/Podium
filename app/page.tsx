@@ -5,98 +5,80 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
-import { motion, useScroll, useTransform, Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   GraduationCap,
   Users,
   CreditCard,
-  MessageCircle,
   Video,
   Shield,
   ArrowRight,
-  CheckCircle2,
-  Sparkles
+  Play,
+  Smartphone,
+  Zap,
+  Globe,
+  Clock,
+  CheckCircle,
+  Star,
+  BookOpen,
+  Wifi
 } from 'lucide-react';
 
 export default function LandingPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
-  const { scrollY } = useScroll();
-  const headerOpacity = useTransform(scrollY, [0, 100], [0, 1]);
-  const headerShadow = useTransform(scrollY, [0, 100], ["none", "0 4px 6px -1px rgb(0 0 0 / 0.1)"]);
+  const [scrolled, setScrolled] = useState(false);
 
-  // Floating animation variants
-  const floatAnimation: Variants = {
-    initial: { y: 0 },
-    animate: {
-      y: [-20, 20, -20],
-      transition: {
-        duration: 6,
-        repeat: Infinity,
-        ease: "easeInOut"
-      }
-    }
-  };
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black overflow-hidden selection:bg-indigo-500 selection:text-white">
-      <div className="bg-noise" />
-
+    <div className="min-h-screen bg-[#FFFBF5] dark:bg-[#0a0a0f] overflow-hidden">
       {/* Navigation */}
-      <motion.nav
-        style={{
-          backgroundColor: useTransform(scrollY, [0, 100], ["rgba(255, 255, 255, 0)", "rgba(255, 255, 255, 0.8)"]),
-          backdropFilter: "blur(10px)",
-          borderBottom: useTransform(scrollY, [0, 100], ["1px solid transparent", "1px solid rgba(229, 231, 235, 0.2)"]),
-        }}
-        className="fixed top-0 left-0 right-0 z-50 transition-colors dark:border-gray-800"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled 
+          ? 'bg-white/90 dark:bg-[#0a0a0f]/90 backdrop-blur-lg shadow-sm' 
+          : 'bg-transparent'
+      }`}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex justify-between items-center h-16 sm:h-20">
             {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <GraduationCap className="w-6 h-6 text-white" />
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-transform">
+                <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 Podium
               </span>
-            </div>
-
-            {/* Desktop Links - Only valid links */}
-            <div className="hidden md:flex items-center gap-8">
-              <a
-                href="#features"
-                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-              >
-                Features
-              </a>
-            </div>
+            </Link>
 
             {/* Actions */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <ThemeToggle />
-
+              
               {!loading && (
                 <>
                   {user ? (
                     <button
                       onClick={() => router.push('/dashboard')}
-                      className="px-6 py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                      className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:scale-105 transition-all shadow-lg"
                     >
                       Dashboard
                     </button>
                   ) : (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <Link
                         href="/auth/login"
-                        className="text-sm font-semibold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                        className="hidden sm:block text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
                       >
                         Log in
                       </Link>
                       <Link
                         href="/auth/register"
-                        className="px-6 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5"
+                        className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-pink-600 text-white text-sm font-semibold hover:scale-105 transition-all shadow-lg shadow-orange-500/25"
                       >
                         Get Started
                       </Link>
@@ -107,245 +89,411 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </motion.nav>
+      </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-        {/* Animated Background Elements */}
-        <div className="absolute top-0 right-0 -z-10 w-[800px] h-[800px] bg-purple-500/20 dark:bg-purple-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob" />
-        <div className="absolute top-0 left-0 -z-10 w-[600px] h-[600px] bg-indigo-500/20 dark:bg-indigo-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob animation-delay-2000" />
-        <div className="absolute bottom-0 -left-20 -z-10 w-[600px] h-[600px] bg-pink-500/20 dark:bg-pink-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob animation-delay-4000" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="text-center max-w-4xl mx-auto">
+      <section className="relative pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6">
+        {/* Decorative Elements */}
+        <div className="absolute top-20 left-10 w-20 h-20 bg-orange-400/20 rounded-full blur-2xl" />
+        <div className="absolute top-40 right-10 w-32 h-32 bg-pink-400/20 rounded-full blur-2xl" />
+        <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-yellow-400/20 rounded-full blur-2xl" />
+        
+        <div className="max-w-6xl mx-auto relative">
+          <div className="max-w-3xl lg:max-w-[55%] relative z-10">
+            {/* Badge */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 text-indigo-600 dark:text-indigo-300 text-sm font-medium mb-8 shadow-sm"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 text-xs sm:text-sm font-medium mb-6 sm:mb-8"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Teaching Reimagined. Learning Elevated.</span>
+              <Wifi className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Live classes, real connections</span>
             </motion.div>
 
+            {/* Headline */}
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-6xl lg:text-8xl font-black tracking-tight text-gray-900 dark:text-white mb-8 leading-[0.9]"
+              transition={{ delay: 0.1 }}
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 dark:text-white leading-[1.1] mb-6 sm:mb-8"
             >
-              The Virtual <br /> Classroom for <br />
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-gradient">
-                Ghana's Future
+              Teach live.{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500">
+                Learn Live.
               </span>
+              <br />
+              <span className="text-gray-400 dark:text-gray-500">Simple.</span>
             </motion.h1>
 
+            {/* Subheadline */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed font-light"
+              transition={{ delay: 0.2 }}
+              className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 mb-8 sm:mb-10 leading-relaxed max-w-xl"
             >
-              Experience seamless live streaming, instant mobile money payments, and interactive learning tools. Built mainly for Ghanaian education.
+              Ghana's virtual classroom platform. Lecturers host live paid classes, 
+              students join with <strong className="text-gray-900 dark:text-white">Mobile Money</strong>. 
+              Real-time video, chat, and learning — all in your browser.
             </motion.p>
 
+            {/* CTA Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+              transition={{ delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4"
             >
               <Link
                 href="/auth/register"
-                className="w-full sm:w-auto px-8 py-4 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 flex items-center justify-center gap-2 group"
+                className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-gradient-to-r from-orange-500 to-pink-600 text-white font-bold text-base sm:text-lg hover:scale-105 transition-all shadow-xl shadow-orange-500/25 group"
               >
-                Start Teaching Free
+                Get Started Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
-                href="/#features"
-                className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/50 dark:bg-white/5 backdrop-blur-sm text-gray-900 dark:text-white font-bold text-lg border border-gray-200/50 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-all hover:-translate-y-1 flex items-center justify-center gap-2"
+                href="/auth/login"
+                className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-bold text-base sm:text-lg border-2 border-gray-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-500 hover:scale-105 transition-all"
               >
-                <Video className="w-5 h-5" />
-                See Demo
+                Log In
               </Link>
+            </motion.div>
+
+            {/* Trust indicators */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="flex flex-wrap items-center gap-4 sm:gap-6 mt-10 sm:mt-12 text-sm text-gray-500 dark:text-gray-400"
+            >
+              <span className="flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Free to start
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                MTN & Vodafone MoMo
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                No downloads needed
+              </span>
             </motion.div>
           </div>
 
-          {/* Floaty UI Mockup */}
+          {/* Hero Visual - Right side on desktop */}
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-24 relative"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="mt-12 lg:absolute lg:right-0 lg:top-32 lg:w-[42%] lg:mt-0"
           >
-            <motion.div
-              variants={floatAnimation}
-              initial="initial"
-              animate="animate"
-              className="relative rounded-2xl border border-white/20 dark:border-white/10 bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl shadow-2xl p-4 md:p-8"
-            >
-              {/* Fake UI Header */}
-              <div className="flex items-center gap-4 mb-6 border-b border-gray-100/20 dark:border-white/5 pb-4">
-                <div className="flex gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                  <div className="w-3 h-3 rounded-full bg-green-400" />
+            <div className="relative">
+              {/* Main card */}
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-4 sm:p-6 border border-gray-100 dark:border-gray-700">
+                {/* Video preview mockup */}
+                <div className="aspect-video bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl relative overflow-hidden mb-4">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                      <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white ml-1" />
+                    </div>
+                  </div>
+                  {/* Live badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1 bg-red-500 rounded-full">
+                    <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                    <span className="text-white text-xs font-bold">LIVE</span>
+                  </div>
+                  {/* Viewer count */}
+                  <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 bg-black/50 backdrop-blur rounded-full">
+                    <Users className="w-3 h-3 text-white" />
+                    <span className="text-white text-xs">47</span>
+                  </div>
                 </div>
-                <div className="h-6 w-32 rounded-full bg-white/20 dark:bg-white/5" />
+                
+                {/* Class info */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Advanced Mathematics</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Prof. Mensah</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">GH₵ 20</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Fake UI Content */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 space-y-4">
-                  <div className="aspect-video rounded-xl bg-gray-900/80 relative overflow-hidden group shadow-inner">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer border border-white/10">
-                        <div className="w-0 h-0 border-t-8 border-t-transparent border-l-[16px] border-l-white border-b-8 border-b-transparent ml-1" />
-                      </div>
-                    </div>
-                    <div className="absolute bottom-4 left-4 right-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500" />
-                      <div className="flex-1">
-                        <div className="h-3 w-24 rounded bg-white/20 mb-2" />
-                        <div className="h-2 w-16 rounded bg-white/10" />
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">👍</div>
-                        <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">❤️</div>
-                      </div>
-                    </div>
-                  </div>
+              {/* Floating notification */}
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-green-500 text-white px-3 sm:px-4 py-2 rounded-xl shadow-lg text-xs sm:text-sm font-medium"
+              >
+                <span className="flex items-center gap-1.5">
+                  <CreditCard className="w-3 h-3 sm:w-4 sm:h-4" />
+                  Payment received!
+                </span>
+              </motion.div>
+
+              {/* Floating student avatars */}
+              <motion.div
+                animate={{ y: [0, 8, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -bottom-2 -left-2 sm:-bottom-4 sm:-left-4 bg-white dark:bg-gray-800 px-3 py-2 rounded-xl shadow-lg flex items-center gap-2 border border-gray-100 dark:border-gray-700"
+              >
+                <div className="flex -space-x-2">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-orange-400" />
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-pink-400" />
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-purple-400" />
                 </div>
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-white/30 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/5 h-full">
-                    <div className="h-4 w-20 rounded bg-gray-200 dark:bg-white/10 mb-4" />
-                    <div className="space-y-3">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 opacity-50" />
-                          <div className="flex-1">
-                            <div className="h-3 w-full rounded bg-gray-200 dark:bg-white/5" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">+44 joined</span>
+              </motion.div>
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 border-y border-gray-100 dark:border-gray-800 bg-white/30 dark:bg-black/20 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { label: "Active Students", value: "2,000+" },
-              { label: "Live Sessions", value: "500+" },
-              { label: "Lecturers", value: "100+" },
-              { label: "Payments Processed", value: "GH₵ 50k+" },
-            ].map((stat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <div className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-white dark:to-gray-400 mb-2 font-mono">
-                  {stat.value}
-                </div>
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {stat.label}
-                </div>
-              </motion.div>
-            ))}
+      {/* How it Works */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white dark:bg-gray-900/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-4">
+              How it works
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
+              Whether you're teaching or learning, get started in minutes.
+            </p>
+          </div>
+
+          {/* For Lecturers */}
+          <div className="mb-12">
+            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-6 text-center">For Lecturers</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              {[
+                {
+                  step: "01",
+                  icon: <GraduationCap className="w-6 h-6" />,
+                  title: "Create a class",
+                  description: "Set a title and price (or make it free). Takes 30 seconds.",
+                },
+                {
+                  step: "02", 
+                  icon: <Users className="w-6 h-6" />,
+                  title: "Share the code",
+                  description: "Send your meeting code to students. They pay to get access.",
+                },
+                {
+                  step: "03",
+                  icon: <Video className="w-6 h-6" />,
+                  title: "Go live",
+                  description: "Click 'Go Live' and teach. Video, chat, screen sharing included.",
+                }
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="relative group"
+                >
+                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-3xl p-6 sm:p-8 h-full border border-orange-100 dark:border-orange-800/30 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
+                    <span className="text-5xl sm:text-6xl font-black text-orange-100 dark:text-orange-900/50 absolute top-4 right-4 sm:top-6 sm:right-6 select-none">
+                      {item.step}
+                    </span>
+                    <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4 sm:mb-6">
+                      {item.icon}
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* For Students */}
+          <div>
+            <h3 className="text-lg font-bold text-pink-600 dark:text-pink-400 mb-6 text-center">For Students</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              {[
+                {
+                  step: "01",
+                  icon: <CreditCard className="w-6 h-6" />,
+                  title: "Enter code & pay",
+                  description: "Get the meeting code from your lecturer. Pay with Mobile Money.",
+                },
+                {
+                  step: "02", 
+                  icon: <CheckCircle className="w-6 h-6" />,
+                  title: "Instant access",
+                  description: "Payment confirms in seconds. Class appears on your dashboard.",
+                },
+                {
+                  step: "03",
+                  icon: <Video className="w-6 h-6" />,
+                  title: "Join & learn",
+                  description: "Click to join when class goes live. Ask questions via chat.",
+                }
+              ].map((item, i) => (
+                <motion.div
+                  key={`student-${i}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="relative group"
+                >
+                  <div className="bg-pink-50 dark:bg-pink-900/20 rounded-3xl p-6 sm:p-8 h-full border border-pink-100 dark:border-pink-800/30 hover:border-pink-300 dark:hover:border-pink-700 transition-colors">
+                    <span className="text-5xl sm:text-6xl font-black text-pink-100 dark:text-pink-900/50 absolute top-4 right-4 sm:top-6 sm:right-6 select-none">
+                      {item.step}
+                    </span>
+                    <div className="w-12 h-12 rounded-2xl bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-4 sm:mb-6">
+                      {item.icon}
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section id="features" className="py-32 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-20">
-            <h2 className="text-3xl lg:text-6xl font-black text-gray-900 dark:text-white mb-6 tracking-tight">
-              Everything you need to <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">run your digital classroom</span>
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              Podium brings together streaming, payments, and student management in one powerful platform.
-            </p>
-          </div>
+      {/* Features */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Left - Feature List */}
+            <div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-6 sm:mb-8">
+                Built for how{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">
+                  Ghana teaches
+                </span>
+              </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <FeatureCard
-              icon={<Video className="w-8 h-8 text-indigo-500" />}
-              title="HD Live Streaming"
-              description="Crystal clear video quality using LiveKit integration. Screen sharing, webcams, and OBS support included."
-              delay={0}
-            />
-            <FeatureCard
-              icon={<CreditCard className="w-8 h-8 text-purple-500" />}
-              title="Instant Payments"
-              description="Accept Mobile Money (MTN, Vodafone, AT) and cards. Automatic access control for paid sessions."
-              delay={0.1}
-            />
-            <FeatureCard
-              icon={<MessageCircle className="w-8 h-8 text-pink-500" />}
-              title="Interactive Chat"
-              description="Real-time messaging with emoji reactions, role-based badges, and moderation tools."
-              delay={0.2}
-            />
-            <FeatureCard
-              icon={<Shield className="w-8 h-8 text-green-500" />}
-              title="Secure Access"
-              description="Robust authentication and session management ensures only enrolled students can join."
-              delay={0.3}
-            />
-            <FeatureCard
-              icon={<Users className="w-8 h-8 text-blue-500" />}
-              title="Student Management"
-              description="Track attendance, manage enrollments, and view engagement statistics in real-time."
-              delay={0.4}
-            />
-            <FeatureCard
-              icon={<CheckCircle2 className="w-8 h-8 text-yellow-500" />}
-              title="Automated Emails"
-              description="Students receive instant confirmation emails with session details upon payment."
-              delay={0.5}
-            />
+              <div className="space-y-4 sm:space-y-6">
+                {[
+                  {
+                    icon: <Smartphone className="w-5 h-5" />,
+                    title: "Mobile Money Built-in",
+                    description: "MTN MoMo, Vodafone Cash, AirtelTigo. Students pay the way they're used to."
+                  },
+                  {
+                    icon: <Zap className="w-5 h-5" />,
+                    title: "Instant Access",
+                    description: "Payment confirms in seconds. Students join your live class immediately."
+                  },
+                  {
+                    icon: <Globe className="w-5 h-5" />,
+                    title: "Works Anywhere",
+                    description: "Runs in any browser. No app downloads. Works on smartphones and computers."
+                  },
+                  {
+                    icon: <Shield className="w-5 h-5" />,
+                    title: "Only Paid Students Join",
+                    description: "Automatic access control. No more sharing links without payment."
+                  },
+                  {
+                    icon: <Clock className="w-5 h-5" />,
+                    title: "Track Attendance",
+                    description: "See who joins, when they arrive, and download attendance sheets."
+                  }
+                ].map((feature, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex gap-4"
+                  >
+                    <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                      {feature.icon}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 dark:text-white mb-1">
+                        {feature.title}
+                      </h3>
+                      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right - Visual */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-3xl p-6 sm:p-8 text-white">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-full bg-white/20" />
+                  <div>
+                    <p className="font-bold">Dr. Akua Serwaa</p>
+                    <p className="text-sm text-white/80">Economics Lecturer</p>
+                  </div>
+                </div>
+                <blockquote className="text-lg sm:text-xl font-medium mb-4 leading-relaxed">
+                  "I used to struggle collecting payments from students. Now they pay before class even starts. It's changed everything."
+                </blockquote>
+                <div className="flex gap-1">
+                  {[1,2,3,4,5].map(i => (
+                    <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+              </div>
+
+              {/* Stats card */}
+              <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl border border-gray-100 dark:border-gray-700">
+                <p className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">300+</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">students per class</p>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-3xl overflow-hidden bg-gray-900 dark:bg-black border border-white/10 px-8 py-16 md:px-16 md:py-24 text-center shadow-2xl">
-            {/* Background Gradients */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-blob" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 animate-blob animation-delay-2000" />
-
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="relative bg-gray-900 dark:bg-black rounded-3xl p-8 sm:p-12 md:p-16 text-center overflow-hidden">
+            {/* Decorative blobs */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-pink-500/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+            
             <div className="relative z-10">
-              <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight">
-                Ready to elevate your teaching?
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-4 sm:mb-6">
+                Ready to get started?
               </h2>
-              <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto font-light">
-                Join hundreds of lecturers using Podium to reach more students and monetize their knowledge.
+              <p className="text-base sm:text-lg text-gray-400 mb-8 sm:mb-10 max-w-lg mx-auto">
+                Join thousands of students and lecturers across Ghana. 
+                Create your free account today.
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <Link
                   href="/auth/register"
-                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-white text-gray-900 font-bold text-lg hover:scale-105 transition-all shadow-xl"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-gradient-to-r from-orange-500 to-pink-600 text-white font-bold text-base sm:text-lg hover:scale-105 transition-all shadow-lg shadow-orange-500/25"
                 >
-                  Get Started for Free
+                  Create Free Account
                 </Link>
                 <Link
                   href="/auth/login"
-                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white font-bold text-lg hover:bg-white/20 transition-all hover:scale-105 backdrop-blur-md"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-white/10 border border-white/20 text-white font-bold text-base sm:text-lg hover:bg-white/20 transition-all"
                 >
                   Log in
                 </Link>
@@ -356,45 +504,21 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white/50 dark:bg-black/50 backdrop-blur-md py-12 border-t border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+      <footer className="py-8 sm:py-12 px-4 sm:px-6 border-t border-gray-200 dark:border-gray-800">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center">
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">Podium</span>
+              <span className="text-lg font-bold text-gray-900 dark:text-white">Podium</span>
             </div>
-            {/* Removed inactive links for Privacy, Terms, Contact */}
-            <div className="text-sm text-gray-500">
-              © 2024 Podium. All rights reserved.
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              © 2024 Podium. Made for Ghana.
+            </p>
           </div>
         </div>
       </footer>
     </div>
-  );
-}
-
-function FeatureCard({ icon, title, description, delay }: { icon: React.ReactNode, title: string, description: string, delay: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay }}
-      whileHover={{ y: -5 }}
-      className="p-8 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl hover:shadow-2xl hover:shadow-indigo-500/10 transition-all group"
-    >
-      <div className="w-14 h-14 rounded-xl bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-        {icon}
-      </div>
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-        {title}
-      </h3>
-      <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-        {description}
-      </p>
-    </motion.div>
   );
 }
