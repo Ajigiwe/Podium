@@ -1,6 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, connectFirestoreEmulator, waitForPendingWrites, enableNetwork, disableNetwork, terminate } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
@@ -31,9 +31,33 @@ if (typeof window !== 'undefined') {
     }
 
     auth = getAuth(app);
+    // Initialize Firestore with proper settings
     db = getFirestore(app);
+    
+    // Configure Firestore settings to improve connection reliability
+    // Set up cache size and other settings
+    if (typeof window !== 'undefined') {
+        // Only configure on client side
+        try {
+            const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED } = await import('firebase/firestore');
+            
+            // Initialize Firestore with persistent cache settings
+            initializeFirestore(app, {
+                localCache: persistentLocalCache({
+                    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+                    tabManager: persistentMultipleTabManager()
+                })
+            });
+        } catch (error) {
+            console.warn('Could not initialize Firestore with persistence:', error);
+        }
+    }
+    
     rtdb = getDatabase(app);
     storage = getStorage(app);
 }
 
 export { app, auth, db, rtdb, storage };
+
+// Export Firestore utility functions
+export * from './firestore-utils';

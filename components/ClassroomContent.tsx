@@ -8,7 +8,7 @@ import { Users, MicOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut,
 import { useState, useEffect } from 'react';
 import { JitsiParticipant } from '@/contexts/ClassroomContext';
 import { generateMeetingCode } from '@/lib/meetingCode';
-import { db } from '@/lib/firebase/config';
+import { db, handleFirestoreError } from '@/lib/firebase/config';
 import { doc, updateDoc } from 'firebase/firestore';
 
 interface ClassroomContentProps {
@@ -20,10 +20,11 @@ interface ClassroomContentProps {
 
 export default function ClassroomContent({ session, user, profile, sessionId }: ClassroomContentProps) {
     const router = useRouter();
-    const { 
-        leaveClass, 
-        isFloating, 
+    const {
+        leaveClass,
+        isFloating,
         toggleFloating,
+        toggleMinimize,
         participants,
         muteParticipant,
         muteAllParticipants,
@@ -53,6 +54,20 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                     console.log('Meeting code saved to Firestore:', generatedCode);
                 } catch (error) {
                     console.error('Failed to save meeting code:', error);
+                    // Attempt to handle Firestore error and retry
+                    const handled = await handleFirestoreError(db, error);
+                    if (handled) {
+                        // Retry once more after handling the error
+                        try {
+                            const generatedCode = generateMeetingCode(sessionId);
+                            await updateDoc(doc(db, 'sessions', sessionId), {
+                                meetingCode: generatedCode
+                            });
+                            console.log('Meeting code saved to Firestore after retry:', generatedCode);
+                        } catch (retryError) {
+                            console.error('Retry failed to save meeting code:', retryError);
+                        }
+                    }
                 }
             }
         };
@@ -81,9 +96,9 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     };
 
     return (
-        <div className="min-h-screen bg-gray-900">
+        <div className="min-h-screen bg-gray-950">
             {/* Mobile Header */}
-            <header className="bg-gray-900/95 backdrop-blur-lg border-b border-gray-800 fixed top-0 left-0 right-0 z-50">
+            <header className="bg-gray-900 border-b border-gray-800 fixed top-0 left-0 right-0 z-50">
                 <div className="px-3 sm:px-4 py-2 sm:py-3">
                     <div className="flex justify-between items-center">
                         {/* Title - truncated on mobile */}
@@ -187,25 +202,29 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                 </div>
             </header>
 
-            {/* Main Content - Full Screen Video with header offset */}
-            <div className="pt-[60px] sm:pt-[68px] h-screen">
-                <div className={`${isFloating ? 'hidden' : 'w-full'} h-full bg-gray-900 relative`}>
-                    {/* This ID is CRITICAL - GlobalClassroom mounts Jitsi here */}
-                    <div id="classroom-video-mount" className="w-full h-full" />
-
-                    {/* Float Button - Hidden on mobile */}
-                    {!isFloating && (
-                        <button
-                            onClick={() => toggleFloating(true)}
-                            className="hidden sm:block absolute top-4 right-4 z-[70] p-2 bg-black/50 hover:bg-black/70 rounded-lg text-white backdrop-blur-sm transition-colors"
-                            title="Float Video"
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                        </button>
-                    )}
-                </div>
+            {/* Main Content - Full Screen Video below header */}
+            <div
+                style={{
+                    position: 'fixed',
+                    top: '52px',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: '#0a0a0a'
+                }}
+                className="sm:!top-[60px]"
+            >
+                <div
+                    id="classroom-video-mount"
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        display: isFloating ? 'none' : 'block'
+                    }}
+                />
             </div>
 
             {/* Share/Invite Modal - Lecturer Only */}
@@ -218,8 +237,8 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Invite Students</h2>
                                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Share this code with your students</p>
                             </div>
-                            <button 
-                                onClick={() => setShowShareModal(false)} 
+                            <button
+                                onClick={() => setShowShareModal(false)}
                                 className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                             >
                                 <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
@@ -227,19 +246,18 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                         </div>
 
                         {/* Meeting Code - Big and Bold */}
-                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-2xl p-4 sm:p-6 mb-4 border border-indigo-100 dark:border-indigo-800">
-                            <p className="text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-bold mb-2">Meeting Code</p>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 sm:p-6 mb-4 border border-blue-200 dark:border-blue-800">
+                            <p className="text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400 font-semibold mb-2">Meeting Code</p>
                             <div className="flex items-center justify-between gap-2">
                                 <p className="text-2xl sm:text-3xl font-mono font-bold text-gray-900 dark:text-white tracking-wider">
                                     {meetingCode}
                                 </p>
                                 <button
                                     onClick={handleCopyCode}
-                                    className={`p-3 rounded-xl transition-all shrink-0 ${
-                                        copiedCode 
-                                            ? 'bg-green-500 text-white' 
-                                            : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900'
-                                    }`}
+                                    className={`p-3 rounded-lg transition-all shrink-0 ${copiedCode
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
+                                        }`}
                                 >
                                     {copiedCode ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                                 </button>
@@ -247,7 +265,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                         </div>
 
                         {/* Full Link (Alternative) */}
-                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 mb-4 sm:mb-6 border border-gray-100 dark:border-gray-700">
+                        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-4 sm:mb-6 border border-gray-200 dark:border-gray-700">
                             <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold mb-2">Or share full link</p>
                             <div className="flex items-center gap-2">
                                 <div className="flex-1 flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0">
@@ -258,11 +276,10 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 </div>
                                 <button
                                     onClick={handleCopyLink}
-                                    className={`p-2 rounded-lg transition-all shrink-0 ${
-                                        copiedLink 
-                                            ? 'bg-green-500 text-white' 
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={`p-2 rounded-lg transition-all shrink-0 ${copiedLink
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                        }`}
                                 >
                                     {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                 </button>
@@ -270,7 +287,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                         </div>
 
                         {/* Instructions */}
-                        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-100 dark:border-amber-800">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
                             <p className="text-sm text-amber-800 dark:text-amber-200 font-medium mb-2">How students join:</p>
                             <ol className="text-xs sm:text-sm text-amber-700 dark:text-amber-300 space-y-1 list-decimal list-inside">
                                 <li>Go to their Student Dashboard</li>
@@ -292,8 +309,8 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Participants ({participants.length})</h2>
                                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Manage students in your class</p>
                             </div>
-                            <button 
-                                onClick={() => setShowParticipantsModal(false)} 
+                            <button
+                                onClick={() => setShowParticipantsModal(false)}
                                 className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                             >
                                 <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
@@ -321,20 +338,18 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 </div>
                             ) : (
                                 participants.map((p: JitsiParticipant) => (
-                                    <div 
-                                        key={p.participantId} 
-                                        className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all ${
-                                            p.isLocal 
-                                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' 
-                                                : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700'
-                                        }`}
+                                    <div
+                                        key={p.participantId}
+                                        className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all ${p.isLocal
+                                            ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
+                                            : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700'
+                                            }`}
                                     >
                                         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shrink-0 ${
-                                                p.isLocal 
-                                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-500' 
-                                                    : 'bg-gradient-to-br from-gray-400 to-gray-500'
-                                            }`}>
+                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shrink-0 ${p.isLocal
+                                                ? 'bg-blue-600'
+                                                : 'bg-gray-500 dark:bg-gray-600'
+                                                }`}>
                                                 {p.displayName?.[0]?.toUpperCase() || '?'}
                                             </div>
                                             <div className="min-w-0">

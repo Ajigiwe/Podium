@@ -94,8 +94,9 @@ service cloud.firestore {
       // Users can create their own attendance logs
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       
-      // Only lecturers can update/delete attendance logs
-      allow update, delete: if isLecturer();
+      // Only lecturers can update; Lecturers OR Owners can delete
+      allow update: if isLecturer();
+      allow delete: if isLecturer() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
   }
 }

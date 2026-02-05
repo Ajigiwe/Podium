@@ -7,16 +7,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
 import {
     LayoutDashboard,
-    BookOpen,
-    History,
-    Settings,
     LogOut,
     Menu,
     X,
     GraduationCap,
     UserCircle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DashboardLayout({
     children,
@@ -37,7 +33,7 @@ export default function DashboardLayout({
             }
         };
 
-        handleResize(); // Check on mount
+        handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
@@ -58,20 +54,15 @@ export default function DashboardLayout({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-300 relative overflow-hidden">
-            {/* Animated Background */}
-            <div className="bg-noise" />
-            <div className="fixed top-0 right-0 -z-10 w-[800px] h-[800px] bg-orange-500/20 dark:bg-orange-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob" />
-            <div className="fixed bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-pink-500/20 dark:bg-pink-500/10 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-blob animation-delay-2000" />
-
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
             {/* Mobile Header */}
-            <div className="lg:hidden flex items-center justify-between p-4 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center">
+            <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20">
+                <Link href="/" className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
                         <GraduationCap className="w-5 h-5 text-white" />
                     </div>
                     <span className="font-bold text-lg text-gray-900 dark:text-white">Podium</span>
-                </div>
+                </Link>
                 <button
                     onClick={() => setIsSidebarOpen(true)}
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
@@ -80,113 +71,93 @@ export default function DashboardLayout({
                 </button>
             </div>
 
+            {/* Sidebar Backdrop (Mobile) */}
+            {isSidebarOpen && (
+                <div
+                    onClick={() => setIsSidebarOpen(false)}
+                    className="lg:hidden fixed inset-0 bg-black/50 z-30"
+                />
+            )}
+
             {/* Sidebar */}
-            <AnimatePresence>
-                {(isSidebarOpen || isDesktop) && (
-                    <>
-                        {/* Backdrop for mobile */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setIsSidebarOpen(false)}
-                            className="lg:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
-                        />
+            <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transform transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+                {/* Sidebar Header */}
+                <div className="p-6 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
+                    <Link href="/" className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                            <GraduationCap className="w-6 h-6 text-white" />
+                        </div>
+                        <span className="font-bold text-xl text-gray-900 dark:text-white">Podium</span>
+                    </Link>
+                    <button
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
 
-                        <motion.div
-                            initial={{ x: -280 }}
-                            animate={{ x: 0 }}
-                            exit={{ x: -280 }}
-                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 ease-in-out ${!isSidebarOpen ? 'hidden lg:flex' : 'flex'}`}
-                        >
-                            {/* Sidebar Header */}
-                            <div className="p-6 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                                        <GraduationCap className="w-6 h-6 text-white" />
-                                    </div>
-                                    <span className="font-bold text-xl text-gray-900 dark:text-white">Podium</span>
-                                </div>
-                                <button
-                                    onClick={() => setIsSidebarOpen(false)}
-                                    className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
+                {/* User Info */}
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                    <div className="flex items-center gap-3">
+                        {profile?.photoURL ? (
+                            <img src={profile.photoURL} alt={profile.fullName} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
+                                {profile?.fullName?.charAt(0)}
                             </div>
+                        )}
+                        <div>
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm truncate max-w-[140px]">
+                                {profile?.fullName}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                                {profile?.role}
+                            </p>
+                        </div>
+                    </div>
+                </div>
 
-                            {/* User Info */}
-                            <div className="px-6 mb-8">
-                                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/5 border border-gray-100 dark:border-white/10 backdrop-blur-sm shadow-sm">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        {profile?.photoURL ? (
-                                            <img src={profile.photoURL} alt={profile.fullName} className="w-10 h-10 rounded-full object-cover ring-2 ring-orange-500/20" />
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center text-orange-600 dark:text-orange-400 font-bold ring-2 ring-orange-500/20">
-                                                {profile?.fullName?.charAt(0)}
-                                            </div>
-                                        )}
-                                        <div>
-                                            <p className="font-semibold text-gray-900 dark:text-white text-sm truncate max-w-[120px]">
-                                                {profile?.fullName}
-                                            </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                                                {profile?.role}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                            <div className="h-full bg-gradient-to-r from-orange-500 to-pink-500 w-3/4 rounded-full" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                {/* Navigation */}
+                <nav className="flex-1 px-4 py-4 space-y-1">
+                    {navigation.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                onClick={() => setIsSidebarOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+                                    }`}
+                            >
+                                <item.icon className="w-5 h-5" />
+                                {item.name}
+                            </Link>
+                        );
+                    })}
+                </nav>
 
-                            {/* Navigation */}
-                            <nav className="flex-1 px-4 space-y-1">
-                                {navigation.map((item) => {
-                                    const isActive = pathname === item.href;
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            onClick={() => setIsSidebarOpen(false)}
-                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive
-                                                ? 'bg-orange-50/80 dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 shadow-sm border border-orange-100 dark:border-orange-800'
-                                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50/50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-gray-200'
-                                                }`}
-                                        >
-                                            <item.icon className="w-5 h-5" />
-                                            {item.name}
-                                        </Link>
-                                    );
-                                })}
-                            </nav>
-
-                            {/* Footer / Actions */}
-                            <div className="p-4 border-t border-gray-200/50 dark:border-gray-800/50 space-y-2">
-                                <div className="flex items-center justify-between px-4 py-2">
-                                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Dark Mode</span>
-                                    <ThemeToggle />
-                                </div>
-                                <button
-                                    onClick={handleSignOut}
-                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                                >
-                                    <LogOut className="w-5 h-5" />
-                                    Sign Out
-                                </button>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+                {/* Footer / Actions */}
+                <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+                    <div className="flex items-center justify-between px-4 py-2">
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Dark Mode</span>
+                        <ThemeToggle />
+                    </div>
+                    <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        Sign Out
+                    </button>
+                </div>
+            </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 lg:pl-72 flex flex-col min-h-screen transition-all duration-300">
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 relative z-10">
+            <div className="flex-1 lg:pl-72 flex flex-col min-h-screen transition-all duration-200">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8">
                     {children}
                 </main>
             </div>

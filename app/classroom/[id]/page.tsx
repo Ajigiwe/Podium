@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/config';
-import { doc, getDoc, addDoc, updateDoc, collection, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, collection, Timestamp, query, where, getDocs } from 'firebase/firestore';
 import { Session } from '@/lib/firebase/types';
 import { hasUserPaid } from '@/lib/payments/verifyPayment';
 import ClassroomContent from '@/components/ClassroomContent';
 import { useClassroom } from '@/contexts/ClassroomContext';
+import { Clock, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export default function ClassroomPage() {
     const params = useParams();
@@ -31,7 +32,7 @@ export default function ClassroomPage() {
 
     useEffect(() => {
         if (authLoading) return;
-        
+
         // Don't re-run if attendance already submitted
         if (attendanceSubmitted) return;
 
@@ -57,7 +58,7 @@ export default function ClassroomPage() {
                 // CRITICAL: Check if class is active FIRST for students
                 // Students cannot join until lecturer starts the class
                 const isLecturer = profile.role === 'lecturer' && sessionData.lecturerId === user.uid;
-                
+
                 if (!isLecturer && !sessionData.isActive) {
                     console.log('Class not active - showing waiting room for student');
                     setWaitingForLecturer(true);
@@ -135,8 +136,32 @@ export default function ClassroomPage() {
                     return;
                 }
 
-                // Students MUST enter name and index number for attendance EVERY time they join
+                // Students MUST enter name and index number for attendance
                 if (profile.role === 'student') {
+                    // Check if attendance is already logged for this session
+                    const attendanceRef = collection(db, 'attendance_logs');
+                    const q = query(
+                        attendanceRef,
+                        where('sessionId', '==', sessionId),
+                        where('userId', '==', user.uid)
+                    );
+                    const snapshot = await getDocs(q);
+
+                    if (!snapshot.empty) {
+                        console.log('Attendance already submitted for this session');
+                        setAttendanceSubmitted(true);
+                        setCanAccess(true);
+
+                        // Join immediately since attendance is done
+                        if (currentSessionId !== sessionId) {
+                            joinClass(sessionId, sessionData.title, profile.fullName, profile.role, user.uid);
+                        }
+
+                        setLoading(false);
+                        return;
+                    }
+
+                    // If not found, show modal
                     // Pre-fill with existing data if available
                     setStudentName(profile.fullName || '');
                     setStudentIndex(profile.indexNumber || '');
@@ -147,9 +172,9 @@ export default function ClassroomPage() {
 
                 setCanAccess(true);
 
-                // Join the Jitsi room - Only if not already connected to this session
+                // Join the LiveKit room - Only if not already connected to this session
                 if (currentSessionId !== sessionId) {
-                    joinClass(sessionId, sessionData.title, profile.fullName, profile.role);
+                    joinClass(sessionId, sessionData.title, profile.fullName, profile.role, user.uid);
                 }
 
                 setLoading(false);
@@ -188,6 +213,8 @@ export default function ClassroomPage() {
                 userName: studentName,
                 userIndexNumber: studentIndex,
                 joinedAt: Timestamp.now(),
+                lecturerId: session?.lecturerId,
+                sessionTitle: session?.title || 'Unknown Class',
             });
 
             console.log('Attendance logged successfully');
@@ -199,8 +226,8 @@ export default function ClassroomPage() {
             setShowProfileModal(false);
             setCanAccess(true);
 
-            // Join Jitsi after profile update
-            joinClass(sessionId, session?.title || 'Class', studentName, profile?.role || 'student');
+            // Join LiveKit after profile update
+            joinClass(sessionId, session?.title || 'Class', studentName, profile?.role || 'student', user.uid);
 
         } catch (error) {
             console.error("Error saving attendance:", error);
@@ -212,10 +239,10 @@ export default function ClassroomPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-purple-950">
+            <div className="min-h-screen flex items-center justify-center bg-gray-950">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-white/30 border-t-white mx-auto"></div>
-                    <p className="mt-4 text-white text-lg font-medium">Loading classroom...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/30 border-t-blue-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-400">Loading classroom...</p>
                 </div>
             </div>
         );
@@ -224,43 +251,37 @@ export default function ClassroomPage() {
     // Waiting room for students when class hasn't started
     if (waitingForLecturer) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-purple-950 p-4">
+            <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
                 <div className="text-center max-w-md">
-                    <div className="w-24 h-24 mx-auto mb-6 relative">
-                        <div className="absolute inset-0 bg-indigo-500/20 rounded-full animate-ping"></div>
-                        <div className="relative w-full h-full bg-indigo-600/30 rounded-full flex items-center justify-center">
-                            <svg className="w-12 h-12 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
+                    <div className="w-20 h-20 mx-auto mb-6 bg-blue-600/20 rounded-full flex items-center justify-center">
+                        <Clock className="w-10 h-10 text-blue-400" />
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">Waiting for Lecturer</h1>
-                    <p className="text-gray-400 mb-6 text-sm sm:text-base">
+                    <h1 className="text-2xl font-bold text-white mb-3">Waiting for Lecturer</h1>
+                    <p className="text-gray-400 mb-6">
                         The class hasn't started yet. Please wait for your lecturer to begin the session.
                     </p>
-                    <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/10">
-                        <p className="text-white font-semibold text-lg">{session?.title}</p>
-                        <p className="text-gray-400 text-sm mt-1">Class ID: {sessionId.slice(0, 8)}...</p>
+                    <div className="bg-gray-900 rounded-xl p-4 mb-6 border border-gray-800">
+                        <p className="text-white font-semibold">{session?.title}</p>
+                        <p className="text-gray-500 text-sm mt-1">Class ID: {sessionId.slice(0, 8)}...</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <button
                             onClick={() => window.location.reload()}
-                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                         >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
+                            <RefreshCw className="w-4 h-4" />
                             Refresh
                         </button>
                         <button
                             onClick={() => router.push('/dashboard/student')}
-                            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold transition-colors"
+                            className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                         >
+                            <ArrowLeft className="w-4 h-4" />
                             Back to Dashboard
                         </button>
                     </div>
-                    <p className="text-gray-500 text-xs mt-6">
-                        The page will not auto-refresh. Click refresh to check if the class has started.
+                    <p className="text-gray-600 text-xs mt-6">
+                        Click refresh to check if the class has started.
                     </p>
                 </div>
             </div>
@@ -275,37 +296,37 @@ export default function ClassroomPage() {
         <>
             {showProfileModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-                    <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Student Details</h2>
+                    <div className="absolute inset-0 bg-black/80" />
+                    <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-800 shadow-xl">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Student Details</h2>
                         <p className="text-gray-600 dark:text-gray-400 mb-6">
                             Please enter your details to join the class.
                         </p>
                         <form onSubmit={handleProfileSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
                                 <input
                                     type="text"
                                     required
                                     value={studentName}
                                     onChange={(e) => setStudentName(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Index Number</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Index Number</label>
                                 <input
                                     type="text"
                                     required
                                     value={studentIndex}
                                     onChange={(e) => setStudentIndex(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                             <button
                                 type="submit"
                                 disabled={submittingProfile}
-                                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-50"
+                                className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                             >
                                 {submittingProfile ? 'Saving...' : 'Join Class'}
                             </button>

@@ -21,7 +21,8 @@ import { AttendanceLog } from '@/lib/firebase/types';
 import { Session } from '@/lib/firebase/types';
 import { getSessionRevenue } from '@/lib/payments/verifyPayment';
 import { generateMeetingCode } from '@/lib/meetingCode';
-import ThemeToggle from '@/components/ThemeToggle';
+import { Plus, X, Download, Trash2, Video, Copy, Check, History } from 'lucide-react';
+import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
 
 export default function LecturerDashboard() {
     const router = useRouter();
@@ -36,6 +37,10 @@ export default function LecturerDashboard() {
     const [title, setTitle] = useState('');
     const [price, setPrice] = useState('');
     const [isFree, setIsFree] = useState(false);
+
+
+    // History Modal State
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
 
     useEffect(() => {
@@ -197,52 +202,61 @@ export default function LecturerDashboard() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-600/30 border-t-orange-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/30 border-t-blue-600"></div>
             </div>
         );
     }
+
+
 
     return (
         <div className="space-y-8 max-w-7xl mx-auto">
             {/* Header / Welcome */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-                        Good afternoon, {profile?.fullName?.split(' ')[0]} 👋
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                        Welcome back, {profile?.fullName?.split(' ')[0]}
                     </h1>
-                    <p className="text-lg text-gray-600 dark:text-gray-400 mt-2 font-medium">
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
                         Here's what's happening with your classes today.
                     </p>
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl hover:from-orange-600 hover:to-pink-700 font-bold shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transform hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center gap-2"
                 >
-                    <span className="text-xl leading-none">+</span>
+                    <Plus className="w-5 h-5" />
                     Create New Class
+                </button>
+                <button
+                    onClick={() => setShowHistoryModal(true)}
+                    className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 font-semibold transition-colors flex items-center gap-2"
+                >
+                    <History className="w-5 h-5" />
+                    Attendance History
                 </button>
             </div>
 
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-white/20 dark:border-white/5 flex items-center justify-between ring-1 ring-black/5">
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Classes</p>
-                        <p className="text-5xl font-black text-gray-900 dark:text-white mt-2">{sessions.length}</p>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Classes</p>
+                        <p className="text-4xl font-bold text-gray-900 dark:text-white mt-1">{sessions.length}</p>
                     </div>
-                    <div className="w-16 h-16 rounded-2xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-14 h-14 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <svg className="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                         </svg>
                     </div>
                 </div>
-                <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-white/20 dark:border-white/5 flex items-center justify-between ring-1 ring-black/5">
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Active Now</p>
-                        <p className="text-5xl font-black text-gray-900 dark:text-white mt-2">{sessions.filter(s => s.isActive).length}</p>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Now</p>
+                        <p className="text-4xl font-bold text-gray-900 dark:text-white mt-1">{sessions.filter(s => s.isActive).length}</p>
                     </div>
-                    <div className="w-16 h-16 rounded-2xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-14 h-14 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <svg className="w-7 h-7 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
                         </svg>
                     </div>
@@ -251,20 +265,18 @@ export default function LecturerDashboard() {
 
             {/* Sessions Grid */}
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Your Sessions</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Your Sessions</h2>
 
                 {sessions.length === 0 ? (
-                    <div className="text-center py-20 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md rounded-3xl border border-dashed border-gray-300 dark:border-gray-700">
-                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
+                    <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800">
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Video className="w-8 h-8 text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No classes yet</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No classes yet</h3>
                         <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">Create your first class to start streaming to your students.</p>
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="px-6 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 font-medium transition-colors"
+                            className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 font-medium transition-colors"
                         >
                             Create Class
                         </button>
@@ -275,56 +287,43 @@ export default function LecturerDashboard() {
                             const priceInCedis = session.price / 100;
 
                             return (
-                                <div key={session.id} className="group bg-white/60 dark:bg-gray-900/60 backdrop-blur-lg rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 border border-white/20 dark:border-white/5 transition-all duration-300">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${session.isActive
-                                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse'
+                                <div key={session.id} className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className={`px-2.5 py-1 rounded-full text-xs font-semibold ${session.isActive
+                                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                                             : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
                                             }`}>
-                                            {session.isActive ? '● Live Now' : 'Offline'}
+                                            {session.isActive ? '● Live' : 'Offline'}
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleDownloadAttendance(session.id, session.title)}
-                                                className="p-2 text-gray-400 hover:text-orange-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
-                                                title="Download Attendance"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                                </svg>
-                                            </button>
+                                        <div className="flex gap-1">
                                             <button
                                                 onClick={() => handleDeleteSession(session.id)}
-                                                className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700"
+                                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                                                 title="Delete Class"
                                             >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>
 
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{session.title}</h3>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{session.title}</h3>
 
-                                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
-                                        <span className="flex items-center gap-1.5">
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
+                                    <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                        <span className="flex items-center gap-1">
+                                            <Video className="w-4 h-4" />
                                             Video Class
                                         </span>
-                                        <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                                        <span>•</span>
                                         <span className={`font-medium ${session.isFree ? 'text-green-600 dark:text-green-400' : ''}`}>
                                             {session.isFree ? 'Free' : `GH₵ ${priceInCedis.toFixed(2)}`}
                                         </span>
                                     </div>
 
-                                    {/* Meeting Code - Always visible for sharing */}
-                                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    {/* Meeting Code */}
+                                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Meeting Code</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Meeting Code</p>
                                                 <p className="font-mono font-bold text-gray-900 dark:text-white">
                                                     {session.meetingCode || generateMeetingCode(session.id)}
                                                 </p>
@@ -336,26 +335,22 @@ export default function LecturerDashboard() {
                                                     setCopiedCodeId(session.id);
                                                     setTimeout(() => setCopiedCodeId(null), 2000);
                                                 }}
-                                                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                                                    copiedCodeId === session.id
-                                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                                                        : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50'
-                                                }`}
+                                                className={`p-2 rounded-lg transition-colors ${copiedCodeId === session.id
+                                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                                                    }`}
                                             >
-                                                {copiedCodeId === session.id ? 'Copied!' : 'Copy'}
+                                                {copiedCodeId === session.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                             </button>
                                         </div>
-                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                                            Share this code with students. They can join when you go live.
-                                        </p>
                                     </div>
 
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-2">
                                         <button
                                             onClick={() => handleToggleActive(session.id, session.isActive)}
-                                            className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all shadow-lg ${session.isActive
-                                                ? 'bg-white dark:bg-gray-800 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20'
-                                                : 'bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-gray-900 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed'
+                                            className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-colors ${session.isActive
+                                                ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30'
+                                                : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                                                 }`}
                                         >
                                             {session.isActive ? 'Stop Stream' : 'Go Live'}
@@ -364,7 +359,7 @@ export default function LecturerDashboard() {
                                         {session.isActive && (
                                             <button
                                                 onClick={() => router.push(`/classroom/${session.id}`)}
-                                                className="px-4 py-3 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors"
+                                                className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                                             >
                                                 Join
                                             </button>
@@ -381,47 +376,45 @@ export default function LecturerDashboard() {
             {
                 showCreateModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
-                        <div className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-                            <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create New Class</h2>
-                                <button onClick={() => setShowCreateModal(false)} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                    <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
+                        <div className="absolute inset-0 bg-black/50" onClick={() => setShowCreateModal(false)} />
+                        <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-800 shadow-xl">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create New Class</h2>
+                                <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                                    <X className="w-5 h-5 text-gray-500" />
                                 </button>
                             </div>
 
-                            <form onSubmit={handleCreateSession} className="space-y-6">
+                            <form onSubmit={handleCreateSession} className="space-y-5">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Class Title</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Class Title</label>
                                     <input
                                         type="text"
                                         required
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium"
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                         placeholder="e.g. Advanced Mathematics"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl cursor-pointer border border-transparent hover:border-orange-500 transition-colors">
+                                    <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors">
                                         <input
                                             type="checkbox"
                                             checked={isFree}
                                             onChange={(e) => setIsFree(e.target.checked)}
-                                            className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 border-gray-300"
+                                            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
                                         />
-                                        <span className="font-bold text-gray-700 dark:text-gray-300">This class is free</span>
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">This class is free</span>
                                     </label>
                                 </div>
 
                                 {!isFree && (
-                                    <div className="animate-in slide-in-from-top-2 duration-200">
-                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Price (GHS)</label>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price (GHS)</label>
                                         <div className="relative">
-                                            <span className="absolute left-4 top-3.5 text-gray-400 font-bold">₵</span>
+                                            <span className="absolute left-4 top-3 text-gray-400 font-medium">₵</span>
                                             <input
                                                 type="number"
                                                 step="0.01"
@@ -429,18 +422,16 @@ export default function LecturerDashboard() {
                                                 required={!isFree}
                                                 value={price}
                                                 onChange={(e) => setPrice(e.target.value)}
-                                                className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium"
+                                                className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                                 placeholder="0.00"
                                             />
                                         </div>
                                     </div>
                                 )}
 
-
-
                                 <button
                                     type="submit"
-                                    className="w-full py-4 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transform hover:-translate-y-0.5 transition-all text-lg"
+                                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                                 >
                                     Create Class
                                 </button>
@@ -449,6 +440,13 @@ export default function LecturerDashboard() {
                     </div>
                 )
             }
+
+            {/* Attendance History Modal */}
+            <AttendanceHistoryModal
+                isOpen={showHistoryModal}
+                onClose={() => setShowHistoryModal(false)}
+                userId={user?.uid || ''}
+            />
         </div >
     );
 }

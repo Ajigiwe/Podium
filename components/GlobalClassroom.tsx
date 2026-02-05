@@ -1,48 +1,270 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { JitsiMeeting } from '@jitsi/react-sdk';
+import { useRouter } from 'next/navigation';
+import {
+    LiveKitRoom,
+    LayoutContextProvider,
+    GridLayout,
+    ParticipantTile,
+    RoomAudioRenderer,
+    useRoomContext,
+    useTracks,
+    Chat,
+    useLayoutContext,
+    ConnectionStateToast,
+} from '@livekit/components-react';
+import '@livekit/components-styles';
+import { Room, Track } from 'livekit-client';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { Maximize2, X } from 'lucide-react';
+import CustomControlBar from './CustomControlBar';
+import ReactionOverlay, { ReactionOverlayHandle } from './ReactionOverlay';
 
-// Sanitize room name for Jitsi - must be consistent for all users
-function sanitizeRoomName(sessionId: string): string {
-    // Create a unique but consistent room name based on sessionId
-    const sanitized = sessionId.replace(/[^a-zA-Z0-9]/g, '');
-    // Use a long unique prefix to avoid public room conflicts on meet.jit.si
-    return `PodiumLMS${sanitized}`;
+
+// Inner component that can access the room context
+function RoomConnector({ onRoomReady }: { onRoomReady: (room: Room) => void }) {
+    const room = useRoomContext();
+
+    useEffect(() => {
+        if (room) {
+            onRoomReady(room);
+        }
+    }, [room, onRoomReady]);
+
+    return null;
+}
+
+// Inner component to handle layout logic that needs LayoutContext
+function InnerVideoLayout({
+    onTogglePiP,
+    onReaction,
+    isPiPActive,
+    onLeave,
+    reactionRef,
+    tracks,
+    onToggleChat,
+    isChatOpen
+}: {
+    onTogglePiP: () => void;
+    onReaction: (emoji: string) => void;
+    isPiPActive: boolean;
+    onLeave: () => void;
+    reactionRef: React.RefObject<ReactionOverlayHandle | null>;
+    tracks: any[];
+    onToggleChat: () => void;
+    isChatOpen: boolean;
+}) {
+    // We don't rely on layoutContext for basic chat toggle anymore
+    // but we can still access it if needed for other things
+    const layoutContext = useLayoutContext() as any;
+
+    return (
+        <div className="flex flex-col h-full bg-[#0a0a0a]">
+            {/* CSS to hide default LiveKit control bar so we can use our custom one */}
+            <style jsx global>{`
+                .lk-video-conference .lk-control-bar { display: none !important; }
+            `}</style>
+
+            <div className="flex-1 relative overflow-hidden">
+                <ReactionOverlay ref={reactionRef} />
+
+                <div className="absolute inset-0">
+                    {/* Use GridLayout for all tracks for stability */}
+                    <GridLayout tracks={tracks}>
+                        <ParticipantTile />
+                    </GridLayout>
+                </div>
+            </div>
+
+            {/* Custom Controls */}
+            <CustomControlBar
+                onTogglePiP={onTogglePiP}
+                onReaction={onReaction}
+                isPiPActive={isPiPActive}
+                onLeave={onLeave}
+                onToggleChat={onToggleChat}
+                isChatOpen={isChatOpen}
+            />
+
+            {/* Chat Sidebar */}
+            {isChatOpen && (
+                <div className="absolute right-4 top-20 bottom-24 w-80 z-40 rounded-xl overflow-hidden border border-gray-800 shadow-2xl bg-gray-900/95 backdrop-blur">
+                    <Chat style={{ height: '100%' }} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Wrapper component that provides LayoutContext
+function VideoLayout({
+    onTogglePiP,
+    onReaction,
+    isPiPActive,
+    onLeave,
+    reactionRef,
+    onToggleChat,
+    isChatOpen
+}: {
+    onTogglePiP: () => void;
+    onReaction: (emoji: string) => void;
+    isPiPActive: boolean;
+    onLeave: () => void;
+    reactionRef: React.RefObject<ReactionOverlayHandle | null>;
+    onToggleChat: () => void;
+    isChatOpen: boolean;
+}) {
+    const tracks = useTracks(
+        [
+            { source: Track.Source.Camera, withPlaceholder: false },
+            { source: Track.Source.ScreenShare, withPlaceholder: false },
+        ],
+        { onlySubscribed: false }
+    ).filter(track => track.participant !== undefined);
+
+    return (
+        <LayoutContextProvider>
+            <InnerVideoLayout
+                onTogglePiP={onTogglePiP}
+                onReaction={onReaction}
+                isPiPActive={isPiPActive}
+                onLeave={onLeave}
+                reactionRef={reactionRef}
+                tracks={tracks}
+                onToggleChat={onToggleChat}
+                isChatOpen={isChatOpen}
+            />
+        </LayoutContextProvider>
+    );
 }
 
 export default function GlobalClassroom() {
-    const { 
-        sessionId, 
-        title, 
-        userName, 
-        userRole, 
-        isActive, 
-        isMini, 
-        isFloating, 
-        toggleMini, 
-        toggleFloating, 
-        leaveClass,
-        setJitsiApi 
-    } = useClassroom();
-    
-    const [mounted, setMounted] = useState(false);
-    const jitsiApiRef = useRef<any>(null);
 
-    // Draggable State for floating/mini mode
-    const [position, setPosition] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight - 300 : 400 });
+    const {
+        sessionId,
+        title,
+        userName,
+        userRole,
+        userId,
+        isActive,
+        isMini,
+        isFloating,
+        toggleMinimize,
+        leaveClass,
+        setLiveKitRoom,
+        toggleChat,
+        isChatOpen,
+    } = useClassroom();
+
+    const [mounted, setMounted] = useState(false);
+    const [token, setToken] = useState<string | null>(null);
+    const [tokenError, setTokenError] = useState<string | null>(null);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const roomRef = useRef<Room | null>(null);
+
+    // Draggable State for floating/mini mode (desktop only)
+    const [position, setPosition] = useState({ x: 20, y: 400 });
     const [size, setSize] = useState({ width: 400, height: 300 });
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const dragStartRef = useRef({ x: 0, y: 0 });
+    const router = useRouter();
+
+    // Document PiP State
+    const pipWindowRef = useRef<Window | null>(null);
+    const [isPiPActive, setIsPiPActive] = useState(false);
+
+    // Reaction Overlay Ref
+    const reactionRef = useRef<ReactionOverlayHandle>(null);
+
+    // Get LiveKit server URL from environment
+    const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || 'wss://your-project.livekit.cloud';
 
     useEffect(() => {
         setMounted(true);
-    }, []);
+        if (typeof window !== 'undefined') {
+            setPosition({ x: 20, y: window.innerHeight - 320 });
+        }
 
+        // Cleanup on unmount
+        return () => {
+            if (pipWindowRef.current) {
+                console.log('Unmounting GlobalClassroom, closing PiP');
+                try {
+                    pipWindowRef.current.close();
+                } catch (e) {
+                    console.error('Error closing PiP:', e);
+                }
+                pipWindowRef.current = null;
+            }
+            if (roomRef.current) {
+                roomRef.current.disconnect();
+            }
+        };
+    }, []); // Only run once on mount/unmount
+
+    // Force close PiP when class becomes inactive (even if component stays mounted)
+    useEffect(() => {
+        if (!isActive && pipWindowRef.current) {
+            console.log('Class became inactive, closing PiP');
+            try {
+                pipWindowRef.current.close();
+            } catch (e) {
+                console.error('Error closing PiP:', e);
+            }
+            pipWindowRef.current = null;
+            setIsPiPActive(false);
+            if (roomRef.current) {
+                roomRef.current.disconnect();
+            }
+        }
+    }, [isActive]);
+
+    // Fetch token when session becomes active
+    useEffect(() => {
+        if (!isActive || !sessionId || !userName || !userRole) {
+            setToken(null);
+            return;
+        }
+
+        const fetchToken = async () => {
+            setIsConnecting(true);
+            setTokenError(null);
+
+            try {
+                const response = await fetch('/api/livekit/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        roomName: `podium_${sessionId}`,
+                        participantName: userName,
+                        participantId: userId || `user_${Date.now()}`,
+                        role: userRole,
+                        userId: userId,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to get token');
+                }
+
+                const data = await response.json();
+                setToken(data.token);
+            } catch (error: any) {
+                console.error('Error fetching LiveKit token:', error);
+                setTokenError(error.message || 'Failed to connect to video service');
+            } finally {
+                setIsConnecting(false);
+            }
+        };
+
+        fetchToken();
+    }, [isActive, sessionId, userName, userRole, userId]);
+
+    // Dragging handlers - desktop only
     const handleMouseDown = (e: React.MouseEvent, type: 'drag' | 'resize') => {
         e.preventDefault();
         e.stopPropagation();
@@ -113,196 +335,432 @@ export default function GlobalClassroom() {
         };
     }, [pathname, isMini, isFloating, mountNode]);
 
-    // Cleanup Jitsi API on unmount
-    useEffect(() => {
-        return () => {
-            if (jitsiApiRef.current) {
+    // Handle room ready
+    const handleRoomReady = useCallback((room: Room) => {
+        console.log('LiveKit room ready:', room.name);
+        roomRef.current = room;
+        setLiveKitRoom(room);
+    }, [setLiveKitRoom]);
+
+    // Handle leaving the class
+    const handleLeave = useCallback(() => {
+        if (roomRef.current) {
+            roomRef.current.disconnect();
+        }
+        if (pipWindowRef.current) {
+            pipWindowRef.current.close();
+            pipWindowRef.current = null;
+        }
+        leaveClass();
+
+        // Navigate to dashboard to ensure full exit
+        if (userRole === 'lecturer') {
+            router.push('/dashboard/lecturer');
+        } else {
+            router.push('/dashboard/student');
+        }
+    }, [leaveClass, userRole, router]);
+
+    // Handle disconnection callback
+    const handleDisconnected = useCallback(() => {
+        console.log('LiveKit room disconnected');
+        roomRef.current = null;
+        setLiveKitRoom(null);
+        if (pipWindowRef.current) {
+            pipWindowRef.current.close();
+            pipWindowRef.current = null;
+            setIsPiPActive(false);
+        }
+    }, [setLiveKitRoom]);
+
+    // Handle maximize - go to classroom page
+    const handleMaximize = useCallback(() => {
+        toggleMinimize(false);
+        router.push(`/classroom/${sessionId}`);
+    }, [toggleMinimize, router, sessionId]);
+
+    // Toggle Document PiP
+    const handleTogglePiP = useCallback(async () => {
+        // If already active, close it
+        if (pipWindowRef.current) {
+            pipWindowRef.current.close();
+            return;
+        }
+
+        // Check compatibility
+        if (!('documentPictureInPicture' in window)) {
+            alert('Picture-in-Picture API is not supported in this browser.');
+            return;
+        }
+
+        try {
+            // Open PiP window
+            const win = await (window as any).documentPictureInPicture.requestWindow({
+                width: 800,
+                height: 600,
+            });
+
+            // Store ref
+            pipWindowRef.current = win;
+            setIsPiPActive(true);
+
+            // Copy styles
+            Array.from(document.styleSheets).forEach((styleSheet) => {
                 try {
-                    jitsiApiRef.current.dispose();
+                    if (styleSheet.href) {
+                        const link = win.document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = styleSheet.href;
+                        win.document.head.appendChild(link);
+                    } else if (styleSheet.ownerNode instanceof HTMLStyleElement) {
+                        const style = win.document.createElement('style');
+                        style.textContent = styleSheet.ownerNode.textContent;
+                        win.document.head.appendChild(style);
+                    }
                 } catch (e) {
-                    // Ignore
+                    console.warn('Failed to copy stylesheet:', e);
                 }
-                jitsiApiRef.current = null;
+            });
+
+            // Add utility classes specific to Pip
+            const style = win.document.createElement('style');
+            style.textContent = `
+                body { margin: 0; background-color: #0a0a0a; height: 100vh; overflow: hidden; }
+                .lk-video-conference { height: 100vh !important; }
+            `;
+            win.document.head.appendChild(style);
+
+            // Handle close
+            win.addEventListener('pagehide', () => {
+                pipWindowRef.current = null;
+                setIsPiPActive(false);
+            });
+
+        } catch (error) {
+            console.error('Failed to open PiP window:', error);
+            pipWindowRef.current = null;
+            setIsPiPActive(false);
+        }
+    }, []);
+
+    // Send Reaction
+    const handleReaction = useCallback(async (emoji: string) => {
+        if (roomRef.current) {
+            const encoder = new TextEncoder();
+            const payload = JSON.stringify({ type: 'reaction', emoji });
+            const data = encoder.encode(payload);
+            await roomRef.current.localParticipant.publishData(data, {
+                reliable: true,
+                topic: 'reaction',
+            });
+            // Show local reaction instantly
+            if (reactionRef.current) {
+                reactionRef.current.addReaction(emoji);
             }
-        };
+        }
     }, []);
 
     if (!mounted || !isActive || !sessionId || !userName) return null;
 
-    const roomName = `podium_${sanitizeRoomName(sessionId)}`;
+    // Show loading state while connecting
+    if (isConnecting || !token) {
+        return (
+            <div style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#111111'
+            }}>
+                <div style={{ textAlign: 'center' }}>
+                    {tokenError ? (
+                        <>
+                            <div style={{ color: '#ef4444', fontSize: '1.25rem', marginBottom: '1rem' }}>Connection Error</div>
+                            <p style={{ color: '#9ca3af', marginBottom: '1rem' }}>{tokenError}</p>
+                            <button
+                                onClick={() => leaveClass()}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: '#dc2626',
+                                    color: 'white',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Go Back
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <div style={{
+                                width: '3rem',
+                                height: '3rem',
+                                border: '4px solid rgba(59, 130, 246, 0.3)',
+                                borderTopColor: '#3b82f6',
+                                borderRadius: '50%',
+                                animation: 'spin 1s linear infinite',
+                                margin: '0 auto'
+                            }} />
+                            <p style={{ marginTop: '1rem', color: '#9ca3af' }}>Connecting to classroom...</p>
+                            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                        </>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
-    const jitsiConfig = {
-        startWithAudioMuted: true,
-        startWithVideoMuted: false,
-        prejoinPageEnabled: false,
-        disableDeepLinking: true,
-        hideConferenceSubject: false,
-        subject: title || 'Podium Class',
-        // CRITICAL: Disable members-only (lobby) mode
-        membersOnly: false,
-        // Disable lobby completely
-        enableLobby: false,
-        lobby: {
-            autoKnock: true,
-            enableChat: false,
-        },
-        // Security settings
-        enableLobbyChat: false,
-        hideLobbyButton: true,
-        requireDisplayName: false,
-        // Moderator settings
-        enableClosePage: false,
-        disableRemoteMute: false,
-        remoteVideoMenu: {
-            disableKick: false,
-            disableGrantModerator: false,
-        },
-        // Disable waiting for moderator
-        enableInsecureRoomNameWarning: false,
-        startAudioOnly: false,
-        disableModeratorIndicator: false,
-    };
-
-    const interfaceConfig = {
-        TOOLBAR_BUTTONS: [
-            'microphone',
-            'camera',
-            'desktop',
-            'fullscreen',
-            'hangup',
-            'chat',
-            'raisehand',
-            'tileview',
-            'settings',
-            'videoquality',
-            'participants-pane',
-        ],
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_WATERMARK_FOR_GUESTS: false,
-        SHOW_BRAND_WATERMARK: false,
-        BRAND_WATERMARK_LINK: '',
-        SHOW_POWERED_BY: false,
-        DEFAULT_BACKGROUND: '#1a1a2e',
-        DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
-        MOBILE_APP_PROMO: false,
-        SETTINGS_SECTIONS: ['devices', 'language', 'moderator', 'profile'],
-    };
-
-    const handleJitsiReady = (api: any) => {
-        jitsiApiRef.current = api;
-        setJitsiApi(api);
-
-        // Listen for conference left
-        api.addListener('videoConferenceLeft', () => {
-            leaveClass();
-        });
-
-        // Listen for ready to close
-        api.addListener('readyToClose', () => {
-            leaveClass();
-        });
-    };
-
-    const JitsiComponent = (
-        <JitsiMeeting
-            domain="meet.ffmuc.net"
-            roomName={roomName}
-            configOverwrite={jitsiConfig}
-            interfaceConfigOverwrite={interfaceConfig}
-            userInfo={{
-                displayName: userName,
-                email: '',
+    // LiveKit video content - Fully decomposed layout
+    const LiveKitContent = (
+        <LiveKitRoom
+            serverUrl={liveKitUrl}
+            token={token}
+            connect={true}
+            audio={userRole === 'lecturer'}
+            video={userRole === 'lecturer'}
+            onDisconnected={handleDisconnected}
+            data-lk-theme="default"
+            options={{
+                adaptiveStream: true,
+                dynacast: true,
+                publishDefaults: {
+                    simulcast: true,
+                    videoCodec: 'vp8',
+                },
             }}
-            onApiReady={handleJitsiReady}
-            getIFrameRef={(iframeRef) => {
-                if (iframeRef) {
-                    iframeRef.style.width = '100%';
-                    iframeRef.style.height = '100%';
-                    iframeRef.style.border = 'none';
-                }
-            }}
-        />
+            style={{ height: '100%', width: '100%' }}
+        >
+            <VideoLayout
+                onTogglePiP={handleTogglePiP}
+                onReaction={handleReaction}
+                isPiPActive={isPiPActive}
+                onLeave={handleLeave}
+                reactionRef={reactionRef}
+                onToggleChat={toggleChat}
+                isChatOpen={!!isChatOpen}
+            />
+            <RoomConnector onRoomReady={handleRoomReady} />
+            <RoomAudioRenderer />
+        </LiveKitRoom>
     );
 
-    // DOCKED MODE - Render in classroom page mount point
+    // If PiP is active, render into PiP Window
+    if (isPiPActive && pipWindowRef.current) {
+        return createPortal(
+            LiveKitContent,
+            pipWindowRef.current.document.body
+        );
+    }
+
+    // Check if on mobile
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+    // DOCKED MODE - User is on the classroom page, render in mount point
     if (mountNode && !isMini && !isFloating) {
         return createPortal(
-            <div className="w-full h-full relative bg-gray-900">
-                {JitsiComponent}
-                {/* Float button */}
-                <button
-                    onClick={() => toggleFloating(true)}
-                    className="absolute top-4 right-4 z-[70] p-2 bg-black/50 hover:bg-black/70 rounded-lg text-white backdrop-blur-sm transition-colors"
-                    title="Float Video"
-                >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                </button>
+            <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: '#0a0a0a'
+            }}>
+                {LiveKitContent}
             </div>,
             mountNode
         );
     }
 
-    // FLOATING/MINI MODE - Render as draggable window
-    return createPortal(
-        <div
-            className="fixed shadow-2xl z-[9999]"
-            style={{
+    // MINI/FLOATING MODE
+    if (isMini || isFloating) {
+        // On mobile: always show full screen
+        if (isMobile) {
+            return createPortal(
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    zIndex: 9999,
+                    backgroundColor: '#0a0a0a',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
+                    {/* Header */}
+                    <div style={{
+                        height: '48px',
+                        backgroundColor: '#1f2937',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '0 12px',
+                        borderBottom: '1px solid #374151',
+                        flexShrink: 0
+                    }}>
+                        <span style={{ color: 'white', fontSize: '0.875rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>
+                            {title}
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                                onClick={handleMaximize}
+                                style={{
+                                    padding: '8px',
+                                    backgroundColor: '#374151',
+                                    color: 'white',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <Maximize2 style={{ width: '16px', height: '16px' }} />
+                            </button>
+                            <button
+                                onClick={handleLeave}
+                                style={{
+                                    padding: '8px',
+                                    backgroundColor: '#dc2626',
+                                    color: 'white',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <X style={{ width: '16px', height: '16px' }} />
+                            </button>
+                        </div>
+                    </div>
+                    {/* Video fills remaining space */}
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                        {LiveKitContent}
+                    </div>
+                </div>,
+                document.body
+            );
+        }
+
+        // On desktop: draggable floating window
+        return createPortal(
+            <div style={{
+                position: 'fixed',
                 left: position.x,
                 top: position.y,
                 width: size.width,
                 height: size.height,
-            }}
-        >
-            <div className="bg-gray-900 w-full h-full rounded-xl overflow-hidden border border-white/10 relative group">
-                {/* Drag Handle */}
-                <div
-                    onMouseDown={(e) => handleMouseDown(e, 'drag')}
-                    className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-black/80 to-transparent z-[60] cursor-grab active:cursor-grabbing flex justify-between items-center px-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                    <span className="text-white/70 text-sm font-medium truncate max-w-[60%]">{title}</span>
-                    <div className="flex gap-2">
-                        {isFloating && !isMini && (
+                zIndex: 9999,
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+            }}>
+                <div style={{
+                    backgroundColor: '#1f2937',
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    border: '1px solid #374151',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
+                    {/* Drag Handle */}
+                    <div
+                        onMouseDown={(e) => handleMouseDown(e, 'drag')}
+                        style={{
+                            height: '40px',
+                            backgroundColor: '#1f2937',
+                            cursor: 'grab',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '0 12px',
+                            borderBottom: '1px solid #374151',
+                            flexShrink: 0
+                        }}
+                    >
+                        <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
+                            {title}
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                             <button
-                                onClick={() => toggleFloating(false)}
-                                className="p-1.5 bg-black/40 hover:bg-white/20 text-white rounded cursor-pointer"
-                                title="Dock Video"
+                                onClick={(e) => { e.stopPropagation(); handleMaximize(); }}
+                                style={{
+                                    padding: '6px',
+                                    backgroundColor: '#374151',
+                                    color: 'white',
+                                    borderRadius: '4px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
                             >
-                                <Maximize2 className="w-4 h-4" />
+                                <Maximize2 style={{ width: '16px', height: '16px' }} />
                             </button>
-                        )}
-                        {isMini && (
                             <button
-                                onClick={() => toggleMini(false)}
-                                className="p-1.5 bg-black/40 hover:bg-white/20 text-white rounded cursor-pointer"
-                                title="Expand"
+                                onClick={(e) => { e.stopPropagation(); handleLeave(); }}
+                                style={{
+                                    padding: '6px',
+                                    backgroundColor: '#dc2626',
+                                    color: 'white',
+                                    borderRadius: '4px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
                             >
-                                <Maximize2 className="w-4 h-4" />
+                                <X style={{ width: '16px', height: '16px' }} />
                             </button>
-                        )}
-                        <button
-                            onClick={leaveClass}
-                            className="p-1.5 bg-red-500/80 hover:bg-red-600 text-white rounded cursor-pointer"
-                            title="Leave Class"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
+                        </div>
                     </div>
-                </div>
 
-                {/* Jitsi iframe */}
-                <div className="w-full h-full">
-                    {JitsiComponent}
-                </div>
+                    {/* LiveKit fills remaining space */}
+                    <div style={{ flex: 1, minHeight: 0, backgroundColor: '#0a0a0a' }}>
+                        {LiveKitContent}
+                    </div>
 
-                {/* Resize Handle */}
-                <div
-                    onMouseDown={(e) => handleMouseDown(e, 'resize')}
-                    className="absolute bottom-0 right-0 w-6 h-6 bg-white/20 hover:bg-white/40 z-[60] cursor-se-resize rounded-tl-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                />
-            </div>
-        </div>,
-        document.body
+                    {/* Resize Handle */}
+                    <div
+                        onMouseDown={(e) => handleMouseDown(e, 'resize')}
+                        style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                            width: '24px',
+                            height: '24px',
+                            backgroundColor: '#374151',
+                            cursor: 'se-resize',
+                            borderTopLeftRadius: '8px'
+                        }}
+                    />
+                </div>
+            </div>,
+            document.body
+        );
+    }
+
+    // FALLBACK - No mount point available, render full screen
+    return (
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 9998,
+            backgroundColor: '#0a0a0a'
+        }}>
+            {LiveKitContent}
+        </div>
     );
 }

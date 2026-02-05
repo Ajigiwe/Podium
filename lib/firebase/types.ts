@@ -50,6 +50,8 @@ export interface AttendanceLog {
     userName: string;
     userIndexNumber?: string;
     joinedAt: Timestamp;
+    lecturerId?: string; // New field for filtering
+    sessionTitle?: string; // New field for history display
 }
 
 // Chat Message (Realtime Database)

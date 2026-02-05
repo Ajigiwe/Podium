@@ -12,7 +12,7 @@ import {
     sendPasswordResetEmail,
     sendEmailVerification,
 } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase/config';
+import { auth, db, handleFirestoreError } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Profile } from '@/lib/firebase/types';
 
@@ -41,9 +41,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (user) {
                 // Fetch user profile
-                const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-                if (profileDoc.exists()) {
-                    setProfile(profileDoc.data() as Profile);
+                try {
+                    const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+                    if (profileDoc.exists()) {
+                        setProfile(profileDoc.data() as Profile);
+                    }
+                } catch (error) {
+                    console.error('Error fetching profile:', error);
+                    // Attempt to handle Firestore error and retry
+                    const handled = await handleFirestoreError(db, error);
+                    if (handled) {
+                        // Retry once more after handling the error
+                        try {
+                            const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+                            if (profileDoc.exists()) {
+                                setProfile(profileDoc.data() as Profile);
+                            }
+                        } catch (retryError) {
+                            console.error('Retry failed to fetch profile:', retryError);
+                        }
+                    }
                 }
             } else {
                 setProfile(null);
@@ -74,14 +91,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const user = userCredential.user;
 
         // Create user profile in Firestore
-        // Create user profile in Firestore
-        await setDoc(doc(db, 'profiles', user.uid), {
-            id: user.uid,
-            email: user.email,
-            fullName,
-            role,
-            createdAt: new Date(),
-        });
+        try {
+            await setDoc(doc(db, 'profiles', user.uid), {
+                id: user.uid,
+                email: user.email,
+                fullName,
+                role,
+                createdAt: new Date(),
+            });
+        } catch (error) {
+            console.error('Error creating profile:', error);
+            const handled = await handleFirestoreError(db, error);
+            if (handled) {
+                // Retry once more after handling the error
+                try {
+                    await setDoc(doc(db, 'profiles', user.uid), {
+                        id: user.uid,
+                        email: user.email,
+                        fullName,
+                        role,
+                        createdAt: new Date(),
+                    });
+                } catch (retryError) {
+                    console.error('Retry failed to create profile:', retryError);
+                    throw retryError; // Re-throw to prevent user from continuing
+                }
+            } else {
+                throw error; // Re-throw original error
+            }
+        }
 
         // Send email verification
         await sendEmailVerification(user);
@@ -94,15 +132,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const user = result.user;
 
         // Check if profile exists, if not create one
-        const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-        if (!profileDoc.exists()) {
-            await setDoc(doc(db, 'profiles', user.uid), {
-                id: user.uid,
-                email: user.email,
-                fullName: user.displayName || 'User',
-                role: role,
-                createdAt: new Date(),
-            });
+        try {
+            const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+            if (!profileDoc.exists()) {
+                await setDoc(doc(db, 'profiles', user.uid), {
+                    id: user.uid,
+                    email: user.email,
+                    fullName: user.displayName || 'User',
+                    role: role,
+                    createdAt: new Date(),
+                });
+            }
+        } catch (error) {
+            console.error('Error checking/creating profile for Google sign-in:', error);
+            const handled = await handleFirestoreError(db, error);
+            if (handled) {
+                // Retry once more after handling the error
+                try {
+                    const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+                    if (!profileDoc.exists()) {
+                        await setDoc(doc(db, 'profiles', user.uid), {
+                            id: user.uid,
+                            email: user.email,
+                            fullName: user.displayName || 'User',
+                            role: role,
+                            createdAt: new Date(),
+                        });
+                    }
+                } catch (retryError) {
+                    console.error('Retry failed for Google sign-in profile:', retryError);
+                }
+            }
         }
     };
 

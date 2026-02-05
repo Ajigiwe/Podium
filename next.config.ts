@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
   },
   // Enable React strict mode
   reactStrictMode: false,
+  output: 'standalone',
 };
 
 export default nextConfig;
