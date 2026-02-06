@@ -5,12 +5,23 @@ export interface Profile {
     id: string;
     email: string;
     fullName: string;
-    role: 'student' | 'lecturer';
+    role: 'student' | 'lecturer' | 'admin';
     bio?: string;
     photoURL?: string;
     indexNumber?: string; // Student Index Number
+    subscriptionStatus?: 'active' | 'inactive'; // Global subscription
+    subscriptionExpiresAt?: Timestamp; // When subscription ends
     createdAt: Timestamp;
     updatedAt?: Timestamp;
+}
+
+// System Settings (Global Config)
+export interface SystemSettings {
+    id: 'subscription';
+    semesterFee: number; // Fee in GHS
+    currency: string;
+    durationMonths: number;
+    updatedAt: Timestamp;
 }
 
 // Class Session

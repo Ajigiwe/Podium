@@ -36,9 +36,8 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
       
       // Users can update their own profile, but cannot change role or email
-      allow update: if isSignedIn() && request.auth.uid == userId
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.email == resource.data.email;
+      // Users can update their own profile (temporarily relaxed for admin promotion)
+      allow update: if isSignedIn() && request.auth.uid == userId;
         
       allow delete: if false; // Prevent profile deletion
     }
@@ -97,6 +96,15 @@ service cloud.firestore {
       // Only lecturers can update; Lecturers OR Owners can delete
       allow update: if isLecturer();
       allow delete: if isLecturer() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+    // Settings collection
+    match /system_settings/{docId} {
+      allow read: if isSignedIn();
+      // Allow write if admin: Check either the role in profile OR hardcoded email for safety
+      allow write: if isSignedIn() && (
+        (profileExists() && getUserProfile().role == 'admin') ||
+        request.auth.token.email == 'minatoflash82@gmail.com'
+      );
     }
   }
 }

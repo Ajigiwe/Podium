@@ -35,8 +35,7 @@ export default function LecturerDashboard() {
 
     // Form state
     const [title, setTitle] = useState('');
-    const [price, setPrice] = useState('');
-    const [isFree, setIsFree] = useState(false);
+    // Price state removed
 
 
     // History Modal State
@@ -89,16 +88,16 @@ export default function LecturerDashboard() {
         if (!user) return;
 
         try {
-            const priceInPesewas = isFree ? 0 : Math.round(parseFloat(price) * 100);
+            // priceInPesewas removed
 
             // Create the session first to get the ID
             const docRef = await addDoc(collection(db, 'sessions'), {
                 title,
                 lecturerId: user.uid,
                 isActive: false,
-                price: priceInPesewas,
+                price: 0, // Hardcoded to 0 for subscription model
                 currency: 'GHS',
-                isFree,
+                isFree: true, // Always free individually, covered by subscription
                 meetingCode: '', // Placeholder, will update
                 createdAt: Timestamp.now(),
             });
@@ -109,9 +108,7 @@ export default function LecturerDashboard() {
 
             // Reset form
             setTitle('');
-            setPrice('');
-            setIsFree(false);
-
+            // setPrice/setIsFree removed
             setShowCreateModal(false);
         } catch (error) {
             console.error('Error creating session:', error);
@@ -398,36 +395,7 @@ export default function LecturerDashboard() {
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={isFree}
-                                            onChange={(e) => setIsFree(e.target.checked)}
-                                            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
-                                        />
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">This class is free</span>
-                                    </label>
-                                </div>
-
-                                {!isFree && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price (GHS)</label>
-                                        <div className="relative">
-                                            <span className="absolute left-4 top-3 text-gray-400 font-medium">₵</span>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                required={!isFree}
-                                                value={price}
-                                                onChange={(e) => setPrice(e.target.value)}
-                                                className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                                                placeholder="0.00"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
+                                {/* Price and IsFree removed as per subscription model */}
 
                                 <button
                                     type="submit"

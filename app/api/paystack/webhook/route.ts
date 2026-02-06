@@ -67,6 +67,26 @@ export async function POST(req: NextRequest) {
 
             console.log('Transaction record created successfully');
 
+            // Handle Subscription Activation
+            if (metadata.type === 'subscription') {
+                console.log('Activating subscription for user:', metadata.userId);
+                try {
+                    // Calculate expiry (4 months from now)
+                    const now = new Date();
+                    const expiryDate = new Date(now);
+                    expiryDate.setMonth(now.getMonth() + 4);
+
+                    await adminDb.collection('profiles').doc(metadata.userId).update({
+                        subscriptionStatus: 'active',
+                        subscriptionExpiresAt: Timestamp.fromDate(expiryDate),
+                        updatedAt: Timestamp.now()
+                    });
+                    console.log('Subscription activated until:', expiryDate);
+                } catch (subError) {
+                    console.error('Error activating subscription:', subError);
+                }
+            }
+
             // Send payment confirmation email
             try {
                 // Fetch user profile

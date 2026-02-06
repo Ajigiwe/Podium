@@ -7,6 +7,7 @@ interface InitializeTransactionParams {
     sessionId: string;
     sessionTitle: string;
     callbackUrl?: string;
+    customMetadata?: Record<string, any>;
 }
 
 interface PaystackResponse {
@@ -42,6 +43,7 @@ export async function initializeTransaction(
                 userId,
                 sessionId,
                 sessionTitle,
+                ...params.customMetadata,
             },
             callback_url: callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL}/classroom/${sessionId}?payment=success`,
         }),

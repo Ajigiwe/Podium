@@ -108,10 +108,10 @@ export default function CustomControlBar({
                 onClick={onToggleChat}
                 className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 !h-auto !w-auto rounded-lg ${isChatOpen ? '!text-blue-500' : ''}`}
             >
-                <span className="flex items-center gap-2 text-sm font-medium">
+                <div className="flex items-center gap-2 text-sm font-medium">
                     <MessageSquare className="w-4 h-4" />
-                    Chat
-                </span>
+                    <span className="hidden sm:inline">Chat</span>
+                </div>
             </button>
 
             {/* Reactions */}
@@ -161,10 +161,10 @@ export default function CustomControlBar({
             {/* Leave */}
             <button
                 onClick={onLeave}
-                className="bg-red-600 hover:bg-red-700 text-white p-2 px-3 rounded-lg flex items-center gap-2 transition-colors duration-200 font-medium text-sm"
+                className="bg-red-600 hover:bg-red-700 text-white p-2 sm:px-3 rounded-lg flex items-center gap-2 transition-colors duration-200 font-medium text-sm"
             >
                 <PhoneOff className="w-4 h-4" />
-                <span>Leave</span>
+                <span className="hidden sm:inline">Leave</span>
             </button>
         </div>
     );

@@ -15,6 +15,8 @@ export default function DashboardRedirect() {
             } else if (profile) {
                 if (profile.role === 'lecturer') {
                     router.push('/dashboard/lecturer');
+                } else if (profile.role === 'admin') {
+                    router.push('/admin');
                 } else {
                     router.push('/dashboard/student');
                 }

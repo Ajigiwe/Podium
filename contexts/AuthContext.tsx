@@ -13,7 +13,7 @@ import {
     sendEmailVerification,
 } from 'firebase/auth';
 import { auth, db, handleFirestoreError } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Profile } from '@/lib/firebase/types';
 
 interface AuthContextType {
@@ -21,8 +21,8 @@ interface AuthContextType {
     profile: Profile | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<void>;
-    signUp: (email: string, password: string, fullName: string, role: 'student' | 'lecturer') => Promise<void>;
-    signInWithGoogle: (role?: 'student' | 'lecturer') => Promise<void>;
+    signUp: (email: string, password: string, fullName: string, role: 'student' | 'lecturer' | 'admin') => Promise<void>;
+    signInWithGoogle: (role?: 'student' | 'lecturer' | 'admin') => Promise<void>;
     signOut: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     resendVerification: () => Promise<void>;
@@ -44,7 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 try {
                     const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
                     if (profileDoc.exists()) {
-                        setProfile(profileDoc.data() as Profile);
+                        const data = profileDoc.data() as Profile;
+                        // Auto-promote admin (fix for existing users)
+                        if (user.email === 'minatoflash82@gmail.com' && data.role !== 'admin') {
+                            console.log('Auto-promoting user to admin:', user.email);
+                            await updateDoc(doc(db, 'profiles', user.uid), { role: 'admin' });
+                            data.role = 'admin';
+                        }
+                        setProfile(data);
                     }
                 } catch (error) {
                     console.error('Error fetching profile:', error);
@@ -85,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: string,
         password: string,
         fullName: string,
-        role: 'student' | 'lecturer'
+        role: 'student' | 'lecturer' | 'admin'
     ) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -96,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 id: user.uid,
                 email: user.email,
                 fullName,
-                role,
+                role: email === 'minatoflash82@gmail.com' ? 'admin' : role,
                 createdAt: new Date(),
             });
         } catch (error) {
@@ -109,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         id: user.uid,
                         email: user.email,
                         fullName,
-                        role,
+                        role: email === 'minatoflash82@gmail.com' ? 'admin' : role,
                         createdAt: new Date(),
                     });
                 } catch (retryError) {
@@ -126,43 +133,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await firebaseSignOut(auth); // Sign out immediately so they have to login (and check verification)
     };
 
-    const signInWithGoogle = async (role: 'student' | 'lecturer' = 'student') => {
-        const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-
-        // Check if profile exists, if not create one
+    const signInWithGoogle = async (role: 'student' | 'lecturer' | 'admin' = 'student') => {
         try {
-            const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-            if (!profileDoc.exists()) {
-                await setDoc(doc(db, 'profiles', user.uid), {
-                    id: user.uid,
-                    email: user.email,
-                    fullName: user.displayName || 'User',
-                    role: role,
-                    createdAt: new Date(),
-                });
-            }
-        } catch (error) {
-            console.error('Error checking/creating profile for Google sign-in:', error);
-            const handled = await handleFirestoreError(db, error);
-            if (handled) {
-                // Retry once more after handling the error
-                try {
-                    const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-                    if (!profileDoc.exists()) {
-                        await setDoc(doc(db, 'profiles', user.uid), {
-                            id: user.uid,
-                            email: user.email,
-                            fullName: user.displayName || 'User',
-                            role: role,
-                            createdAt: new Date(),
-                        });
+            const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({
+                prompt: 'select_account'
+            });
+
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            // Check if profile exists, if not create one
+            try {
+                const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+                if (!profileDoc.exists()) {
+                    await setDoc(doc(db, 'profiles', user.uid), {
+                        id: user.uid,
+                        email: user.email,
+                        fullName: user.displayName || 'User',
+                        role: user.email === 'minatoflash82@gmail.com' ? 'admin' : role,
+                        createdAt: new Date(),
+                    });
+                }
+            } catch (error) {
+                console.error('Error checking/creating profile for Google sign-in:', error);
+                const handled = await handleFirestoreError(db, error);
+                if (handled) {
+                    // Retry once more after handling the error
+                    try {
+                        const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+                        if (!profileDoc.exists()) {
+                            await setDoc(doc(db, 'profiles', user.uid), {
+                                id: user.uid,
+                                email: user.email,
+                                fullName: user.displayName || 'User',
+                                role: user.email === 'minatoflash82@gmail.com' ? 'admin' : role,
+                                createdAt: new Date(),
+                            });
+                        }
+                    } catch (retryError) {
+                        console.error('Retry failed for Google sign-in profile:', retryError);
                     }
-                } catch (retryError) {
-                    console.error('Retry failed for Google sign-in profile:', retryError);
                 }
             }
+        } catch (error) {
+            console.error('Google Sign In Error:', error);
+            throw error;
         }
     };
 

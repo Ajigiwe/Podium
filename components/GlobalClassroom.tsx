@@ -61,10 +61,13 @@ function InnerVideoLayout({
     const layoutContext = useLayoutContext() as any;
 
     return (
-        <div className="flex flex-col h-full bg-[#0a0a0a]">
+        <div className="flex flex-col h-full bg-[#0a0a0a] relative">
             {/* CSS to hide default LiveKit control bar so we can use our custom one */}
             <style jsx global>{`
                 .lk-video-conference .lk-control-bar { display: none !important; }
+                @media (max-width: 640px) {
+                    .mobile-hide-force { display: none !important; }
+                }
             `}</style>
 
             <div className="flex-1 relative overflow-hidden">
@@ -88,12 +91,36 @@ function InnerVideoLayout({
                 isChatOpen={isChatOpen}
             />
 
-            {/* Chat Sidebar */}
-            {isChatOpen && (
-                <div className="absolute right-4 top-20 bottom-24 w-80 z-40 rounded-xl overflow-hidden border border-gray-800 shadow-2xl bg-gray-900/95 backdrop-blur">
+            {/* Chat Sidebar - Always mounted to persist messages, hidden via CSS */}
+            <div
+                className={`absolute left-4 right-4 sm:left-auto sm:right-4 top-20 bottom-24 sm:w-80 z-[100] rounded-xl overflow-hidden border border-gray-800 shadow-2xl bg-gray-900/95 backdrop-blur flex flex-col transition-all duration-300 ease-in-out ${isChatOpen
+                    ? 'opacity-100 translate-x-0 pointer-events-auto'
+                    : 'opacity-0 translate-x-[120%] pointer-events-none'
+                    }`}
+            >
+                {/* Custom Header for Chat */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gray-900">
+                    <h3 className="text-sm font-bold text-white">Chat</h3>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleChat();
+                        }}
+                        className="hidden md:flex w-10 h-10 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700 transition-colors -mr-2"
+                        aria-label="Close Chat"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                    {/* Fallback CSS for aggressive hiding */}
+
+                </div>
+
+                {/* Chat Component */}
+                <div className="flex-1 min-h-0">
                     <Chat style={{ height: '100%' }} />
                 </div>
-            )}
+            </div>
         </div>
     );
 }

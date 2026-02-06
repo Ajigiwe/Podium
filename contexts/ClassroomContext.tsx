@@ -28,7 +28,7 @@ interface ClassroomContextType {
     sessionId: string | null;
     title: string | null;
     userName: string | null;
-    userRole: 'student' | 'lecturer' | null;
+    userRole: 'student' | 'lecturer' | 'admin' | null;
     userId: string | null;
     isMini: boolean;
     isActive: boolean;
@@ -38,7 +38,7 @@ interface ClassroomContextType {
     liveKitRoom: Room | null;
     // Keep old name for backward compatibility
     jitsiApi: Room | null;
-    joinClass: (sessionId: string, title: string, userName: string, userRole: 'student' | 'lecturer', userId?: string) => void;
+    joinClass: (sessionId: string, title: string, userName: string, userRole: 'student' | 'lecturer' | 'admin', userId?: string) => void;
     leaveClass: () => void;
     toggleMini: (isMini: boolean) => void;
     toggleFloating: (floating: boolean) => void;
@@ -63,7 +63,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [title, setTitle] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
-    const [userRole, setUserRole] = useState<'student' | 'lecturer' | null>(null);
+    const [userRole, setUserRole] = useState<'student' | 'lecturer' | 'admin' | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
     const [isMini, setIsMini] = useState(false);
     const [isFloating, setIsFloating] = useState(false);
@@ -74,16 +74,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
 
-    // Auto-detect mini mode based on route
-    useEffect(() => {
-        if (sessionId && pathname !== `/classroom/${sessionId}` && !isMini) {
-            setIsMini(true);
-        } else if (pathname === `/classroom/${sessionId}`) {
-            if (!isMini) {
-                setIsMini(false);
-            }
-        }
-    }, [pathname, sessionId]);
+
 
 
 
@@ -98,7 +89,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         newSessionId: string,
         newTitle: string,
         newUserName: string,
-        newUserRole: 'student' | 'lecturer',
+        newUserRole: 'student' | 'lecturer' | 'admin',
         newUserId?: string
     ) => {
         setSessionId(newSessionId);
@@ -238,6 +229,27 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const toggleChat = useCallback(() => {
         setIsChatOpen(prev => !prev);
     }, []);
+
+    // Auto-detect mini mode based on route
+    useEffect(() => {
+        if (!sessionId) return;
+
+        const isClassroomPage = pathname === `/classroom/${sessionId}`;
+
+        if (!isClassroomPage) {
+            // User navigated away from the classroom
+            if (!isMini && !isFloating) {
+                // If not already in mini/floating mode, interpret navigation as "Leave Class"
+                leaveClass();
+            }
+            // If isMini/isFloating is true, we respect the user's intent to multitask and keep it open
+        } else {
+            // User returned to the classroom page
+            if (isMini) {
+                setIsMini(false);
+            }
+        }
+    }, [pathname, sessionId, isMini, isFloating, leaveClass]);
 
     // Listen to LiveKit participant events
     // Moved here to avoid "leaveClass used before initialization" error

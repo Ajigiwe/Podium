@@ -19,7 +19,9 @@ import {
   Clock,
   CheckCircle,
   BookOpen,
-  Wifi
+  Wifi,
+  MessageCircle,
+  Mail
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -37,8 +39,8 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white dark:bg-gray-950">
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${scrolled
-          ? 'bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800'
-          : 'bg-transparent'
+        ? 'bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800'
+        : 'bg-transparent'
         }`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex justify-between items-center h-16 sm:h-20">
@@ -405,6 +407,43 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Contact Us Section */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-4">
+            Need help? Get in touch.
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-10 max-w-lg mx-auto">
+            Have questions about setting up a class? We're here to help you get started.
+          </p>
+
+          <div className="flex items-center justify-center gap-8">
+            {/* WhatsApp */}
+            <a
+              href="https://wa.me/233550599755"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative"
+              aria-label="Chat on WhatsApp"
+            >
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-500 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center">
+                <MessageCircle className="w-8 h-8 sm:w-10 sm:h-10 text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform" />
+              </div>
+            </a>
+
+            {/* Email */}
+            <a
+              href="mailto:minatoflash82@gmail.com"
+              className="group relative"
+              aria-label="Send Email"
+            >
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center">
+                <Mail className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
       {/* Footer */}
       <footer className="py-8 sm:py-12 px-4 sm:px-6 border-t border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto">
@@ -421,6 +460,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+    </div >
   );
 }

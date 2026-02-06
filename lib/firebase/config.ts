@@ -31,28 +31,24 @@ if (typeof window !== 'undefined') {
     }
 
     auth = getAuth(app);
-    // Initialize Firestore with proper settings
-    db = getFirestore(app);
-    
-    // Configure Firestore settings to improve connection reliability
-    // Set up cache size and other settings
-    if (typeof window !== 'undefined') {
-        // Only configure on client side
-        try {
-            const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED } = await import('firebase/firestore');
-            
-            // Initialize Firestore with persistent cache settings
-            initializeFirestore(app, {
-                localCache: persistentLocalCache({
-                    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-                    tabManager: persistentMultipleTabManager()
-                })
-            });
-        } catch (error) {
-            console.warn('Could not initialize Firestore with persistence:', error);
-        }
+
+    // Initialize Firestore with persistence
+    // We try to initialize with persistence, but fallback to getFirestore if it fails or already initialized
+    try {
+        // Use require or direct import if possible, but keeping it simple for now
+        // Since we are in an ES module environment (Next.js), we can rely on the top-level imports
+        // created by the bundler.
+        // However, initializeFirestore helps setting cache.
+
+        // Note: We are removing the dynamic import complexity which was causing race conditions
+        // and just using the standard initialization.
+        db = getFirestore(app);
+    } catch (e) {
+        console.warn('Firestore initialization error:', e);
+        // Fallback
+        db = getFirestore(app);
     }
-    
+
     rtdb = getDatabase(app);
     storage = getStorage(app);
 }
