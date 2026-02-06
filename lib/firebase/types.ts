@@ -15,6 +15,8 @@ export interface Profile {
     updatedAt?: Timestamp;
 }
 
+export type UserProfile = Profile;
+
 // System Settings (Global Config)
 export interface SystemSettings {
     id: 'subscription';

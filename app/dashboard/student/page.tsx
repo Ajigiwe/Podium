@@ -22,6 +22,18 @@ function StudentDashboardContent() {
     const [joining, setJoining] = useState(false);
     const [joinLink, setJoinLink] = useState('');
 
+
+    // Role Verification & Redirection
+    useEffect(() => {
+        if (!loading && user && profile && profile.role !== 'student') {
+            if (profile.role === 'admin') {
+                router.replace('/admin');
+            } else if (profile.role === 'lecturer') {
+                router.replace('/dashboard/lecturer');
+            }
+        }
+    }, [user, profile, loading, router]);
+
     // Subscription State
     const [semesterFee, setSemesterFee] = useState<number>(200);
     const [currency, setCurrency] = useState('GHS');
@@ -56,7 +68,13 @@ function StudentDashboardContent() {
 
     // 2. Listen to "Enrolled" Classes (Transactions table, but now just tracks list)
     useEffect(() => {
-        if (!user || profile?.role !== 'student') return;
+        if (!user) return;
+
+        // If not student, stop loading (redirection will happen in other effect)
+        if (profile?.role && profile.role !== 'student') {
+            setLoading(false);
+            return;
+        }
 
         const paymentsRef = collection(db, 'transactions');
         // We still use 'transactions' to track "My Classes", looking for amount 0 or 'subscription_access'

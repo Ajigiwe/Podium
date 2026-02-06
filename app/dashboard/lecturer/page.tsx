@@ -281,7 +281,6 @@ export default function LecturerDashboard() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {sessions.map((session) => {
-                            const priceInCedis = session.price / 100;
 
                             return (
                                 <div key={session.id} className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
@@ -309,10 +308,6 @@ export default function LecturerDashboard() {
                                         <span className="flex items-center gap-1">
                                             <Video className="w-4 h-4" />
                                             Video Class
-                                        </span>
-                                        <span>•</span>
-                                        <span className={`font-medium ${session.isFree ? 'text-green-600 dark:text-green-400' : ''}`}>
-                                            {session.isFree ? 'Free' : `GH₵ ${priceInCedis.toFixed(2)}`}
                                         </span>
                                     </div>
 
