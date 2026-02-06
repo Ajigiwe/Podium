@@ -456,7 +456,7 @@ export default function LandingPage() {
               <span className="text-lg font-bold text-gray-900 dark:text-white">Podium</span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              © 2024 Podium. Made for Ghana.
+              © 2025 Podium. Made by Emmanuel Ajigiwe Atio.
             </p>
           </div>
         </div>
