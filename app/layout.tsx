@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ClassroomProvider } from "@/contexts/ClassroomContext";
+import { AlertProvider } from "@/contexts/AlertContext";
 import GlobalClassroom from "@/components/GlobalClassroom";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,12 +28,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <ClassroomProvider>
-              {children}
-              <GlobalClassroom />
-            </ClassroomProvider>
-          </AuthProvider>
+          <AlertProvider>
+            <AuthProvider>
+              <ClassroomProvider>
+                {children}
+                <GlobalClassroom />
+              </ClassroomProvider>
+            </AuthProvider>
+          </AlertProvider>
         </ThemeProvider>
       </body>
     </html>

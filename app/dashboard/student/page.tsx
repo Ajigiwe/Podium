@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
 import { useAuth } from '@/contexts/AuthContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { db } from '@/lib/firebase/config';
 import { collection, query, where, onSnapshot, orderBy, doc, getDoc, updateDoc, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { Session, Transaction, AttendanceLog, SystemSettings } from '@/lib/firebase/types';
@@ -16,6 +17,7 @@ function StudentDashboardContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, profile } = useAuth();
+    const { showAlert, showConfirm } = useAlert();
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [payments, setPayments] = useState<Transaction[]>([]); // "Enrolled" classes
@@ -37,6 +39,7 @@ function StudentDashboardContent() {
     // Subscription State
     const [semesterFee, setSemesterFee] = useState<number>(200);
     const [currency, setCurrency] = useState('GHS');
+    const [isPayToUse, setIsPayToUse] = useState<boolean>(true); // Default to true
     const [initializingSub, setInitializingSub] = useState(false);
 
     // Check for success param from redirect
@@ -58,6 +61,7 @@ function StudentDashboardContent() {
                     const data = docSnap.data() as SystemSettings;
                     setSemesterFee(data.semesterFee);
                     setCurrency(data.currency);
+                    setIsPayToUse(data.isPayToUse !== undefined ? data.isPayToUse : true);
                 }
             } catch (error) {
                 console.error("Error fetching settings:", error);
@@ -139,11 +143,11 @@ function StudentDashboardContent() {
             if (url) {
                 window.location.href = url;
             } else {
-                alert("Failed to initialize payment. Please try again.");
+                showAlert("Failed to initialize payment. Please try again.", "error");
             }
         } catch (error) {
             console.error("Subscription error:", error);
-            alert("An error occurred.");
+            showAlert("An error occurred.", "error");
         } finally {
             setInitializingSub(false);
         }
@@ -158,8 +162,8 @@ function StudentDashboardContent() {
         }
 
         // BLOCKER: Check Subscription
-        if (profile?.subscriptionStatus !== 'active') {
-            alert("You must activate your semester subscription to join classes.");
+        if (isPayToUse && profile?.subscriptionStatus !== 'active') {
+            showAlert("You must activate your semester subscription to join classes.", "warning");
             return;
         }
 
@@ -191,7 +195,7 @@ function StudentDashboardContent() {
                     if (matchingSession) {
                         sessionId = matchingSession.id;
                     } else {
-                        alert('Class not found. Please check the meeting code.');
+                        showAlert('Class not found. Please check the meeting code.', "error");
                         setJoining(false);
                         return;
                     }
@@ -207,12 +211,12 @@ function StudentDashboardContent() {
             const sessionSnap = await getDoc(sessionRef);
 
             if (!sessionSnap.exists()) {
-                alert("Class not found.");
+                showAlert("Class not found.", "error");
                 return;
             }
 
             // === ENROLLMENT LOGIC (Simplified) ===
-            // Since subscription is active, we just add them to "My Classes" (transactions) if not already there
+            // Since subscription is active (or bypassed), we just add them to "My Classes" (transactions) if not already there
             const alreadyEnrolled = payments.some(p => p.sessionId === sessionId);
             if (!alreadyEnrolled) {
                 try {
@@ -254,7 +258,7 @@ function StudentDashboardContent() {
 
         } catch (err) {
             console.error(err);
-            alert("Invalid link or session");
+            showAlert("Invalid link or session", "error");
         } finally {
             setJoining(false);
         }
@@ -262,17 +266,18 @@ function StudentDashboardContent() {
 
     const handleRemoveClass = async (sessionId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!confirm('Remove this class from your dashboard?')) return;
-        try {
-            // Find transaction in local state (filtered) or DB
-            const q = query(collection(db, 'transactions'), where('userId', '==', user!.uid), where('sessionId', '==', sessionId));
-            const snap = await getDocs(q);
-            snap.forEach(async (d) => {
-                await updateDoc(d.ref, { isHidden: true });
-            });
-        } catch (error) {
-            console.error('Error removing class:', error);
-        }
+        showConfirm('Remove this class from your dashboard?', async () => {
+            try {
+                // Find transaction in local state (filtered) or DB
+                const q = query(collection(db, 'transactions'), where('userId', '==', user!.uid), where('sessionId', '==', sessionId));
+                const snap = await getDocs(q);
+                snap.forEach(async (d) => {
+                    await updateDoc(d.ref, { isHidden: true });
+                });
+            } catch (error) {
+                console.error('Error removing class:', error);
+            }
+        });
     };
 
     // Use local helper for history logic (same as before, omitted detail for brevity but keeping implementation)
@@ -299,13 +304,14 @@ function StudentDashboardContent() {
     };
 
     const handleDeleteHistory = async (id: string) => {
-        if (!confirm('Remove record?')) return;
-        try {
-            await deleteDoc(doc(db, 'attendance_logs', id));
-            setHistoryData(prev => prev.filter(item => item.id !== id));
-        } catch (e) {
-            console.error(e);
-        }
+        showConfirm('Remove record?', async () => {
+            try {
+                await deleteDoc(doc(db, 'attendance_logs', id));
+                setHistoryData(prev => prev.filter(item => item.id !== id));
+            } catch (e) {
+                console.error(e);
+            }
+        });
     };
 
 
@@ -320,6 +326,7 @@ function StudentDashboardContent() {
     }
 
     const isSubscribed = profile?.subscriptionStatus === 'active';
+    const hasAccess = !isPayToUse || isSubscribed;
 
     return (
         <div className="space-y-8 max-w-7xl mx-auto">
@@ -330,13 +337,20 @@ function StudentDashboardContent() {
                         Welcome back, {profile?.fullName?.split(' ')[0]}
                     </h1>
                     <div className="flex items-center gap-2 mt-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${isSubscribed
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                            }`}>
-                            {isSubscribed ? <CheckCircle className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                            {isSubscribed ? 'Semester Active' : 'Subscription Required'}
-                        </span>
+                        {isPayToUse ? (
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${isSubscribed
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                }`}>
+                                {isSubscribed ? <CheckCircle className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                {isSubscribed ? 'Semester Active' : 'Subscription Required'}
+                            </span>
+                        ) : (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                <CheckCircle className="w-3 h-3" />
+                                Free Access Mode
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -349,8 +363,8 @@ function StudentDashboardContent() {
                 </button>
             </div>
 
-            {/* SUBSCRIPTION BANNER (Blocked State) */}
-            {!isSubscribed && (
+            {/* SUBSCRIPTION BANNER (Blocked State, Only if PayToUse applied AND not subscribed) */}
+            {!hasAccess && (
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                         <CreditCard className="w-64 h-64" />
@@ -386,8 +400,8 @@ function StudentDashboardContent() {
                 </div>
             )}
 
-            {/* JOIN CLASS (Only visible if subscribed) */}
-            {isSubscribed && (
+            {/* JOIN CLASS (Only visible if has access) */}
+            {hasAccess && (
                 <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-xl shadow-sm transition-all">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Join a Class</h2>
                     <form onSubmit={handleJoinByLink} className="flex flex-col sm:flex-row gap-3">
@@ -418,7 +432,7 @@ function StudentDashboardContent() {
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Your Recent Classes</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {sessions.map((session) => (
-                            <div key={session.id} className={`group bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors relative ${!isSubscribed ? 'opacity-75 grayscale-[0.5]' : ''}`}>
+                            <div key={session.id} className={`group bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors relative ${!hasAccess ? 'opacity-75 grayscale-[0.5]' : ''}`}>
                                 <button
                                     onClick={(e) => handleRemoveClass(session.id, e)}
                                     className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
@@ -444,8 +458,8 @@ function StudentDashboardContent() {
                                 <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
                                     <button
                                         onClick={() => {
-                                            if (!isSubscribed) {
-                                                alert("Please activate your subscription first.");
+                                            if (!hasAccess) {
+                                                showAlert("Please activate your subscription first.", "warning");
                                                 return;
                                             }
                                             router.push(`/classroom/${session.id}`);
@@ -453,7 +467,7 @@ function StudentDashboardContent() {
                                         className={`w-full py-2.5 rounded-lg font-semibold transition-colors ${session.isActive
                                             ? 'bg-red-600 text-white hover:bg-red-700'
                                             : 'bg-blue-600 text-white hover:bg-blue-700'
-                                            } ${!isSubscribed ? 'cursor-not-allowed opacity-50' : ''}`}
+                                            } ${!hasAccess ? 'cursor-not-allowed opacity-50' : ''}`}
                                     >
                                         {session.isActive ? 'Join Live Class' : 'Enter Classroom'}
                                     </button>

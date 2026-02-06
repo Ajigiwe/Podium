@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { db } from '@/lib/firebase/config';
 import {
     collection,
@@ -27,6 +28,7 @@ import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
 export default function LecturerDashboard() {
     const router = useRouter();
     const { user, profile, loading: authLoading } = useAuth();
+    const { showAlert, showConfirm } = useAlert();
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -35,6 +37,9 @@ export default function LecturerDashboard() {
 
     // Form state
     const [title, setTitle] = useState('');
+    const [lecturerName, setLecturerName] = useState('');
+    const [program, setProgram] = useState('');
+    const [course, setCourse] = useState('');
     // Price state removed
 
 
@@ -44,6 +49,11 @@ export default function LecturerDashboard() {
 
     useEffect(() => {
         if (authLoading) return;
+
+        if (user && profile) {
+            // Autofill lecturer name if available
+            setLecturerName(profile.fullName || '');
+        }
 
         if (!user || profile?.role !== 'lecturer') {
             router.push('/auth/login');
@@ -76,7 +86,7 @@ export default function LecturerDashboard() {
             console.error("Error fetching sessions:", error);
             setLoading(false);
             if (error.code === 'permission-denied') {
-                alert("Error: You do not have permission to view these sessions.");
+                showAlert("Error: You do not have permission to view these sessions.", "error");
             }
         });
 
@@ -99,6 +109,9 @@ export default function LecturerDashboard() {
                 currency: 'GHS',
                 isFree: true, // Always free individually, covered by subscription
                 meetingCode: '', // Placeholder, will update
+                lecturerName,
+                program,
+                course,
                 createdAt: Timestamp.now(),
             });
 
@@ -108,11 +121,15 @@ export default function LecturerDashboard() {
 
             // Reset form
             setTitle('');
+            setProgram('');
+            setCourse('');
+            // Lecturer name persists or resets to profile default
+            if (profile?.fullName) setLecturerName(profile.fullName);
             // setPrice/setIsFree removed
             setShowCreateModal(false);
         } catch (error) {
             console.error('Error creating session:', error);
-            alert('Failed to create session');
+            showAlert('Failed to create session', "error");
         }
     };
 
@@ -129,26 +146,30 @@ export default function LecturerDashboard() {
 
 
     const handleDeleteSession = async (sessionId: string) => {
-        if (!confirm('Are you sure you want to delete this session?')) return;
+        showConfirm('Are you sure you want to delete this session?', async () => {
+            console.log('Attempting to delete session:', sessionId);
+            const sessionToDelete = sessions.find(s => s.id === sessionId);
+            console.log('Session data:', sessionToDelete);
+            console.log('Current user:', user?.uid);
 
-        console.log('Attempting to delete session:', sessionId);
-        const sessionToDelete = sessions.find(s => s.id === sessionId);
-        console.log('Session data:', sessionToDelete);
-        console.log('Current user:', user?.uid);
+            if (sessionToDelete?.lecturerId !== user?.uid) {
+                console.error('Mismatch in lecturerId:', sessionToDelete?.lecturerId, 'vs', user?.uid);
+                showAlert('Error: You do not appear to be the owner of this session.', "error");
+                return;
+            }
 
-        if (sessionToDelete?.lecturerId !== user?.uid) {
-            console.error('Mismatch in lecturerId:', sessionToDelete?.lecturerId, 'vs', user?.uid);
-            alert('Error: You do not appear to be the owner of this session.');
-            return;
-        }
-
-        try {
-            await deleteDoc(doc(db, 'sessions', sessionId));
-            console.log('Session deleted successfully');
-        } catch (error: any) {
-            console.error('Error deleting session:', error);
-            alert(`Failed to delete session: ${error.message} (Code: ${error.code})`);
-        }
+            try {
+                // Soft delete: Update isDeleted flag instead of removing document
+                await updateDoc(doc(db, 'sessions', sessionId), {
+                    isDeleted: true,
+                    isActive: false // Ensure it's not live
+                });
+                console.log('Session soft-deleted successfully');
+            } catch (error: any) {
+                console.error('Error deleting session:', error);
+                showAlert(`Failed to delete session: ${error.message} (Code: ${error.code})`, "error");
+            }
+        }, 'Delete Session');
     };
 
     const handleDownloadAttendance = async (sessionId: string, title: string) => {
@@ -164,7 +185,7 @@ export default function LecturerDashboard() {
             const logs = snapshot.docs.map(doc => doc.data() as AttendanceLog);
 
             if (logs.length === 0) {
-                alert("No attendance records found for this class.");
+                showAlert("No attendance records found for this class.", "info");
                 return;
             }
 
@@ -192,7 +213,7 @@ export default function LecturerDashboard() {
             document.body.removeChild(link);
         } catch (error) {
             console.error("Error downloading attendance:", error);
-            alert("Failed to download attendance.");
+            showAlert("Failed to download attendance.", "error");
         }
     };
 
@@ -280,7 +301,7 @@ export default function LecturerDashboard() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {sessions.map((session) => {
+                        {sessions.filter(s => !s.isDeleted).map((session) => {
 
                             return (
                                 <div key={session.id} className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
@@ -388,6 +409,43 @@ export default function LecturerDashboard() {
                                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                         placeholder="e.g. Advanced Mathematics"
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lecturer Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={lecturerName}
+                                        onChange={(e) => setLecturerName(e.target.value)}
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                        placeholder="Full Name"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Program</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={program}
+                                            onChange={(e) => setProgram(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                            placeholder="e.g. Computer Science"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Course</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={course}
+                                            onChange={(e) => setCourse(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                            placeholder="e.g. CS101"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Price and IsFree removed as per subscription model */}

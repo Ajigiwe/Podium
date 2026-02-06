@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Session } from '@/lib/firebase/types';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useClassroom } from '@/contexts/ClassroomContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { Users, MicOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { JitsiParticipant } from '@/contexts/ClassroomContext';
@@ -31,6 +32,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         kickParticipant,
         askToUnmute,
     } = useClassroom();
+    const { showConfirm } = useAlert();
 
     const [showParticipantsModal, setShowParticipantsModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
@@ -386,9 +388,9 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                                 </button>
                                                 <button
                                                     onClick={() => {
-                                                        if (confirm(`Remove ${p.displayName} from the class?`)) {
+                                                        showConfirm(`Remove ${p.displayName} from the class?`, () => {
                                                             kickParticipant(p.participantId);
-                                                        }
+                                                        }, 'Remove Participant');
                                                     }}
                                                     className="p-1.5 sm:p-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                                                     title="Remove from Class"

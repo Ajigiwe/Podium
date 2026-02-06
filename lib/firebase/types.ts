@@ -23,6 +23,7 @@ export interface SystemSettings {
     semesterFee: number; // Fee in GHS
     currency: string;
     durationMonths: number;
+    isPayToUse?: boolean; // Toggle for "Pay before use" feature
     updatedAt: Timestamp;
 }
 
@@ -37,6 +38,10 @@ export interface Session {
     price: number; // Amount in pesewas (GH₵20 = 2000 pesewas)
     currency: string; // "GHS"
     isFree: boolean;
+    lecturerName?: string; // Name of the lecturer teaching the class
+    program?: string; // Program/Department (e.g. Computer Science)
+    course?: string; // Course Name/Code (e.g. Data Structures)
+    isDeleted?: boolean; // Soft delete flag
     createdAt: Timestamp;
 }
 

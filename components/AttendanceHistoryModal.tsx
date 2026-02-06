@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { AttendanceLog } from '@/lib/firebase/types';
 import { X, History, Download } from 'lucide-react';
 
@@ -79,6 +79,35 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
 
     const handleDownloadAttendance = async (sessionId: string, title: string) => {
         try {
+            // 1. Fetch Session Details (to get Lecturer Name, Program, Course)
+            const sessionRef = doc(db, 'sessions', sessionId);
+            const sessionSnap = await getDoc(sessionRef);
+
+            let lecturerName = 'N/A';
+            let program = 'N/A';
+            let course = 'N/A';
+
+            if (sessionSnap.exists()) {
+                const data = sessionSnap.data();
+                lecturerName = data.lecturerName || 'N/A';
+                program = data.program || 'N/A';
+                course = data.course || 'N/A';
+            } else {
+                // Fallback for hard-deleted sessions: Fetch Lecturer Name from Profile
+                try {
+                    const profileRef = doc(db, 'profiles', userId);
+                    const profileSnap = await getDoc(profileRef);
+                    if (profileSnap.exists()) {
+                        lecturerName = profileSnap.data().fullName || 'N/A';
+                    }
+                } catch (err) {
+                    console.error("Error fetching profile fallback:", err);
+                }
+                program = 'N/A (Class Deleted)';
+                course = 'N/A (Class Deleted)';
+            }
+
+            // 2. Fetch Logs
             const logsRef = collection(db, 'attendance_logs');
             const q = query(
                 logsRef,
@@ -94,10 +123,23 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                 return;
             }
 
-            // Generate CSV
-            const headers = ['Name', 'Index Number', 'Joined At'];
-            const csvRows = [headers.join(',')];
+            // 3. Form CSV Content
+            const csvRows = [];
 
+            // Header Section
+            csvRows.push(['Attendance Report']);
+            csvRows.push([`Class Title,${title}`]);
+            csvRows.push([`Lecturer Name,${lecturerName}`]);
+            csvRows.push([`Program,${program}`]);
+            csvRows.push([`Course,${course}`]);
+            csvRows.push([`Date Generated,${new Date().toLocaleString()}`]);
+            csvRows.push([]); // Empty line
+
+            // Table Header
+            const headers = ['Student Name', 'Index Number', 'Joined At'];
+            csvRows.push([headers.join(',')]);
+
+            // Table Data
             logs.forEach(log => {
                 const date = log.joinedAt?.toDate ? log.joinedAt.toDate().toLocaleString() : 'N/A';
                 // Escape quotes in name
@@ -121,6 +163,14 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
             alert("Failed to download attendance.");
         }
     };
+
+    // RESTARTING PLAN: Update imports first, then function.
+    // actually, I'll just use the existing `getDocs` mechanism to fetch the session by ID if I don't want to touch imports, BUT `where('__name__', ...)` works.
+    // However, fetching extra data is key.
+
+    // Let's try to update imports AND the function in one go if they are close? No, they are far apart.
+    // I will use `replace_file_content` for imports first.
+
 
     if (!isOpen) return null;
 

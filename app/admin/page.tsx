@@ -12,22 +12,30 @@ import {
     orderBy,
     query
 } from 'firebase/firestore';
-import { SystemSettings, UserProfile } from '@/lib/firebase/types';
-import { Settings, Save, AlertCircle, Users, Search, Shield, GraduationCap, User } from 'lucide-react';
+import { SystemSettings, UserProfile, AttendanceLog } from '@/lib/firebase/types';
+import { ArrowUpDown, ArrowUp, ArrowDown, Settings, Save, AlertCircle, Users, Search, Shield, GraduationCap, User } from 'lucide-react';
+import StudentHistoryModal from './components/StudentHistoryModal';
 
 export default function AdminPage() {
     const [activeTab, setActiveTab] = useState<'settings' | 'users'>('settings');
 
     // Settings State
     const [fee, setFee] = useState<number>(200);
+    const [isPayToUse, setIsPayToUse] = useState<boolean>(true); // Default to true
     const [loadingSettings, setLoadingSettings] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     // Users State
-    const [users, setUsers] = useState<UserProfile[]>([]);
+    const [users, setUsers] = useState<(UserProfile & { classCount?: number })[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Sorting State
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+    // History Modal State
+    const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string } | null>(null);
 
     // Fetch Settings
     useEffect(() => {
@@ -39,6 +47,8 @@ export default function AdminPage() {
                 if (docSnap.exists()) {
                     const data = docSnap.data() as SystemSettings;
                     setFee(data.semesterFee);
+                    // If isPayToUse is undefined, assume true (legacy)
+                    setIsPayToUse(data.isPayToUse !== undefined ? data.isPayToUse : true);
                 } else {
                     // Create default if not exists
                     await setDoc(docRef, {
@@ -46,6 +56,7 @@ export default function AdminPage() {
                         semesterFee: 200,
                         currency: 'GHS',
                         durationMonths: 4,
+                        isPayToUse: true,
                         updatedAt: serverTimestamp()
                     });
                 }
@@ -63,21 +74,53 @@ export default function AdminPage() {
     // Fetch Users when tab changes
     useEffect(() => {
         if (activeTab === 'users' && users.length === 0) {
-            const fetchUsers = async () => {
+            const fetchUsersAndLogs = async () => {
                 setLoadingUsers(true);
                 try {
+                    // 1. Fetch Users
                     const usersRef = collection(db, 'profiles');
                     const q = query(usersRef, orderBy('createdAt', 'desc'));
-                    const snapshot = await getDocs(q);
-                    const fetchedUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
-                    setUsers(fetchedUsers);
+                    const userSnapshot = await getDocs(q);
+                    const fetchedUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+
+                    // 2. Fetch All Attendance Logs (Aggregate Count)
+                    // Note: In a large app, we would use a counter trigger, but for this scale, fetching logs is okay
+                    // We only need logs to count for each student.
+                    // Doing client-side aggregation for now.
+                    const logsRef = collection(db, 'attendance_logs');
+                    const logsSnapshot = await getDocs(logsRef);
+                    const logs = logsSnapshot.docs.map(doc => doc.data() as AttendanceLog);
+
+                    // Map studentId -> Set of sessionIds (to count unique classes)
+                    const studentClassCounts: Record<string, Set<string>> = {};
+
+                    logs.forEach(log => {
+                        if (log.userId) {
+                            if (!studentClassCounts[log.userId]) {
+                                studentClassCounts[log.userId] = new Set();
+                            }
+                            // Store sessionId to count distinct classes joined
+                            // If user joined same class multiple times, we usually just want to know how many distinct classes.
+                            // User asked: "number of classes a student has joined".
+                            // Usually implies distinct classes.
+                            studentClassCounts[log.userId].add(log.sessionId);
+                        }
+                    });
+
+                    // Merge counts into users
+                    const usersWithCounts = fetchedUsers.map(user => ({
+                        ...user,
+                        classCount: studentClassCounts[user.id]?.size || 0
+                    }));
+
+                    setUsers(usersWithCounts);
                 } catch (error) {
                     console.error('Error fetching users:', error);
                 } finally {
                     setLoadingUsers(false);
                 }
             };
-            fetchUsers();
+            fetchUsersAndLogs();
         }
     }, [activeTab, users.length]);
 
@@ -90,6 +133,7 @@ export default function AdminPage() {
             const docRef = doc(db, 'system_settings', 'subscription');
             await setDoc(docRef, {
                 semesterFee: Number(fee),
+                isPayToUse: isPayToUse,
                 updatedAt: serverTimestamp()
             }, { merge: true });
 
@@ -102,17 +146,52 @@ export default function AdminPage() {
         }
     };
 
-    // Filter Users
-    const filteredUsers = users.filter(user =>
-        user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    // Filter and Sort Users
+    const processedUsers = [...users]
+        .filter(user =>
+            user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => {
+            if (!sortConfig) return 0;
+
+            const { key, direction } = sortConfig;
+            let aValue: any = a[key as keyof typeof a];
+            let bValue: any = b[key as keyof typeof b];
+
+            // Handle nested or special cases
+            if (key === 'createdAt') {
+                aValue = a.createdAt?.seconds || 0;
+                bValue = b.createdAt?.seconds || 0;
+            }
+
+            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
 
     const stats = {
         total: users.length,
         students: users.filter(u => u.role === 'student').length,
         lecturers: users.filter(u => u.role === 'lecturer').length,
         admins: users.filter(u => u.role === 'admin').length
+    };
+
+    const SortIcon = ({ columnKey }: { columnKey: string }) => {
+        if (sortConfig?.key !== columnKey) return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
+        return sortConfig.direction === 'asc' ? (
+            <ArrowUp className="w-4 h-4 text-blue-600" />
+        ) : (
+            <ArrowDown className="w-4 h-4 text-blue-600" />
+        );
     };
 
     if (loadingSettings) return <div className="flex items-center justify-center h-64">Loading...</div>;
@@ -161,6 +240,25 @@ export default function AdminPage() {
 
                     <div className="p-6">
                         <form onSubmit={handleSave} className="space-y-6">
+                            {/* Pay-to-Use Toggle */}
+                            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div>
+                                    <h3 className="font-semibold text-gray-900 dark:text-white">Enable Pay-to-Use</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        If disabled, the system is in "Testing Mode" (Free for all students).
+                                    </p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isPayToUse}
+                                        onChange={(e) => setIsPayToUse(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Semester Fee (GHS)
@@ -254,22 +352,56 @@ export default function AdminPage() {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 dark:bg-gray-800/50">
                                     <tr>
-                                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-                                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Joined</th>
+                                        <th
+                                            className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                            onClick={() => handleSort('fullName')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                User
+                                                <SortIcon columnKey="fullName" />
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                            onClick={() => handleSort('role')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Role
+                                                <SortIcon columnKey="role" />
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                            onClick={() => handleSort('classCount')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Classes Joined
+                                                <SortIcon columnKey="classCount" />
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                            onClick={() => handleSort('createdAt')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                Joined At
+                                                <SortIcon columnKey="createdAt" />
+                                            </div>
+                                        </th>
+                                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                     {loadingUsers ? (
                                         <tr>
-                                            <td colSpan={4} className="p-8 text-center text-gray-500">Loading users...</td>
+                                            <td colSpan={5} className="p-8 text-center text-gray-500">Loading users...</td>
                                         </tr>
-                                    ) : filteredUsers.length === 0 ? (
+                                    ) : processedUsers.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="p-8 text-center text-gray-500">No users found.</td>
+                                            <td colSpan={5} className="p-8 text-center text-gray-500">No users found.</td>
                                         </tr>
                                     ) : (
-                                        filteredUsers.map((user) => (
+                                        processedUsers.map((user) => (
                                             <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-3">
@@ -297,8 +429,25 @@ export default function AdminPage() {
                                                         {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                                                     </span>
                                                 </td>
+                                                <td className="p-4">
+                                                    {user.role === 'student' ? (
+                                                        <span className="font-medium text-gray-900 dark:text-white">
+                                                            {user.classCount || 0}
+                                                        </span>
+                                                    ) : '-'}
+                                                </td>
                                                 <td className="p-4 text-sm text-gray-500">
                                                     {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                                                </td>
+                                                <td className="p-4">
+                                                    {user.role === 'student' && (
+                                                        <button
+                                                            onClick={() => setSelectedStudent({ id: user.id, name: user.fullName })}
+                                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                                                        >
+                                                            View History
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))
@@ -308,6 +457,15 @@ export default function AdminPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {selectedStudent && (
+                <StudentHistoryModal
+                    isOpen={!!selectedStudent}
+                    onClose={() => setSelectedStudent(null)}
+                    studentId={selectedStudent.id}
+                    studentName={selectedStudent.name}
+                />
             )}
         </div>
     );

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Room, RemoteParticipant, LocalParticipant, Participant, RoomEvent, Track } from 'livekit-client';
+import { useAlert } from '@/contexts/AlertContext';
 
 // Participant type for LiveKit
 export interface LiveKitParticipant {
@@ -70,6 +71,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [participants, setParticipants] = useState<LiveKitParticipant[]>([]);
     const [liveKitRoom, setLiveKitRoomState] = useState<Room | null>(null);
+    const { showAlert, showConfirm } = useAlert();
 
     const router = useRouter();
     const pathname = usePathname();
@@ -329,7 +331,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     liveKitRoom.localParticipant.setMicrophoneEnabled(false);
                     // Optional: mute video too if desired, usually just audio is forced
                     // liveKitRoom.localParticipant.setCameraEnabled(false);
-                    alert('You have been muted by the lecturer.');
+                    showAlert('You have been muted by the lecturer.', 'info');
                 }
 
                 if (data.type === 'mute_all_request') {
@@ -338,23 +340,23 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     if (userRole !== 'lecturer') {
                         console.log('Lecturer muted everyone');
                         liveKitRoom.localParticipant.setMicrophoneEnabled(false);
-                        alert('The lecturer has muted everyone.');
+                        showAlert('The lecturer has muted everyone.', 'info');
                     }
                 }
 
                 if (data.type === 'unmute_request' && data.targetId === liveKitRoom.localParticipant.sid) {
                     // Lecturer asked me to unmute
-                    const shouldUnmute = confirm('The lecturer is asking you to unmute your microphone. Allow?');
-                    if (shouldUnmute) {
+                    showConfirm('The lecturer is asking you to unmute your microphone. Allow?', () => {
                         liveKitRoom.localParticipant.setMicrophoneEnabled(true);
-                    }
+                    }, 'Unmute Request');
                 }
 
                 if (data.type === 'kick_request' && data.targetId === liveKitRoom.localParticipant.sid) {
                     // Lecturer kicked me
                     console.log('Lecturer kicked me out');
-                    alert('You have been removed from the class by the lecturer.');
-                    leaveClass();
+                    showAlert('You have been removed from the class by the lecturer.', 'warning').then(() => {
+                        leaveClass();
+                    });
                 }
 
             } catch (e) {

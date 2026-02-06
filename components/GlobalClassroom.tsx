@@ -18,6 +18,7 @@ import {
 import '@livekit/components-styles';
 import { Room, Track } from 'livekit-client';
 import { useClassroom } from '@/contexts/ClassroomContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { Maximize2, X } from 'lucide-react';
 import CustomControlBar from './CustomControlBar';
 import ReactionOverlay, { ReactionOverlayHandle } from './ReactionOverlay';
@@ -107,7 +108,7 @@ function InnerVideoLayout({
                             e.stopPropagation();
                             onToggleChat();
                         }}
-                        className="hidden md:flex w-10 h-10 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700 transition-colors -mr-2"
+                        className="flex w-10 h-10 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700 transition-colors -mr-2"
                         aria-label="Close Chat"
                     >
                         <X className="w-5 h-5" />
@@ -149,7 +150,7 @@ function VideoLayout({
             { source: Track.Source.ScreenShare, withPlaceholder: false },
         ],
         { onlySubscribed: false }
-    ).filter(track => track.participant !== undefined);
+    ).filter(track => track.participant !== undefined && track.participant.sid !== undefined);
 
     return (
         <LayoutContextProvider>
@@ -184,6 +185,7 @@ export default function GlobalClassroom() {
         toggleChat,
         isChatOpen,
     } = useClassroom();
+    const { showAlert } = useAlert();
 
     const [mounted, setMounted] = useState(false);
     const [token, setToken] = useState<string | null>(null);
@@ -416,7 +418,7 @@ export default function GlobalClassroom() {
 
         // Check compatibility
         if (!('documentPictureInPicture' in window)) {
-            alert('Picture-in-Picture API is not supported in this browser.');
+            showAlert('Picture-in-Picture API is not supported in this browser.', 'warning');
             return;
         }
 

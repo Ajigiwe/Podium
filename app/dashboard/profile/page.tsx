@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { db, handleFirestoreError } from '@/lib/firebase/config';
 import { doc, updateDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
@@ -12,6 +13,7 @@ import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
 export default function ProfilePage() {
     const router = useRouter();
     const { user, profile, signOut } = useAuth();
+    const { showAlert } = useAlert();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -29,9 +31,7 @@ export default function ProfilePage() {
     // Statistics
     const [stats, setStats] = useState({
         totalSessions: 0,
-        totalRevenue: 0,
         totalStudents: 0,
-        totalSpent: 0,
         enrolledClasses: 0,
     });
 
@@ -67,33 +67,50 @@ export default function ProfilePage() {
                 const sessionsSnapshot = await getDocs(sessionsQuery);
                 const totalSessions = sessionsSnapshot.size;
 
-                // Get total revenue
+                // Calculate total unique students across all sessions
+                // We need to fetch attendance logs or transactions? 
+                // Previously it used transactions to count students. 
+                // If we remove transactions query, we lose accurate student count if it was based on payment.
+                // But the requirement is just to remove revenue.
+                // Let's keep logic to count students if possible, or simplify.
+                // The previous logic counted students who PAID (transactions).
+                // "Remove total revenue" - typically implies hiding the Money aspect.
+                // I should probably keep counting students but maybe fetch it differently or keep fetching transactions solely for student count?
+                // Actually, counting distinct students from transactions is still valid for "Total Students" (paid students).
+                // Let's re-read the code I'm replacing:
+                // lines 71-90 fetched transactions to calculate revenue AND count students.
+                // If I remove revenue, I still need student count?
+                // "remove total revenue from lecturer profile and student profile"
+                // It likely implicitly means remove the "Financials" aspect.
+                // I will keep the transaction fetching just to count students to ensure "Total Students" doesn't break, 
+                // OR I can switch to counting 'attendance_logs' for "Total Students" (students who attended).
+                // Given the variable name 'totalStudents', let's stick to the previous source (transactions) or switch to attendance.
+                // Attendance is safer for "Total Students" anyway as it reflects engagement. 
+                // However, modifying the metric definition might be out of scope.
+                // The safest bet is to keep fetching transactions to count students but NOT sum up revenue.
+
                 const transactionsQuery = query(
                     collection(db, 'transactions'),
                     where('status', '==', 'succeeded')
                 );
                 const transactionsSnapshot = await getDocs(transactionsQuery);
 
-                let totalRevenue = 0;
                 const studentIds = new Set<string>();
 
                 transactionsSnapshot.forEach((doc) => {
                     const data = doc.data();
-                    // Check if transaction is for lecturer's session
                     const sessionId = data.sessionId;
+                    // Check if transaction is for lecturer's session
                     const isLecturerSession = sessionsSnapshot.docs.some(s => s.id === sessionId);
 
                     if (isLecturerSession) {
-                        totalRevenue += data.amount || 0;
                         studentIds.add(data.userId);
                     }
                 });
 
                 setStats({
                     totalSessions,
-                    totalRevenue: totalRevenue / 100, // Convert from pesewas to cedis
                     totalStudents: studentIds.size,
-                    totalSpent: 0,
                     enrolledClasses: 0,
                 });
             } else {
@@ -105,20 +122,16 @@ export default function ProfilePage() {
                 );
                 const transactionsSnapshot = await getDocs(transactionsQuery);
 
-                let totalSpent = 0;
                 const enrolledSessionIds = new Set<string>();
 
                 transactionsSnapshot.forEach((doc) => {
                     const data = doc.data();
-                    totalSpent += data.amount || 0;
                     enrolledSessionIds.add(data.sessionId);
                 });
 
                 setStats({
                     totalSessions: 0,
-                    totalRevenue: 0,
                     totalStudents: 0,
-                    totalSpent: totalSpent / 100, // Convert from pesewas to cedis
                     enrolledClasses: enrolledSessionIds.size,
                 });
             }
@@ -127,10 +140,9 @@ export default function ProfilePage() {
             // Attempt to handle Firestore error and retry
             const handled = await handleFirestoreError(db, error);
             if (handled) {
-                // Retry once more after handling the error
+                // Retry logic (simplified)
                 try {
                     if (profile.role === 'lecturer') {
-                        // Get lecturer sessions
                         const sessionsQuery = query(
                             collection(db, 'sessions'),
                             where('lecturerId', '==', user.uid)
@@ -138,37 +150,28 @@ export default function ProfilePage() {
                         const sessionsSnapshot = await getDocs(sessionsQuery);
                         const totalSessions = sessionsSnapshot.size;
 
-                        // Get total revenue
                         const transactionsQuery = query(
                             collection(db, 'transactions'),
                             where('status', '==', 'succeeded')
                         );
                         const transactionsSnapshot = await getDocs(transactionsQuery);
 
-                        let totalRevenue = 0;
                         const studentIds = new Set<string>();
 
                         transactionsSnapshot.forEach((doc) => {
                             const data = doc.data();
-                            // Check if transaction is for lecturer's session
-                            const sessionId = data.sessionId;
-                            const isLecturerSession = sessionsSnapshot.docs.some(s => s.id === sessionId);
-
+                            const isLecturerSession = sessionsSnapshot.docs.some(s => s.id === data.sessionId);
                             if (isLecturerSession) {
-                                totalRevenue += data.amount || 0;
                                 studentIds.add(data.userId);
                             }
                         });
 
                         setStats({
                             totalSessions,
-                            totalRevenue: totalRevenue / 100, // Convert from pesewas to cedis
                             totalStudents: studentIds.size,
-                            totalSpent: 0,
                             enrolledClasses: 0,
                         });
                     } else {
-                        // Student statistics
                         const transactionsQuery = query(
                             collection(db, 'transactions'),
                             where('userId', '==', user.uid),
@@ -176,20 +179,16 @@ export default function ProfilePage() {
                         );
                         const transactionsSnapshot = await getDocs(transactionsQuery);
 
-                        let totalSpent = 0;
                         const enrolledSessionIds = new Set<string>();
 
                         transactionsSnapshot.forEach((doc) => {
                             const data = doc.data();
-                            totalSpent += data.amount || 0;
                             enrolledSessionIds.add(data.sessionId);
                         });
 
                         setStats({
                             totalSessions: 0,
-                            totalRevenue: 0,
                             totalStudents: 0,
-                            totalSpent: totalSpent / 100, // Convert from pesewas to cedis
                             enrolledClasses: enrolledSessionIds.size,
                         });
                     }
@@ -213,7 +212,7 @@ export default function ProfilePage() {
                 updatedAt: Timestamp.now(),
             });
 
-            alert('Profile updated successfully!');
+            showAlert('Profile updated successfully!', 'success');
         } catch (error) {
             console.error('Error updating profile:', error);
             // Attempt to handle Firestore error and retry
@@ -225,13 +224,13 @@ export default function ProfilePage() {
                         bio,
                         updatedAt: Timestamp.now(),
                     });
-                    alert('Profile updated successfully!');
+                    showAlert('Profile updated successfully!', 'success');
                 } catch (retryError) {
                     console.error('Retry failed to update profile:', retryError);
-                    alert('Failed to update profile after retry');
+                    showAlert('Failed to update profile after retry', 'error');
                 }
             } else {
-                alert('Failed to update profile');
+                showAlert('Failed to update profile', 'error');
             }
         } finally {
             setSaving(false);
@@ -268,7 +267,7 @@ export default function ProfilePage() {
             // Update password
             await updatePassword(user, newPassword);
 
-            alert('Password updated successfully!');
+            showAlert('Password updated successfully!', 'success');
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
@@ -356,18 +355,6 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         </div>
-
-                        <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-800">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
-                                    <CreditCard className="w-5 h-5 text-green-600 dark:text-green-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</p>
-                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">GHS {stats.totalRevenue.toFixed(2)}</p>
-                                </div>
-                            </div>
-                        </div>
                     </>
                 ) : (
                     <>
@@ -379,18 +366,6 @@ export default function ProfilePage() {
                                 <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">Enrolled Classes</p>
                                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.enrolledClasses}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-800">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
-                                    <CreditCard className="w-5 h-5 text-green-600 dark:text-green-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Spent</p>
-                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">GHS {stats.totalSpent.toFixed(2)}</p>
                                 </div>
                             </div>
                         </div>
