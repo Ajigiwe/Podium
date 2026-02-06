@@ -112,8 +112,8 @@ export default function LandingPage() {
 
             {/* Subheadline */}
             <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 mb-8 sm:mb-10 leading-relaxed max-w-xl">
-              Ghana's virtual classroom platform. Lecturers host live paid classes,
-              students join with <strong className="text-gray-900 dark:text-white">Mobile Money</strong>.
+              Ghana's virtual classroom platform. Lecturers host live classes,
+              students get unlimited access with a <strong className="text-gray-900 dark:text-white">Semester Pass</strong>.
               Real-time video, chat, and learning — all in your browser.
             </p>
 
@@ -180,7 +180,7 @@ export default function LandingPage() {
                   <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Prof. Mensah</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">GH₵ 20</span>
+                  <span className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">GH₵ 200</span>
                 </div>
               </div>
             </div>
@@ -209,13 +209,13 @@ export default function LandingPage() {
                   step: "01",
                   icon: <GraduationCap className="w-6 h-6" />,
                   title: "Create a class",
-                  description: "Set a title and price (or make it free). Takes 30 seconds.",
+                  description: "Set a title and go. No complex setup. Takes 30 seconds.",
                 },
                 {
                   step: "02",
                   icon: <Users className="w-6 h-6" />,
                   title: "Share the code",
-                  description: "Send your meeting code to students. They pay to get access.",
+                  description: "Send your meeting code to students. Everyone with a Semester Pass can join.",
                 },
                 {
                   step: "03",
@@ -252,20 +252,20 @@ export default function LandingPage() {
                 {
                   step: "01",
                   icon: <CreditCard className="w-6 h-6" />,
-                  title: "Enter code & pay",
-                  description: "Get the meeting code from your lecturer. Pay with Mobile Money.",
+                  title: "Get Semester Pass",
+                  description: "One simple payment covers all your classes for the entire semester.",
                 },
                 {
                   step: "02",
                   icon: <CheckCircle className="w-6 h-6" />,
                   title: "Instant access",
-                  description: "Payment confirms in seconds. Class appears on your dashboard.",
+                  description: "Payment confirms in seconds. Access all your enrolled courses immediately.",
                 },
                 {
                   step: "03",
                   icon: <Video className="w-6 h-6" />,
                   title: "Join & learn",
-                  description: "Click to join when class goes live. Ask questions via chat.",
+                  description: "Enter the code from your lecturer to join live classes instantly.",
                 }
               ].map((item, i) => (
                 <div key={`student-${i}`} className="relative">
@@ -321,9 +321,9 @@ export default function LandingPage() {
                     description: "Runs in any browser. No app downloads. Works on smartphones and computers."
                   },
                   {
-                    icon: <Shield className="w-5 h-5" />,
-                    title: "Only Paid Students Join",
-                    description: "Automatic access control. No more sharing links without payment."
+                    icon: <Users className="w-5 h-5" />,
+                    title: "Unlimited Access",
+                    description: "Students pay once and attend unlimited classes for the entire semester."
                   },
                   {
                     icon: <Clock className="w-5 h-5" />,
@@ -444,6 +444,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
       {/* Footer */}
       <footer className="py-8 sm:py-12 px-4 sm:px-6 border-t border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto">
@@ -460,6 +461,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div >
+    </div>
   );
 }
