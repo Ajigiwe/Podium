@@ -21,13 +21,20 @@ import {
   BookOpen,
   Wifi,
   MessageCircle,
-  Mail
+  Mail,
+  Hand,
+  PlusCircle,
+  Link as LinkIcon,
+  Radio,
+  Key,
+  Laptop
 } from 'lucide-react';
 
 export default function LandingPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  const [activeTab, setActiveTab] = useState<'student' | 'lecturer'>('student');
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -112,9 +119,7 @@ export default function LandingPage() {
 
             {/* Subheadline */}
             <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 mb-8 sm:mb-10 leading-relaxed max-w-xl">
-              Ghana's virtual classroom platform. Lecturers host live classes,
-              students get unlimited access with a <strong className="text-gray-900 dark:text-white">Semester Pass</strong>.
-              Real-time video, chat, and learning — all in your browser.
+              Ghana's high-performance virtual classroom. Powered by the <strong className="text-blue-600 dark:text-blue-400">LiveKit engine</strong> for low-latency video, interactive grids, and instant recordings.
             </p>
 
             {/* CTA Buttons */}
@@ -188,103 +193,125 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it Works */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gray-50 dark:bg-gray-900">
+      {/* How it Works / How to Use */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gray-50 dark:bg-gray-900 overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-4">
-              How it works
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-4">
+              Master Podium in minutes
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
-              Whether you're teaching or learning, get started in minutes.
+            <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto text-lg">
+              A simple guide to teaching and learning live.
             </p>
           </div>
 
-          {/* For Lecturers */}
-          <div className="mb-12">
-            <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-6 text-center">For Lecturers</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-              {[
-                {
-                  step: "01",
-                  icon: <GraduationCap className="w-6 h-6" />,
-                  title: "Create a class",
-                  description: "Set a title and go. No complex setup. Takes 30 seconds.",
-                },
-                {
-                  step: "02",
-                  icon: <Users className="w-6 h-6" />,
-                  title: "Share the code",
-                  description: "Send your meeting code to students. Everyone with a Semester Pass can join.",
-                },
-                {
-                  step: "03",
-                  icon: <Video className="w-6 h-6" />,
-                  title: "Go live",
-                  description: "Click 'Go Live' and teach. Video, chat, screen sharing included.",
-                }
-              ].map((item, i) => (
-                <div key={i} className="relative">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 sm:p-8 h-full border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
-                    <span className="text-5xl sm:text-6xl font-black text-gray-100 dark:text-gray-800 absolute top-4 right-4 sm:top-6 sm:right-6 select-none">
-                      {item.step}
-                    </span>
-                    <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4 sm:mb-6">
-                      {item.icon}
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
+          {/* New Tabbed Interface */}
+          <div className="flex flex-col items-center">
+            {/* Tab Selectors */}
+            <div className="flex p-1 bg-gray-200 dark:bg-gray-800 rounded-2xl mb-12 w-full max-w-md shadow-inner">
+              <button
+                onClick={() => setActiveTab('student')}
+                className={`flex-1 py-3 px-6 rounded-xl font-bold text-sm transition-all duration-200 ${activeTab === 'student'
+                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm transform scale-[1.02]'
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+              >
+                I am a Student
+              </button>
+              <button
+                onClick={() => setActiveTab('lecturer')}
+                className={`flex-1 py-3 px-6 rounded-xl font-bold text-sm transition-all duration-200 ${activeTab === 'lecturer'
+                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm transform scale-[1.02]'
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+              >
+                I am a Lecturer
+              </button>
             </div>
-          </div>
 
-          {/* For Students */}
-          <div>
-            <h3 className="text-lg font-bold text-green-600 dark:text-green-400 mb-6 text-center">For Students</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-              {[
-                {
-                  step: "01",
-                  icon: <CreditCard className="w-6 h-6" />,
-                  title: "Get Semester Pass",
-                  description: "One simple payment covers all your classes for the entire semester.",
-                },
-                {
-                  step: "02",
-                  icon: <CheckCircle className="w-6 h-6" />,
-                  title: "Instant access",
-                  description: "Payment confirms in seconds. Access all your enrolled courses immediately.",
-                },
-                {
-                  step: "03",
-                  icon: <Video className="w-6 h-6" />,
-                  title: "Join & learn",
-                  description: "Enter the code from your lecturer to join live classes instantly.",
-                }
-              ].map((item, i) => (
-                <div key={`student-${i}`} className="relative">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 sm:p-8 h-full border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700 transition-colors">
-                    <span className="text-5xl sm:text-6xl font-black text-gray-100 dark:text-gray-800 absolute top-4 right-4 sm:top-6 sm:right-6 select-none">
-                      {item.step}
-                    </span>
-                    <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 flex items-center justify-center mb-4 sm:mb-6">
-                      {item.icon}
+            {/* Tab Content */}
+            <div className="w-full">
+              {activeTab === 'student' ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {[
+                    {
+                      step: "01",
+                      icon: <CreditCard className="w-6 h-6" />,
+                      title: "Get Semester Pass",
+                      description: "One single MoMo payment covers all your classes for the entire semester.",
+                    },
+                    {
+                      step: "02",
+                      icon: <Key className="w-6 h-6" />,
+                      title: "Enter Class Code",
+                      description: "Paste the meeting code from your lecturer to jump into a live session.",
+                    },
+                    {
+                      step: "03",
+                      icon: <Laptop className="w-6 h-6" />,
+                      title: "Learn & Interact",
+                      description: "Enjoy high-quality video, raise your hand, and chat with your class.",
+                    }
+                  ].map((item, i) => (
+                    <div key={i} className="group relative">
+                      <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 h-full border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
+                        <span className="text-7xl font-black text-blue-600/5 dark:text-blue-400/5 absolute top-4 right-4 select-none">
+                          {item.step}
+                        </span>
+                        <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform">
+                          {item.icon}
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                          {item.title}
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {[
+                    {
+                      step: "01",
+                      icon: <PlusCircle className="w-6 h-6" />,
+                      title: "Schedule a class",
+                      description: "Set your title, choose if it's a paid class, and create it in seconds.",
+                    },
+                    {
+                      step: "02",
+                      icon: <LinkIcon className="w-6 h-6" />,
+                      title: "Invite Students",
+                      description: "Share the unique class link or code with your students via WhatsApp or Email.",
+                    },
+                    {
+                      step: "03",
+                      icon: <Radio className="w-6 h-6" />,
+                      title: "Go Live & Teach",
+                      description: "Start your video, share your screen, and engage with your students instantly.",
+                    }
+                  ].map((item, i) => (
+                    <div key={i} className="group relative">
+                      <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 h-full border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
+                        <span className="text-7xl font-black text-blue-600/5 dark:text-blue-400/5 absolute top-4 right-4 select-none">
+                          {item.step}
+                        </span>
+                        <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform">
+                          {item.icon}
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                          {item.title}
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -306,29 +333,29 @@ export default function LandingPage() {
               <div className="space-y-4 sm:space-y-6">
                 {[
                   {
-                    icon: <Smartphone className="w-5 h-5" />,
-                    title: "Mobile Money Built-in",
-                    description: "MTN MoMo, Vodafone Cash, AirtelTigo. Students pay the way they're used to."
+                    icon: <Video className="w-5 h-5" />,
+                    title: "Dynamic Grid Layouts",
+                    description: "Toggle between 2x2, 4x4, 5x5, or Spotlight mode. See everyone or focus on the speaker."
+                  },
+                  {
+                    icon: <Hand className="w-5 h-5" />,
+                    title: "Interactive Engagement",
+                    description: "Raise hands for attention, chat in real-time, and react during live sessions."
                   },
                   {
                     icon: <Zap className="w-5 h-5" />,
-                    title: "Instant Access",
-                    description: "Payment confirms in seconds. Students join your live class immediately."
+                    title: "Instant Recordings",
+                    description: "Every class is recorded automatically. Replay or download immediately after the session."
                   },
                   {
-                    icon: <Globe className="w-5 h-5" />,
-                    title: "Works Anywhere",
-                    description: "Runs in any browser. No app downloads. Works on smartphones and computers."
+                    icon: <Smartphone className="w-5 h-5" />,
+                    title: "Mobile Money Built-in",
+                    description: "MTN MoMo, Vodafone Cash, AirtelTigo. Pay for your Semester Pass in seconds."
                   },
                   {
-                    icon: <Users className="w-5 h-5" />,
-                    title: "Unlimited Access",
-                    description: "Students pay once and attend unlimited classes for the entire semester."
-                  },
-                  {
-                    icon: <Clock className="w-5 h-5" />,
-                    title: "Track Attendance",
-                    description: "See who joins, when they arrive, and download attendance sheets."
+                    icon: <Shield className="w-5 h-5" />,
+                    title: "Secure & Reliable",
+                    description: "Built for stability on any connection. No app downloads required."
                   }
                 ].map((feature, i) => (
                   <div key={i} className="flex gap-4">
