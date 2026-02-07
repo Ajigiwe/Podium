@@ -1,0 +1,28 @@
+# LiveKit Egress Configuration
+# Place this file in your project root or /etc/livekit/egress.yaml on VPS
+
+api_key: APIGzFR3hY8ZbFC
+api_secret: dni8frv6eNiRmTGPQfERUTTjsZRDRudth4yNtTxwJP2B
+ws_url: wss://livekit.podiumclass.online # e.g., wss://livekit.podiumclass.online
+
+# Redis Configuration (Same as your LiveKit server)
+redis:
+  address: localhost:6379 
+  username: ""
+  password: ""
+  db: 0
+
+# Health Check Port
+health_port: 8085
+
+# Inbound protocol (for valid requests from LiveKit server)
+insecure: false
+
+# Output Configuration
+outputs:
+  file:
+    # Where to save recordings inside the container
+    path_prefix: /var/recordings
+
+# CPU Cost (Optional tuning)
+# cpu_cost: 2.5

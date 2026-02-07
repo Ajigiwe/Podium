@@ -62,7 +62,7 @@ const ReactionOverlay = forwardRef<ReactionOverlayHandle, {}>((props, ref) => {
     }, [room, addReaction]);
 
     return (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-[50]">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-[9999]">
             <style>{`
                 @keyframes floatUp {
                     0% { transform: translateY(0) scale(0.5); opacity: 0; }

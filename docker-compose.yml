@@ -13,3 +13,16 @@ services:
       - NODE_ENV=production
     env_file:
       - ".env.local"
+    volumes:
+      - /var/recordings:/var/recordings
+
+  egress:
+    image: livekit/egress
+    container_name: livekit-egress
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./egress.yaml:/etc/livekit/egress.yaml
+      - /var/recordings:/var/recordings
+    environment:
+      - EGRESS_CONFIG_FILE=/etc/livekit/egress.yaml

@@ -22,35 +22,20 @@ let db: Firestore;
 let rtdb: Database;
 let storage: FirebaseStorage;
 
+// Initialize Firebase
+if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+} else {
+    app = getApps()[0];
+}
+
+auth = getAuth(app);
+db = getFirestore(app);
+rtdb = getDatabase(app);
+storage = getStorage(app);
+
 if (typeof window !== 'undefined') {
-    // Only initialize on client side
-    if (!getApps().length) {
-        app = initializeApp(firebaseConfig);
-    } else {
-        app = getApps()[0];
-    }
-
-    auth = getAuth(app);
-
-    // Initialize Firestore with persistence
-    // We try to initialize with persistence, but fallback to getFirestore if it fails or already initialized
-    try {
-        // Use require or direct import if possible, but keeping it simple for now
-        // Since we are in an ES module environment (Next.js), we can rely on the top-level imports
-        // created by the bundler.
-        // However, initializeFirestore helps setting cache.
-
-        // Note: We are removing the dynamic import complexity which was causing race conditions
-        // and just using the standard initialization.
-        db = getFirestore(app);
-    } catch (e) {
-        console.warn('Firestore initialization error:', e);
-        // Fallback
-        db = getFirestore(app);
-    }
-
-    rtdb = getDatabase(app);
-    storage = getStorage(app);
+    // Client-side only logic can be added here if needed
 }
 
 export { app, auth, db, rtdb, storage };

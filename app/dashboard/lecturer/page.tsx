@@ -24,6 +24,7 @@ import { getSessionRevenue } from '@/lib/payments/verifyPayment';
 import { generateMeetingCode } from '@/lib/meetingCode';
 import { Plus, X, Download, Trash2, Video, Copy, Check, History } from 'lucide-react';
 import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
+import { RecordingsDashboard } from '@/components/RecordingsDashboard';
 
 export default function LecturerDashboard() {
     const router = useRouter();
@@ -383,6 +384,11 @@ export default function LecturerDashboard() {
                         })}
                     </div>
                 )}
+            </div>
+
+            {/* Recordings Section */}
+            <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+                <RecordingsDashboard lecturerId={user?.uid || ''} />
             </div>
 
             {/* Create Session Modal */}

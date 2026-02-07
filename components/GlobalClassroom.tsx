@@ -14,14 +14,24 @@ import {
     Chat,
     useLayoutContext,
     ConnectionStateToast,
+    FocusLayout,
+    FocusLayoutContainer,
+    CarouselLayout,
+    TrackReferenceOrPlaceholder,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { Room, Track } from 'livekit-client';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
-import { Maximize2, X } from 'lucide-react';
+import { Maximize2, X, Minimize2, Pin, PinOff, Video, User } from 'lucide-react';
 import CustomControlBar from './CustomControlBar';
 import ReactionOverlay, { ReactionOverlayHandle } from './ReactionOverlay';
+import ClassroomChat from './ClassroomChat';
+import { useLayoutConfig } from '@/hooks/useLayoutConfig';
+import { useRaisedHands } from '@/hooks/useRaisedHands';
+import { LayoutSelector } from './LayoutSelector';
+import { RaisedHandsBanner } from './RaisedHandsBanner';
+import { RecordingControls } from './RecordingControls';
 
 
 // Inner component that can access the room context
@@ -37,6 +47,67 @@ function RoomConnector({ onRoomReady }: { onRoomReady: (room: Room) => void }) {
     return null;
 }
 
+// Wrapper for Tile to handle clicks while receiving props from GridLayout
+function TileWrapper({ track, participant, onTileClick, className, ...props }: any) {
+    // Check if camera is off/muted to show placeholder
+    // We check both the track mute status and the participant-level flag for robustness
+    const isCameraOff = track.source === Track.Source.Camera &&
+        (track.publication?.isMuted || !participant.isCameraEnabled);
+
+    return (
+        <div
+            className={`h-full relative group cursor-pointer min-h-[160px] sm:min-h-0 ${className || ''}`}
+            onClick={() => onTileClick(track)}
+        >
+            <ParticipantTile trackRef={track} {...props} />
+
+            {/* Explicit Placeholder for Camera Off */}
+            {isCameraOff && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 border border-gray-700 rounded-lg">
+                    <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-2">
+                        <User className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <span className="text-gray-300 font-medium text-sm">
+                        {participant.name || participant.identity || 'Participant'}
+                    </span>
+                </div>
+            )}
+
+            {/* Click Safe Overlay */}
+            <div className="absolute inset-0 z-10 opacity-0 hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto flex items-center justify-center bg-black/20">
+                <div className="bg-black/60 p-1.5 rounded-full text-white backdrop-blur-sm">
+                    <Maximize2 className="w-4 h-4" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Wrapper for Focus Layout to handle placeholders
+function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
+    const isCameraOff = trackRef.source === Track.Source.Camera &&
+        (trackRef.publication?.isMuted || !trackRef.participant.isCameraEnabled);
+
+    return (
+        <div className="relative w-full h-full group">
+            <FocusLayout trackRef={trackRef} onParticipantClick={onParticipantClick} {...props} />
+
+            {/* Explicit Placeholder for Camera Off in Focus Mode */}
+            {isCameraOff && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 border-2 border-dashed border-gray-800 rounded-xl m-4">
+                    <div className="w-32 h-32 bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-2xl ring-4 ring-white/5">
+                        <User className="w-16 h-16 text-gray-400" />
+                    </div>
+                    <span className="text-gray-200 font-bold text-2xl tracking-tight">
+                        {trackRef.participant.name || trackRef.participant.identity || 'Participant'}
+                    </span>
+                    <span className="text-gray-500 mt-2 text-sm uppercase tracking-widest font-semibold">Camera Off</span>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // Inner component to handle layout logic that needs LayoutContext
 function InnerVideoLayout({
     onTogglePiP,
@@ -46,20 +117,196 @@ function InnerVideoLayout({
     reactionRef,
     tracks,
     onToggleChat,
-    isChatOpen
+    isChatOpen,
+    layout,
+    config,
+    spotlightParticipant,
+    setSpotlightParticipant,
+    raisedHands,
+    clearAllHands,
+    lowerHand,
+    onToggleHand,
+    isHandRaised,
+    userRole,
+    setLayout,
+    unreadChatCount
+
 }: {
     onTogglePiP: () => void;
     onReaction: (emoji: string) => void;
     isPiPActive: boolean;
     onLeave: () => void;
     reactionRef: React.RefObject<ReactionOverlayHandle | null>;
-    tracks: any[];
+    tracks: TrackReferenceOrPlaceholder[];
     onToggleChat: () => void;
     isChatOpen: boolean;
+    layout: any;
+    config: any;
+    spotlightParticipant: string | null;
+    setSpotlightParticipant: (id: string | null) => void;
+    raisedHands: any[];
+    clearAllHands: () => void;
+    lowerHand: (id: string) => void;
+    onToggleHand: () => void;
+    isHandRaised: boolean;
+    userRole: string;
+    setLayout: (layout: any) => void;
+    unreadChatCount: number;
 }) {
     // We don't rely on layoutContext for basic chat toggle anymore
     // but we can still access it if needed for other things
     const layoutContext = useLayoutContext() as any;
+    const { sessionId, title, userId } = useClassroom();
+    console.log('DEBUG: InnerVideoLayout', { sessionId, userId, userRole });
+    const [focusTrack, setFocusTrack] = useState<TrackReferenceOrPlaceholder | null>(null);
+
+    // --- Pagination Logic ---
+    const sortedTracks = [...tracks].sort((a, b) => {
+        if (spotlightParticipant === a.participant.sid) return -1;
+        if (spotlightParticipant === b.participant.sid) return 1;
+        return 0;
+    });
+
+    const PAGE_SIZE = config.maxVisible; // Maximum tiles per page
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(sortedTracks.length / PAGE_SIZE);
+
+    // Sidebar Resize State
+    const [sidebarWidth, setSidebarWidth] = useState(320); // Default desktop width
+    const [sidebarHeight, setSidebarHeight] = useState(140); // Default mobile height
+    const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+    const sidebarResizeRef = useRef<{ startX: number, startY: number, startW: number, startH: number } | null>(null);
+
+    const startResizing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsResizingSidebar(true);
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        sidebarResizeRef.current = {
+            startX: clientX,
+            startY: clientY,
+            startW: sidebarWidth,
+            startH: sidebarHeight
+        };
+    }, [sidebarWidth, sidebarHeight]);
+
+    useEffect(() => {
+        const handleResizeMove = (e: MouseEvent | TouchEvent) => {
+            if (!isResizingSidebar || !sidebarResizeRef.current) return;
+
+            const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+            const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+            if (window.innerWidth >= 640) {
+                // Desktop: Resize Width (Dragging Left increases width)
+                // Handle is on the LEFT of the sidebar (which is on the right)
+                // So deltaX < 0 means increasing width
+                const deltaX = sidebarResizeRef.current.startX - clientX;
+                setSidebarWidth(Math.max(200, Math.min(600, sidebarResizeRef.current.startW + deltaX)));
+            } else {
+                // Mobile: Resize Height (Dragging Up increases height)
+                // Sidebar is at bottom (order-3), Handle is above it (order-2)
+                // Dragging UP (negative Y) increases height
+                const deltaY = sidebarResizeRef.current.startY - clientY;
+                setSidebarHeight(Math.max(100, Math.min(400, sidebarResizeRef.current.startH + deltaY)));
+            }
+        };
+
+        const handleResizeEnd = () => {
+            setIsResizingSidebar(false);
+            sidebarResizeRef.current = null;
+        };
+
+        if (isResizingSidebar) {
+            window.addEventListener('mousemove', handleResizeMove);
+            window.addEventListener('mouseup', handleResizeEnd);
+            window.addEventListener('touchmove', handleResizeMove);
+            window.addEventListener('touchend', handleResizeEnd);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleResizeMove);
+            window.removeEventListener('mouseup', handleResizeEnd);
+            window.removeEventListener('touchmove', handleResizeMove);
+            window.removeEventListener('touchend', handleResizeEnd);
+        };
+    }, [isResizingSidebar]);
+
+    // Reset to page 1 if tracks change significantly (optional, but good for UX)
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(totalPages);
+        }
+    }, [tracks.length, totalPages, currentPage]);
+
+    // Get current page tracks
+    const paginatedTracks = sortedTracks.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+    );
+
+    const handleNextPage = () => {
+        if (currentPage < totalPages) setCurrentPage(p => p + 1);
+    };
+
+    const handlePrevPage = () => {
+        if (currentPage > 1) setCurrentPage(p => p - 1);
+    };
+    // ------------------------
+
+    // Filter out the focus track from other tracks for the carousel
+    const carouselTracks = sortedTracks.filter(t => !focusTrack || (t.participant.sid !== focusTrack.participant.sid || t.source !== focusTrack.source));
+
+    const handleTileClick = (track: TrackReferenceOrPlaceholder) => {
+        if (!track || !track.participant) {
+            console.warn('Attempted to focus an invalid track:', track);
+            return;
+        }
+
+        if (focusTrack && focusTrack.participant?.sid === track.participant.sid && focusTrack.source === track.source) {
+            setFocusTrack(null); // Unfocus
+        } else {
+            setFocusTrack(track); // Focus
+        }
+    };
+
+    // If in PiP mode, provide a simplified, full-screen video layout
+    if (isPiPActive) {
+        return (
+            <div className="h-full w-full bg-black flex flex-col items-center justify-center overflow-hidden relative">
+                <ReactionOverlay ref={reactionRef} />
+                <div className="flex-1 w-full h-full relative">
+                    {focusTrack ? (
+                        <div className="absolute inset-0">
+                            <FocusLayout trackRef={focusTrack} />
+                        </div>
+                    ) : (
+                        <div className="absolute inset-0">
+                            <GridLayout tracks={tracks.slice(0, 1)}>
+                                <ParticipantTile />
+                            </GridLayout>
+                            {tracks.length > 1 && (
+                                <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur px-2 py-1 rounded text-xs text-white z-10">
+                                    + {tracks.length - 1} more participants
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+                {/* Add a tiny exit button for PiP window UX */}
+                <button
+                    onClick={onTogglePiP}
+                    className="absolute top-2 right-2 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white/70 hover:text-white transition-all z-50 ring-1 ring-white/10"
+                    title="Close PiP"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full bg-[#0a0a0a] relative">
@@ -71,16 +318,123 @@ function InnerVideoLayout({
                 }
             `}</style>
 
-            <div className="flex-1 relative overflow-hidden">
-                <ReactionOverlay ref={reactionRef} />
+            <div className="flex-1 relative overflow-hidden flex flex-col sm:flex-row">
 
-                <div className="absolute inset-0">
-                    {/* Use GridLayout for all tracks for stability */}
-                    <GridLayout tracks={tracks}>
-                        <ParticipantTile />
-                    </GridLayout>
+
+                <div className="flex-1 relative">
+                    <RaisedHandsBanner
+                        isLecturer={userRole === 'lecturer'}
+                        raisedHands={raisedHands}
+                        onClearAll={clearAllHands}
+                        onLowerHand={lowerHand}
+                    />
+                    {focusTrack ? (
+                        <div className="absolute inset-0 flex flex-col sm:flex-row bg-black z-50">
+                            {/* Resize Handle - Desktop (Vertical) / Mobile (Horizontal) */}
+                            <div
+                                onMouseDown={startResizing}
+                                onTouchStart={startResizing}
+                                className={`
+                                    z-[150] bg-gray-800 hover:bg-blue-500 transition-colors active:bg-blue-600
+                                    flex items-center justify-center
+                                    ${isResizingSidebar ? 'bg-blue-600' : ''}
+                                    order-2 sm:order-2
+                                    h-2 w-full cursor-row-resize sm:h-full sm:w-2 sm:cursor-col-resize
+                                `}
+                            >
+                                <div className="bg-gray-600 rounded-full w-12 h-1 sm:w-1 sm:h-8" />
+                            </div>
+
+                            {/* Mobile: Horizontal scroll on top (actually bottom order-3), Desktop: Vertical on right */}
+                            <div
+                                className="bg-gray-900/50 border-t sm:border-t-0 sm:border-l border-white/5 order-3 sm:order-3 overflow-x-auto sm:overflow-y-auto p-1 sm:p-2 transition-[height,width] duration-75 ease-out"
+                                style={{
+                                    width: typeof window !== 'undefined' && window.innerWidth >= 640 ? `${sidebarWidth}px` : '100%',
+                                    height: typeof window !== 'undefined' && window.innerWidth < 640 ? `${sidebarHeight}px` : '100%',
+                                }}
+                            >
+                                <div className="flex sm:flex-col gap-1 sm:gap-2 h-full">
+                                    {carouselTracks.map((t) => (
+                                        <TileWrapper
+                                            key={`${t.participant.sid}-${t.source}`}
+                                            track={t}
+                                            participant={t.participant}
+                                            onTileClick={handleTileClick}
+                                            className="w-40 sm:w-full aspect-video flex-shrink-0"
+                                        />
+                                    ))}
+                                    {carouselTracks.length === 0 && (
+                                        <div className="flex-1 flex items-center justify-center text-gray-500 text-xs italic p-4 text-center">
+                                            No other participants
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex-1 relative order-1 sm:order-1 h-full min-h-0">
+                                <FocusWrapper trackRef={focusTrack} onParticipantClick={() => setFocusTrack(null)} />
+                                {/* Unfocus Button Overlay */}
+                                <button
+                                    onClick={() => setFocusTrack(null)}
+                                    className="absolute top-4 left-4 z-[60] bg-black/60 text-white p-2.5 rounded-xl hover:bg-black/80 ring-1 ring-white/20 shadow-2xl backdrop-blur-md"
+                                    title="Exit Focus Mode"
+                                >
+                                    <Minimize2 className="w-5 h-5" />
+                                </button>
+
+                                <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10">
+                                    <p className="text-white text-xs font-medium">Focus Mode</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="absolute inset-0 grid-layout-wrapper">
+                            {/* Pagination Controls Overlay */}
+                            {totalPages > 1 && (
+                                <div className="absolute z-50 bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 backdrop-blur px-4 py-2 rounded-full border border-white/10">
+                                    <button
+                                        onClick={handlePrevPage}
+                                        disabled={currentPage === 1}
+                                        className="text-white disabled:opacity-30 hover:text-blue-400 transition-colors font-bold"
+                                    >
+                                        &larr; Prev
+                                    </button>
+                                    <span className="text-white text-sm font-medium">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={handleNextPage}
+                                        disabled={currentPage === totalPages}
+                                        className="text-white disabled:opacity-30 hover:text-blue-400 transition-colors font-bold"
+                                    >
+                                        Next &rarr;
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className={`grid gap-1 w-full h-full p-1 content-start overflow-y-auto pb-24 sm:pb-0`}
+                                style={{
+                                    gridTemplateColumns: `repeat(${config.columns}, minmax(0, 1fr))`,
+                                    gridAutoRows: typeof window !== 'undefined' && window.innerWidth < 768 ? 'minmax(160px, auto)' : '1fr',
+                                    gridTemplateRows: typeof window !== 'undefined' && window.innerWidth < 768 ? 'none' : `repeat(${config.rows}, minmax(0, 1fr))`,
+                                }}
+                            >
+                                {paginatedTracks.map((trackRef) => (
+                                    <TileWrapper
+                                        key={trackRef.participant.sid + '_' + trackRef.source}
+                                        track={trackRef}
+                                        participant={trackRef.participant}
+                                        onTileClick={handleTileClick}
+                                        className="w-full h-full bg-gray-900 rounded-lg overflow-hidden border border-gray-800/50 shadow-md"
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
+
+
 
             {/* Custom Controls */}
             <CustomControlBar
@@ -90,9 +444,12 @@ function InnerVideoLayout({
                 onLeave={onLeave}
                 onToggleChat={onToggleChat}
                 isChatOpen={isChatOpen}
+                onToggleHand={onToggleHand}
+                isHandRaised={isHandRaised}
+                unreadChatCount={unreadChatCount}
             />
 
-            {/* Chat Sidebar - Always mounted to persist messages, hidden via CSS */}
+            {/* Chat Sidebar - Persistent */}
             <div
                 className={`absolute left-4 right-4 sm:left-auto sm:right-4 top-20 bottom-24 sm:w-80 z-[100] rounded-xl overflow-hidden border border-gray-800 shadow-2xl bg-gray-900/95 backdrop-blur flex flex-col transition-all duration-300 ease-in-out ${isChatOpen
                     ? 'opacity-100 translate-x-0 pointer-events-auto'
@@ -101,7 +458,7 @@ function InnerVideoLayout({
             >
                 {/* Custom Header for Chat */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gray-900">
-                    <h3 className="text-sm font-bold text-white">Chat</h3>
+                    <h3 className="text-sm font-bold text-white">Class Chat</h3>
                     <button
                         type="button"
                         onClick={(e) => {
@@ -113,15 +470,24 @@ function InnerVideoLayout({
                     >
                         <X className="w-5 h-5" />
                     </button>
-                    {/* Fallback CSS for aggressive hiding */}
-
                 </div>
 
                 {/* Chat Component */}
-                <div className="flex-1 min-h-0">
-                    <Chat style={{ height: '100%' }} />
+                <div className="flex-1 min-h-0 bg-gray-900">
+                    {sessionId ? (
+                        <ClassroomChat sessionId={sessionId} />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                            Connecting to chat...
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {typeof window !== 'undefined' && createPortal(
+                <ReactionOverlay ref={reactionRef} />,
+                document.body
+            )}
         </div>
     );
 }
@@ -134,7 +500,11 @@ function VideoLayout({
     onLeave,
     reactionRef,
     onToggleChat,
-    isChatOpen
+    isChatOpen,
+    unreadChatCount,
+    userRole,
+    userId,
+    userName
 }: {
     onTogglePiP: () => void;
     onReaction: (emoji: string) => void;
@@ -143,14 +513,40 @@ function VideoLayout({
     reactionRef: React.RefObject<ReactionOverlayHandle | null>;
     onToggleChat: () => void;
     isChatOpen: boolean;
+    unreadChatCount: number;
+    userRole: string;
+    userId: string;
+    userName: string;
 }) {
+    const { layout, setLayout, config, spotlightParticipant, setSpotlightParticipant } = useLayoutConfig();
+    const { raisedHands, raiseHand, lowerHand, clearAllHands } = useRaisedHands();
+    const [isHandRaised, setIsHandRaised] = useState(false);
+
+    const onToggleHand = useCallback(() => {
+        if (isHandRaised) {
+            lowerHand(userId);
+        } else {
+            raiseHand(userId, userName);
+        }
+        setIsHandRaised(!isHandRaised);
+    }, [isHandRaised, lowerHand, raiseHand, userId, userName]);
+
     const tracks = useTracks(
         [
-            { source: Track.Source.Camera, withPlaceholder: false },
+            { source: Track.Source.Camera, withPlaceholder: true },
             { source: Track.Source.ScreenShare, withPlaceholder: false },
         ],
         { onlySubscribed: false }
     ).filter(track => track.participant !== undefined && track.participant.sid !== undefined);
+
+    // Sync hand status if cleared by lecturer
+    useEffect(() => {
+        if (raisedHands.length === 0 && isHandRaised) {
+            setIsHandRaised(false);
+        }
+    }, [raisedHands, isHandRaised]);
+
+    console.log('DEBUG: GlobalClassroom tracks:', tracks.length, tracks);
 
     return (
         <LayoutContextProvider>
@@ -163,6 +559,18 @@ function VideoLayout({
                 tracks={tracks}
                 onToggleChat={onToggleChat}
                 isChatOpen={isChatOpen}
+                unreadChatCount={unreadChatCount}
+                layout={layout}
+                config={config}
+                spotlightParticipant={spotlightParticipant}
+                setSpotlightParticipant={setSpotlightParticipant}
+                raisedHands={raisedHands}
+                clearAllHands={clearAllHands}
+                lowerHand={lowerHand}
+                onToggleHand={onToggleHand}
+                isHandRaised={isHandRaised}
+                userRole={userRole}
+                setLayout={setLayout}
             />
         </LayoutContextProvider>
     );
@@ -184,8 +592,9 @@ export default function GlobalClassroom() {
         setLiveKitRoom,
         toggleChat,
         isChatOpen,
+        unreadChatCount,
     } = useClassroom();
-    const { showAlert } = useAlert();
+    const { showAlert, customAlert } = useAlert();
 
     const [mounted, setMounted] = useState(false);
     const [token, setToken] = useState<string | null>(null);
@@ -206,7 +615,10 @@ export default function GlobalClassroom() {
     const [isPiPActive, setIsPiPActive] = useState(false);
 
     // Reaction Overlay Ref
+    // Reaction Overlay Ref
     const reactionRef = useRef<ReactionOverlayHandle>(null);
+
+
 
     // Get LiveKit server URL from environment
     const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || 'wss://your-project.livekit.cloud';
@@ -251,6 +663,9 @@ export default function GlobalClassroom() {
         }
     }, [isActive]);
 
+    // Ref to track if we're currently fetching to prevent double-firing
+    const isFetchingRef = useRef(false);
+
     // Fetch token when session becomes active
     useEffect(() => {
         if (!isActive || !sessionId || !userName || !userRole) {
@@ -258,11 +673,19 @@ export default function GlobalClassroom() {
             return;
         }
 
+        // If we already have a token for this session/user, don't refetch
+        // unless it's null. This prevents strict mode double-fetch.
+        if (token) return;
+
         const fetchToken = async () => {
+            if (isFetchingRef.current) return;
+            isFetchingRef.current = true;
+
             setIsConnecting(true);
             setTokenError(null);
 
             try {
+                console.log('Fetching LiveKit token for:', sessionId, userName);
                 const response = await fetch('/api/livekit/token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -281,17 +704,19 @@ export default function GlobalClassroom() {
                 }
 
                 const data = await response.json();
+                console.log('Token received');
                 setToken(data.token);
             } catch (error: any) {
                 console.error('Error fetching LiveKit token:', error);
                 setTokenError(error.message || 'Failed to connect to video service');
             } finally {
                 setIsConnecting(false);
+                isFetchingRef.current = false;
             }
         };
 
         fetchToken();
-    }, [isActive, sessionId, userName, userRole, userId]);
+    }, [isActive, sessionId, userName, userRole, userId, token]);
 
     // Dragging handlers - desktop only
     const handleMouseDown = (e: React.MouseEvent, type: 'drag' | 'resize') => {
@@ -547,20 +972,60 @@ export default function GlobalClassroom() {
         <LiveKitRoom
             serverUrl={liveKitUrl}
             token={token}
-            connect={true}
-            audio={userRole === 'lecturer'}
-            video={userRole === 'lecturer'}
+            connect={!!token && isActive} // Only connect if we have a token AND class is active
+            video={false} // Manage manually via Layout
+            audio={false} // Manage manually via Layout
+            onConnected={() => setIsConnecting(false)}
             onDisconnected={handleDisconnected}
-            data-lk-theme="default"
+            onMediaDeviceFailure={(e) => {
+                console.error('Media device failure:', e);
+
+                // e could be an Error object or a string depending on LiveKit version/implementation
+                const errorName = (e as any)?.name || '';
+                const errorMessage = (e as any)?.message || String(e || '');
+
+                const isPermissionError = errorName === 'NotAllowedError' ||
+                    errorMessage.includes('PermissionDenied') ||
+                    errorName === 'PermissionDeniedError';
+
+                if (isPermissionError) {
+                    customAlert({
+                        title: 'Camera/Mic Access Blocked',
+                        message: 'Podium needs access to your camera and microphone to let you participate. Please click the camera/lock icon in your browser address bar and select "Allow".',
+                        type: 'warning',
+                        confirmText: 'Try Again',
+                        cancelText: 'Join without Media',
+                        onConfirm: () => {
+                            window.location.reload();
+                        }
+                    });
+                } else {
+                    showAlert('Could not access camera or microphone. Please check your device connections.', 'error');
+                }
+            }}
+            onError={(e) => {
+                console.error('LiveKit error:', e);
+                // Don't show alert for interruptions/timeouts repeatedly
+                if (e.message.includes('Negotiation')) {
+                    console.warn('Negotiation error suppressed - transient network issue suspected');
+                } else {
+                    setTokenError(e.message);
+                }
+            }}
+            // Custom connection options for stability
             options={{
-                adaptiveStream: true,
-                dynacast: true,
                 publishDefaults: {
                     simulcast: true,
-                    videoCodec: 'vp8',
-                },
+                    videoSimulcastLayers: [
+                        { width: 640, height: 360, encoding: { maxBitrate: 500 * 1000, maxFramerate: 20 }, resolution: { width: 640, height: 360, frameRate: 20 } },
+                        { width: 320, height: 180, encoding: { maxBitrate: 150 * 1000, maxFramerate: 15 }, resolution: { width: 320, height: 180, frameRate: 15 } },
+                    ]
+                }
             }}
-            style={{ height: '100%', width: '100%' }}
+            connectOptions={{
+                autoSubscribe: true,
+            }}
+            className="w-full h-full"
         >
             <VideoLayout
                 onTogglePiP={handleTogglePiP}
@@ -570,17 +1035,86 @@ export default function GlobalClassroom() {
                 reactionRef={reactionRef}
                 onToggleChat={toggleChat}
                 isChatOpen={!!isChatOpen}
+                userRole={userRole || 'student'}
+                userId={userId || ''}
+                userName={userName || ''}
+                unreadChatCount={unreadChatCount}
             />
             <RoomConnector onRoomReady={handleRoomReady} />
             <RoomAudioRenderer />
         </LiveKitRoom>
     );
 
-    // If PiP is active, render into PiP Window
+    // If PiP is active, render into PiP Window AND show placeholder in main window
     if (isPiPActive && pipWindowRef.current) {
-        return createPortal(
-            LiveKitContent,
-            pipWindowRef.current.document.body
+        return (
+            <>
+                {createPortal(
+                    LiveKitContent,
+                    pipWindowRef.current.document.body
+                )}
+                {/* Main window placeholder - rendered in the mount point if possible, otherwise fixed */}
+                {mountNode && !isMini && !isFloating ? createPortal(
+                    <div className="absolute inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mb-6">
+                            <Video className="w-10 h-10 text-blue-500 animate-pulse" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Picture-in-Picture Active</h2>
+                        <p className="text-gray-400 max-w-sm mb-8">
+                            The classroom video is currently playing in a separate floating window.
+                        </p>
+                        <button
+                            onClick={handleTogglePiP}
+                            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:scale-105 active:scale-95"
+                        >
+                            Return to Main Window
+                        </button>
+                    </div>,
+                    mountNode
+                ) : (
+                    <div style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 9998,
+                        backgroundColor: '#0a0a0a',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '24px',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{
+                            width: '80px',
+                            height: '80px',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: '24px'
+                        }}>
+                            <Video style={{ width: '40px', height: '40px', color: '#3b82f6' }} />
+                        </div>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>PiP Mode Active</h2>
+                        <p style={{ color: '#9ca3af', marginBottom: '32px', maxWidth: '320px' }}>Video is playing in a separate window.</p>
+                        <button
+                            onClick={handleTogglePiP}
+                            style={{
+                                padding: '12px 24px',
+                                backgroundColor: '#2563eb',
+                                color: 'white',
+                                borderRadius: '12px',
+                                border: 'none',
+                                fontWeight: '600',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Back to Classroom
+                        </button>
+                    </div>
+                )}
+            </>
         );
     }
 

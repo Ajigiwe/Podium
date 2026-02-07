@@ -4,6 +4,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useRe
 import { useRouter, usePathname } from 'next/navigation';
 import { Room, RemoteParticipant, LocalParticipant, Participant, RoomEvent, Track } from 'livekit-client';
 import { useAlert } from '@/contexts/AlertContext';
+import { GridLayout } from '@/types/layout';
+import { db } from '@/lib/firebase/config';
+import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 
 // Participant type for LiveKit
 export interface LiveKitParticipant {
@@ -34,7 +37,8 @@ interface ClassroomContextType {
     isMini: boolean;
     isActive: boolean;
     isFloating: boolean;
-    isChatOpen?: boolean; // Added optional flag
+    isChatOpen?: boolean;
+    unreadChatCount: number;
     participants: LiveKitParticipant[];
     liveKitRoom: Room | null;
     // Keep old name for backward compatibility
@@ -55,6 +59,9 @@ interface ClassroomContextType {
     grantModerator: (participantId: string) => void;
     // Chat functions
     toggleChat: () => void;
+    // Layout functions
+    layout: GridLayout;
+    setLayout: (layout: GridLayout) => void;
 }
 
 const ClassroomContext = createContext<ClassroomContextType | undefined>(undefined);
@@ -69,8 +76,10 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const [isMini, setIsMini] = useState(false);
     const [isFloating, setIsFloating] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [participants, setParticipants] = useState<LiveKitParticipant[]>([]);
     const [liveKitRoom, setLiveKitRoomState] = useState<Room | null>(null);
+    const [layout, setLayout] = useState<GridLayout>('4x4');
     const { showAlert, showConfirm } = useAlert();
 
     const router = useRouter();
@@ -101,6 +110,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         setUserId(newUserId || null);
         setIsMini(false);
         setIsChatOpen(false);
+        setUnreadChatCount(0);
     }, []);
 
     const leaveClass = useCallback(() => {
@@ -123,6 +133,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         setIsMini(false);
         setIsFloating(false);
         setIsChatOpen(false);
+        setUnreadChatCount(0);
 
         // Exit PiP if active
         if (typeof window !== 'undefined') {
@@ -229,8 +240,18 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     }, [liveKitRoom, userRole]);
 
     const toggleChat = useCallback(() => {
-        setIsChatOpen(prev => !prev);
+        setIsChatOpen(prev => {
+            if (!prev) setUnreadChatCount(0);
+            return !prev;
+        });
     }, []);
+
+    // Also reset unread count if becomes open through other means
+    useEffect(() => {
+        if (isChatOpen) {
+            setUnreadChatCount(0);
+        }
+    }, [isChatOpen]);
 
     // Auto-detect mini mode based on route
     useEffect(() => {
@@ -377,6 +398,43 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         };
     }, [liveKitRoom, userRole, leaveClass]);
 
+    // Global Message Listener for Notifications
+    useEffect(() => {
+        if (!sessionId || !db) {
+            setUnreadChatCount(0);
+            return;
+        }
+
+        // We only want to listen for NEW messages
+        // Since we don't have a reliable "last read" timestamp easily available here
+        // without more complex sync, we'll listen for additions to the collection.
+        const q = query(
+            collection(db, `sessions/${sessionId}/messages`),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+        );
+
+        let initialLoad = true;
+        const unsubscribe = onSnapshot(q, (snapshot: any) => {
+            if (initialLoad) {
+                initialLoad = false;
+                return;
+            }
+
+            snapshot.docChanges().forEach((change: any) => {
+                if (change.type === 'added') {
+                    const data = change.doc.data();
+                    // Don't notify for own messages
+                    if (data.senderId !== userId && !isChatOpen) {
+                        setUnreadChatCount(prev => prev + 1);
+                    }
+                }
+            });
+        });
+
+        return () => unsubscribe();
+    }, [sessionId, userId, isChatOpen]);
+
     return (
         <ClassroomContext.Provider value={{
             sessionId,
@@ -386,7 +444,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             userId,
             isMini,
             isFloating,
-            isChatOpen, // Added to context
+            isChatOpen,
+            unreadChatCount,
             isActive: !!sessionId,
             participants,
             liveKitRoom,
@@ -404,6 +463,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             askToUnmute,
             grantModerator,
             toggleChat,
+            layout,
+            setLayout,
         }}>
             {children}
         </ClassroomContext.Provider>

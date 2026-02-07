@@ -78,9 +78,26 @@ Ideally, you should build a Docker image for your Next.js app, but you can also 
 3.  **Build and Run:**
     Create a `Dockerfile` in your project root if you haven't (I can provide one).
     Then build:
-    ```bash
     docker build -t podium-app .
     docker run -d -p 3000:3000 --name podium-app --env-file .env.local podium-app
+    ```
+
+### Option B: Using Docker Compose (Recommended for Egress)
+I have updated `docker-compose.yml` to include both the App and the Recording Service (Egress).
+
+1.  **Configure Egress:**
+    Open `egress.yaml` and fill in your API keys and URL:
+    ```yaml
+    api_key: <YOUR_API_KEY>
+    api_secret: <YOUR_SECRET>
+    ws_url: wss://livekit.yourdomain.com
+    redis:
+      address: <YOUR_REDIS_IP>:6379
+    ```
+
+2.  **Run Everything:**
+    ```bash
+    docker compose up -d
     ```
 
 ## 5. Set Up Reverse Proxy (Nginx) for Next.js
@@ -124,6 +141,37 @@ LiveKit handles its own SSL, but your Next.js app on port 3000 needs HTTPS too.
     certbot --nginx -d yourdomain.com
     ```
 
-## 6. Done!
-- **Website:** `https://yourdomain.com`
-- **LiveKit Server:** `wss://livekit.yourdomain.com`
+## 6. Troubleshooting Recording (Egress)
+If you see "Service Unavailable" or "no response from servers":
+
+1.  **Check Egress Logs on VPS:**
+    ```bash
+    docker logs livekit-egress
+    ```
+    *Look for "could not connect to redis" or "invalid api key".*
+
+2.  **Verify Redis Password:**
+    The LiveKit installation script often sets a Redis password. 
+    Check your LiveKit config: `cat /opt/livekit/livekit.yaml`
+    If there is a `password` under `redis`, you MUST add it to your `egress.yaml`:
+    ```yaml
+    redis:
+      address: localhost:6379
+      password: <YOUR_REDIS_PASSWORD>
+    ```
+
+3.  **Check Permissions:**
+    Ensure the recordings directory exists and is writable by Docker:
+    ```bash
+    mkdir -p /var/recordings
+    chmod 777 /var/recordings
+    ```
+
+4.  **Restart Service:**
+    ```bash
+    docker compose up -d --force-recreate egress
+    ```
+
+## 7. Done!
+- **Website:** `https://podiumclass.online`
+- **LiveKit Server:** `wss://livekit.podiumclass.online`
