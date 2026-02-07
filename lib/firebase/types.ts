@@ -42,6 +42,7 @@ export interface Session {
     program?: string; // Program/Department (e.g. Computer Science)
     course?: string; // Course Name/Code (e.g. Data Structures)
     isDeleted?: boolean; // Soft delete flag
+    scheduledStartTime?: Timestamp; // New field for class scheduling
     createdAt: Timestamp;
 }
 

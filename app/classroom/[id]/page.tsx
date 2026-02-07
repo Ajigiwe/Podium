@@ -9,7 +9,8 @@ import { Session } from '@/lib/firebase/types';
 import { hasUserPaid } from '@/lib/payments/verifyPayment';
 import ClassroomContent from '@/components/ClassroomContent';
 import { useClassroom } from '@/contexts/ClassroomContext';
-import { Clock, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Clock, RefreshCw, ArrowLeft, Laptop } from 'lucide-react';
+import CountdownTimer from '@/components/CountdownTimer';
 
 export default function ClassroomPage() {
     const params = useParams();
@@ -23,6 +24,7 @@ export default function ClassroomPage() {
     const [canAccess, setCanAccess] = useState(false);
     const [attendanceSubmitted, setAttendanceSubmitted] = useState(false);
     const [waitingForLecturer, setWaitingForLecturer] = useState(false);
+    const [isScheduledWait, setIsScheduledWait] = useState(false);
 
     // Profile Modal State (Only for joining)
     const [showProfileModal, setShowProfileModal] = useState(false);
@@ -60,6 +62,21 @@ export default function ClassroomPage() {
                 const isLecturer = profile.role === 'lecturer' && sessionData.lecturerId === user.uid;
 
                 if (!isLecturer && !sessionData.isActive) {
+                    console.log('Class not active - checking for scheduled time');
+
+                    // Check if there's a scheduled start time in the future
+                    if (sessionData.scheduledStartTime) {
+                        const now = new Date();
+                        const startTime = sessionData.scheduledStartTime.toDate();
+
+                        if (startTime > now) {
+                            console.log('Class is scheduled for the future. Showing countdown.');
+                            setIsScheduledWait(true);
+                            setLoading(false);
+                            return;
+                        }
+                    }
+
                     console.log('Class not active - showing waiting room for student');
                     setWaitingForLecturer(true);
                     setLoading(false);
@@ -243,6 +260,56 @@ export default function ClassroomPage() {
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/30 border-t-blue-600 mx-auto"></div>
                     <p className="mt-4 text-gray-400">Loading classroom...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Waiting room for students when class hasn't started
+    if (isScheduledWait) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
+                <div className="text-center max-w-md w-full">
+                    <div className="w-20 h-20 mx-auto mb-8 bg-blue-600/20 rounded-full flex items-center justify-center">
+                        <Clock className="w-10 h-10 text-blue-400" />
+                    </div>
+                    <h1 className="text-3xl font-black text-white mb-2">Class starts in</h1>
+                    <p className="text-gray-400 mb-8">
+                        The class is scheduled to begin soon. Grab your materials and wait for the lecturer.
+                    </p>
+
+                    <div className="mb-10">
+                        {session?.scheduledStartTime && (
+                            <CountdownTimer
+                                targetDate={session.scheduledStartTime.toDate()}
+                                onComplete={() => {
+                                    setIsScheduledWait(false);
+                                    setWaitingForLecturer(true);
+                                }}
+                            />
+                        )}
+                    </div>
+
+                    <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-8">
+                        <p className="text-blue-400 font-bold text-sm uppercase tracking-widest mb-2">Class Title</p>
+                        <h2 className="text-xl font-bold text-white">{session?.title}</h2>
+                        <div className="flex items-center justify-center gap-2 mt-4 text-gray-500 text-sm">
+                            <Laptop className="w-4 h-4" />
+                            <span>Scheduled for {session?.scheduledStartTime?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => router.push('/dashboard/student')}
+                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 mx-auto"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        Back to Dashboard
+                    </button>
+
+                    <p className="text-gray-700 text-xs mt-8">
+                        You will be able to join as soon as the lecturer starts the session.
+                    </p>
                 </div>
             </div>
         );

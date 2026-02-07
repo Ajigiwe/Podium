@@ -41,6 +41,7 @@ export default function LecturerDashboard() {
     const [lecturerName, setLecturerName] = useState('');
     const [program, setProgram] = useState('');
     const [course, setCourse] = useState('');
+    const [scheduledStartTime, setScheduledStartTime] = useState('');
     // Price state removed
 
 
@@ -113,6 +114,7 @@ export default function LecturerDashboard() {
                 lecturerName,
                 program,
                 course,
+                scheduledStartTime: scheduledStartTime ? Timestamp.fromDate(new Date(scheduledStartTime)) : null,
                 createdAt: Timestamp.now(),
             });
 
@@ -124,6 +126,7 @@ export default function LecturerDashboard() {
             setTitle('');
             setProgram('');
             setCourse('');
+            setScheduledStartTime('');
             // Lecturer name persists or resets to profile default
             if (profile?.fullName) setLecturerName(profile.fullName);
             // setPrice/setIsFree removed
@@ -452,6 +455,21 @@ export default function LecturerDashboard() {
                                             placeholder="e.g. CS101"
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Scheduled Start Time (Optional)
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={scheduledStartTime}
+                                        onChange={(e) => setScheduledStartTime(e.target.value)}
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                    />
+                                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        Students will see a countdown if they join before this time.
+                                    </p>
                                 </div>
 
                                 {/* Price and IsFree removed as per subscription model */}
