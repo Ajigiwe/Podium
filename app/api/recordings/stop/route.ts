@@ -34,9 +34,16 @@ export async function POST(req: NextRequest) {
         };
 
         if (fileResult) {
-            updateData.filePath = fileResult.filename;
+            const filename = fileResult.filename;
+            const EGRESS_BASE_PATH = process.env.EGRESS_BASE_PATH || '/var/recordings';
+
+            // Ensure we store the absolute path
+            updateData.filePath = filename.startsWith('/')
+                ? filename
+                : `${EGRESS_BASE_PATH}/${filename}`;
+
             updateData.fileSizeBytes = Number(fileResult.size);
-            updateData.durationSeconds = Number(fileResult.duration) / 1e9; // Duration is in nanoseconds usually
+            updateData.durationSeconds = Number(fileResult.duration) / 1e9;
         }
 
         await adminDb.collection('recordings').doc(egressId).update(updateData);

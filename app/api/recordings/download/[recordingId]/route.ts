@@ -21,16 +21,25 @@ export async function GET(
         }
 
         const recording = recordingDoc.data();
-        const filePath = recording?.filePath;
+        let filePath = recording?.filePath;
 
         if (!filePath) {
             return NextResponse.json({ error: 'File path not found in recording' }, { status: 404 });
         }
 
+        // Handle relative paths if the stop API script bug affected this record
+        if (!filePath.startsWith('/')) {
+            const EGRESS_BASE_PATH = process.env.EGRESS_BASE_PATH || '/var/recordings';
+            filePath = path.join(EGRESS_BASE_PATH, filePath);
+        }
+
         // Verify file exists
         if (!fs.existsSync(filePath)) {
             console.error(`File missing at path: ${filePath}`);
-            return NextResponse.json({ error: 'File not found on server' }, { status: 404 });
+            return NextResponse.json({
+                error: 'File not found on server',
+                debug: { path: filePath }
+            }, { status: 404 });
         }
 
         const stats = fs.statSync(filePath);
