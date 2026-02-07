@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
@@ -614,6 +614,23 @@ export default function GlobalClassroom() {
     const pipWindowRef = useRef<Window | null>(null);
     const [isPiPActive, setIsPiPActive] = useState(false);
 
+    // Memoized LiveKit options for stability
+    const roomOptions = useMemo(() => ({
+        publishDefaults: {
+            simulcast: true,
+            videoSimulcastLayers: [
+                { width: 640, height: 360, encoding: { maxBitrate: 500 * 1000, maxFramerate: 20 }, resolution: { width: 640, height: 360, frameRate: 20 } },
+                { width: 320, height: 180, encoding: { maxBitrate: 150 * 1000, maxFramerate: 15 }, resolution: { width: 320, height: 180, frameRate: 15 } },
+            ]
+        },
+        adaptiveStream: true,
+        dynacast: true,
+    }), []);
+
+    const connectOptions = useMemo(() => ({
+        autoSubscribe: true,
+    }), []);
+
     // Reaction Overlay Ref
     // Reaction Overlay Ref
     const reactionRef = useRef<ReactionOverlayHandle>(null);
@@ -1013,18 +1030,8 @@ export default function GlobalClassroom() {
                 }
             }}
             // Custom connection options for stability
-            options={{
-                publishDefaults: {
-                    simulcast: true,
-                    videoSimulcastLayers: [
-                        { width: 640, height: 360, encoding: { maxBitrate: 500 * 1000, maxFramerate: 20 }, resolution: { width: 640, height: 360, frameRate: 20 } },
-                        { width: 320, height: 180, encoding: { maxBitrate: 150 * 1000, maxFramerate: 15 }, resolution: { width: 320, height: 180, frameRate: 15 } },
-                    ]
-                }
-            }}
-            connectOptions={{
-                autoSubscribe: true,
-            }}
+            options={roomOptions}
+            connectOptions={connectOptions}
             className="w-full h-full"
         >
             <VideoLayout

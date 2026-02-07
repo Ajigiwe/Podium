@@ -435,37 +435,45 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         return () => unsubscribe();
     }, [sessionId, userId, isChatOpen]);
 
+    const contextValue = React.useMemo(() => ({
+        sessionId,
+        title,
+        userName,
+        userRole,
+        userId,
+        isMini,
+        isFloating,
+        isChatOpen,
+        unreadChatCount,
+        isActive: !!sessionId,
+        participants,
+        liveKitRoom,
+        jitsiApi: liveKitRoom,
+        joinClass,
+        leaveClass,
+        toggleMini,
+        toggleFloating,
+        toggleMinimize,
+        setLiveKitRoom,
+        setJitsiApi,
+        muteParticipant,
+        muteAllParticipants,
+        kickParticipant,
+        askToUnmute,
+        grantModerator,
+        toggleChat,
+        layout,
+        setLayout,
+    }), [
+        sessionId, title, userName, userRole, userId, isMini, isFloating,
+        isChatOpen, unreadChatCount, participants, liveKitRoom,
+        joinClass, leaveClass, toggleMini, toggleFloating, toggleMinimize,
+        setLiveKitRoom, muteParticipant, muteAllParticipants, kickParticipant,
+        askToUnmute, grantModerator, toggleChat, layout
+    ]);
+
     return (
-        <ClassroomContext.Provider value={{
-            sessionId,
-            title,
-            userName,
-            userRole,
-            userId,
-            isMini,
-            isFloating,
-            isChatOpen,
-            unreadChatCount,
-            isActive: !!sessionId,
-            participants,
-            liveKitRoom,
-            jitsiApi: liveKitRoom, // Backward compatibility
-            joinClass,
-            leaveClass,
-            toggleMini,
-            toggleFloating,
-            toggleMinimize,
-            setLiveKitRoom,
-            setJitsiApi, // Backward compatibility
-            muteParticipant,
-            muteAllParticipants,
-            kickParticipant,
-            askToUnmute,
-            grantModerator,
-            toggleChat,
-            layout,
-            setLayout,
-        }}>
+        <ClassroomContext.Provider value={contextValue}>
             {children}
         </ClassroomContext.Provider>
     );
