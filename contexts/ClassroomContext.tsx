@@ -53,6 +53,7 @@ interface ClassroomContextType {
     setJitsiApi: (api: any) => void;
     // Moderation functions
     muteParticipant: (participantId: string) => void;
+    disableParticipantVideo: (participantId: string) => void;
     muteAllParticipants: () => void;
     kickParticipant: (participantId: string) => void;
     askToUnmute: (participantId: string) => void;
@@ -182,6 +183,20 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 );
                 console.log('Mute request sent to:', participantId);
             }
+        }
+    }, [liveKitRoom, userRole]);
+
+    const disableParticipantVideo = useCallback((participantId: string) => {
+        if (liveKitRoom && userRole === 'lecturer') {
+            const encoder = new TextEncoder();
+            liveKitRoom.localParticipant.publishData(
+                encoder.encode(JSON.stringify({
+                    type: 'disable_video_request',
+                    targetId: participantId,
+                })),
+                { reliable: true }
+            );
+            console.log('Disable video request sent to:', participantId);
         }
     }, [liveKitRoom, userRole]);
 
@@ -355,6 +370,13 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     showAlert('You have been muted by the lecturer.', 'info');
                 }
 
+                if (data.type === 'disable_video_request' && data.targetId === liveKitRoom.localParticipant.sid) {
+                    // Lecturer requested to disable my video
+                    console.log('Lecturer disabled my video');
+                    liveKitRoom.localParticipant.setCameraEnabled(false);
+                    showAlert('Your video has been turned off by the lecturer.', 'info');
+                }
+
                 if (data.type === 'mute_all_request') {
                     // Everyone except lecturer gets muted
                     // Check if I am NOT the lecturer
@@ -457,6 +479,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         setLiveKitRoom,
         setJitsiApi,
         muteParticipant,
+        disableParticipantVideo,
         muteAllParticipants,
         kickParticipant,
         askToUnmute,
@@ -468,7 +491,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         sessionId, title, userName, userRole, userId, isMini, isFloating,
         isChatOpen, unreadChatCount, participants, liveKitRoom,
         joinClass, leaveClass, toggleMini, toggleFloating, toggleMinimize,
-        setLiveKitRoom, muteParticipant, muteAllParticipants, kickParticipant,
+        setLiveKitRoom, muteParticipant, disableParticipantVideo, muteAllParticipants, kickParticipant,
         askToUnmute, grantModerator, toggleChat, layout
     ]);
 

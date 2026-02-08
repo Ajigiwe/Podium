@@ -24,7 +24,7 @@ import '@livekit/components-styles';
 import { Room, Track, Participant, RoomEvent, ParticipantEvent } from 'livekit-client';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
-import { Maximize2, X, Minimize2, Pin, PinOff, Video, User, Mic } from 'lucide-react';
+import { Maximize2, X, Minimize2, Pin, PinOff, Video, User, Mic, MoreVertical, MicOff, VideoOff, UserX } from 'lucide-react';
 import CustomControlBar from './CustomControlBar';
 import ReactionOverlay, { ReactionOverlayHandle } from './ReactionOverlay';
 import ClassroomChat from './ClassroomChat';
@@ -48,6 +48,61 @@ function RoomConnector({ onRoomReady }: { onRoomReady: (room: Room) => void }) {
     return null;
 }
 
+// Participant Menu Component
+function ParticipantMenu({ participant, closeMenu }: { participant: Participant, closeMenu: () => void }) {
+    const { userRole, muteParticipant, disableParticipantVideo, kickParticipant } = useClassroom();
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Close on click outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                closeMenu();
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [closeMenu]);
+
+    if (userRole !== 'lecturer') return null;
+
+    return (
+        <div
+            ref={menuRef}
+            className="absolute top-10 right-2 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl w-48 py-1 overflow-hidden"
+            onClick={(e) => e.stopPropagation()} // Prevent tile click
+        >
+            <button
+                onClick={() => { muteParticipant(participant.sid); closeMenu(); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2 transition-colors"
+                title="Mute Audio"
+            >
+                <MicOff className="w-4 h-4" />
+                <span>Mute Audio</span>
+            </button>
+            <button
+                onClick={() => { disableParticipantVideo(participant.sid); closeMenu(); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2 transition-colors"
+                title="Turn Off Video"
+            >
+                <VideoOff className="w-4 h-4" />
+                <span>Stop Video</span>
+            </button>
+            <div className="h-px bg-gray-800 my-1" />
+            <button
+                onClick={() => { kickParticipant(participant.sid); closeMenu(); }}
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 flex items-center gap-2 transition-colors"
+                title="Remove from Class"
+            >
+                <UserX className="w-4 h-4" />
+                <span>Remove</span>
+            </button>
+        </div>
+    );
+}
+
 // Wrapper for Tile to handle clicks while receiving props from GridLayout
 function TileWrapper({ track, participant, onTileClick, className, ...props }: any) {
     // Check if camera is off/muted to show placeholder
@@ -57,6 +112,11 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
 
     const hookIsSpeaking = useIsSpeaking(participant);
     const [manualIsSpeaking, setManualIsSpeaking] = useState(participant.isSpeaking);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { userRole, userId } = useClassroom();
+
+    // Check if we can show menu (lecturer only, and not on self)
+    const showMenu = userRole === 'lecturer' && participant.identity !== userId;
 
     useEffect(() => {
         const handleSpeakingChanged = (speaking: boolean) => {
@@ -81,6 +141,27 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
             {isSpeaking && (
                 <div className="absolute top-2 right-2 z-20 bg-green-500 text-black p-1 rounded-full shadow-lg animate-pulse">
                     <Mic className="w-3 h-3" />
+                </div>
+            )}
+
+            {/* Moderator Menu Button */}
+            {showMenu && (
+                <div className="absolute top-2 right-2 z-30">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsMenuOpen(!isMenuOpen);
+                        }}
+                        className="p-1 rounded-full bg-black/40 hover:bg-black/80 text-white transition-colors backdrop-blur-sm"
+                    >
+                        <MoreVertical className="w-4 h-4" />
+                    </button>
+                    {isMenuOpen && (
+                        <ParticipantMenu
+                            participant={participant}
+                            closeMenu={() => setIsMenuOpen(false)}
+                        />
+                    )}
                 </div>
             )}
 
@@ -113,6 +194,11 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
 
     const hookIsSpeaking = useIsSpeaking(trackRef.participant);
     const [manualIsSpeaking, setManualIsSpeaking] = useState(trackRef.participant.isSpeaking);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { userRole, userId } = useClassroom();
+
+    // Check if we can show menu (lecturer only, and not on self)
+    const showMenu = userRole === 'lecturer' && trackRef.participant.identity !== userId;
 
     useEffect(() => {
         const p = trackRef.participant;
@@ -130,6 +216,27 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
     return (
         <div className={`relative w-full h-full group transition-all duration-500 ${isSpeaking ? 'ring-4 ring-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.3)]' : ''}`}>
             <FocusLayout trackRef={trackRef} onParticipantClick={onParticipantClick} {...props} />
+
+            {/* Moderator Menu Button - Top Right */}
+            {showMenu && (
+                <div className="absolute top-4 right-4 z-[60]">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsMenuOpen(!isMenuOpen);
+                        }}
+                        className="p-2 rounded-full bg-black/40 hover:bg-black/80 text-white transition-colors backdrop-blur-sm ring-1 ring-white/10"
+                    >
+                        <MoreVertical className="w-5 h-5" />
+                    </button>
+                    {isMenuOpen && (
+                        <ParticipantMenu
+                            participant={trackRef.participant}
+                            closeMenu={() => setIsMenuOpen(false)}
+                        />
+                    )}
+                </div>
+            )}
 
             {/* Explicit Placeholder for Camera Off in Focus Mode */}
             {isCameraOff && (
