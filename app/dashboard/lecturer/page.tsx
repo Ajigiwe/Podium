@@ -22,7 +22,7 @@ import { AttendanceLog } from '@/lib/firebase/types';
 import { Session } from '@/lib/firebase/types';
 import { getSessionRevenue } from '@/lib/payments/verifyPayment';
 import { generateMeetingCode } from '@/lib/meetingCode';
-import { Plus, X, Download, Trash2, Video, Copy, Check, History } from 'lucide-react';
+import { Plus, X, Download, Trash2, Video, Copy, Check, History, Users } from 'lucide-react';
 import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
 import { RecordingsDashboard } from '@/components/RecordingsDashboard';
 
@@ -35,6 +35,7 @@ export default function LecturerDashboard() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [revenueData, setRevenueData] = useState<Record<string, any>>({});
     const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
+    const [participantCounts, setParticipantCounts] = useState<Record<string, number>>({});
 
     // Form state
     const [title, setTitle] = useState('');
@@ -93,7 +94,28 @@ export default function LecturerDashboard() {
         });
 
         return () => unsubscribe();
+        return () => unsubscribe();
     }, [user, profile, authLoading, router]);
+
+    // Fetch Live Participant Counts
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/livekit/stats');
+                if (res.ok) {
+                    const data = await res.json();
+                    setParticipantCounts(data.stats || {});
+                }
+            } catch (error) {
+                console.error("Error fetching stats:", error);
+            }
+        };
+
+        fetchStats();
+        // Refresh every 30 seconds
+        const interval = setInterval(fetchStats, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleCreateSession = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -316,7 +338,16 @@ export default function LecturerDashboard() {
                                             }`}>
                                             {session.isActive ? '● Live' : 'Offline'}
                                         </div>
-                                        <div className="flex gap-1">
+
+                                        {/* Live Participants Badge */}
+                                        {session.isActive && participantCounts[session.id] !== undefined && participantCounts[session.id] > 0 && (
+                                            <div className="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium flex items-center gap-1">
+                                                <Users className="w-3 h-3" />
+                                                {participantCounts[session.id]}
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-1 ml-auto">
                                             <button
                                                 onClick={() => handleDeleteSession(session.id)}
                                                 className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"

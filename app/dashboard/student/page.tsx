@@ -9,7 +9,7 @@ import { collection, query, where, onSnapshot, orderBy, doc, getDoc, updateDoc, 
 import { Session, Transaction, AttendanceLog, SystemSettings } from '@/lib/firebase/types';
 import { initializeSubscription } from '@/lib/payments/initializeSubscription';
 import { isMeetingCode, normalizeCode } from '@/lib/meetingCode';
-import { Trash2, Video, ArrowRight, History, X, CreditCard, Lock, CheckCircle } from 'lucide-react';
+import { Trash2, Video, ArrowRight, History, X, CreditCard, Lock, CheckCircle, Users } from 'lucide-react';
 
 import { Suspense } from 'react';
 
@@ -23,6 +23,7 @@ function StudentDashboardContent() {
     const [payments, setPayments] = useState<Transaction[]>([]); // "Enrolled" classes
     const [joining, setJoining] = useState(false);
     const [joinLink, setJoinLink] = useState('');
+    const [participantCounts, setParticipantCounts] = useState<Record<string, number>>({});
 
 
     // Role Verification & Redirection
@@ -130,7 +131,28 @@ function StudentDashboardContent() {
         };
 
         fetchEnrolledSessions();
+        fetchEnrolledSessions();
     }, [payments]);
+
+    // 4. Fetch Live Participant Counts
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/livekit/stats');
+                if (res.ok) {
+                    const data = await res.json();
+                    setParticipantCounts(data.stats || {});
+                }
+            } catch (error) {
+                console.error("Error fetching stats:", error);
+            }
+        };
+
+        fetchStats();
+        // Refresh every 30 seconds
+        const interval = setInterval(fetchStats, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     // === Handlers ===
 
@@ -452,6 +474,14 @@ function StudentDashboardContent() {
                                         <Video className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                                     </div>
                                 </div>
+
+                                {/* Live Participants Badge */}
+                                {session.isActive && participantCounts[session.id] !== undefined && participantCounts[session.id] > 0 && (
+                                    <div className="absolute top-[4.5rem] left-6 px-2 py-0.5 rounded-md bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-medium flex items-center gap-1">
+                                        <Users className="w-3 h-3" />
+                                        {participantCounts[session.id]} {participantCounts[session.id] === 1 ? 'Online' : 'Online'}
+                                    </div>
+                                )}
 
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{session.title}</h3>
 
