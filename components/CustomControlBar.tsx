@@ -100,14 +100,24 @@ export default function CustomControlBar({
             </div>
 
             {/* Screen Share */}
-            <TrackToggle
-                source={Track.Source.ScreenShare}
-                captureOptions={{ audio: true, selfBrowserSurface: 'include' }}
-                showIcon={false}
-                className="!bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg"
+            <div
+                onClickCapture={(e) => {
+                    if (isPiPActive) {
+                        e.stopPropagation();
+                        alert("Screen sharing is not supported in floating window mode due to browser security restrictions. Please return to the main window to start sharing.");
+                    }
+                }}
             >
-                <MonitorUp className={`w-4 h-4 ${isScreenShareEnabled ? 'text-green-500' : ''}`} />
-            </TrackToggle>
+                <TrackToggle
+                    source={Track.Source.ScreenShare}
+                    captureOptions={{ audio: true, selfBrowserSurface: 'include' }}
+                    showIcon={false}
+                    className={`!bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg ${isPiPActive ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={isPiPActive}
+                >
+                    <MonitorUp className={`w-4 h-4 ${isScreenShareEnabled ? 'text-green-500' : ''}`} />
+                </TrackToggle>
+            </div>
 
             <div className="w-px h-8 bg-gray-700 mx-1" />
 

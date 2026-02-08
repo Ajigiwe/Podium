@@ -18,12 +18,13 @@ import {
     FocusLayoutContainer,
     CarouselLayout,
     TrackReferenceOrPlaceholder,
+    useIsSpeaking,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
-import { Room, Track } from 'livekit-client';
+import { Room, Track, Participant, RoomEvent, ParticipantEvent } from 'livekit-client';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
-import { Maximize2, X, Minimize2, Pin, PinOff, Video, User } from 'lucide-react';
+import { Maximize2, X, Minimize2, Pin, PinOff, Video, User, Mic } from 'lucide-react';
 import CustomControlBar from './CustomControlBar';
 import ReactionOverlay, { ReactionOverlayHandle } from './ReactionOverlay';
 import ClassroomChat from './ClassroomChat';
@@ -54,12 +55,34 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
     const isCameraOff = track.source === Track.Source.Camera &&
         (track.publication?.isMuted || !participant.isCameraEnabled);
 
+    const hookIsSpeaking = useIsSpeaking(participant);
+    const [manualIsSpeaking, setManualIsSpeaking] = useState(participant.isSpeaking);
+
+    useEffect(() => {
+        const handleSpeakingChanged = (speaking: boolean) => {
+            setManualIsSpeaking(speaking);
+        };
+        participant.on(ParticipantEvent.IsSpeakingChanged, handleSpeakingChanged);
+        return () => {
+            participant.off(ParticipantEvent.IsSpeakingChanged, handleSpeakingChanged);
+        };
+    }, [participant]);
+
+    const isSpeaking = hookIsSpeaking || manualIsSpeaking;
+
     return (
         <div
-            className={`h-full relative group cursor-pointer min-h-[160px] sm:min-h-0 ${className || ''}`}
+            className={`h-full relative group cursor-pointer min-h-[160px] sm:min-h-0 rounded-lg overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : ''} ${className || ''}`}
             onClick={() => onTileClick(track)}
         >
             <ParticipantTile trackRef={track} {...props} />
+
+            {/* Speaking Indicator Badge */}
+            {isSpeaking && (
+                <div className="absolute top-2 right-2 z-20 bg-green-500 text-black p-1 rounded-full shadow-lg animate-pulse">
+                    <Mic className="w-3 h-3" />
+                </div>
+            )}
 
             {/* Explicit Placeholder for Camera Off */}
             {isCameraOff && (
@@ -88,8 +111,24 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
     const isCameraOff = trackRef.source === Track.Source.Camera &&
         (trackRef.publication?.isMuted || !trackRef.participant.isCameraEnabled);
 
+    const hookIsSpeaking = useIsSpeaking(trackRef.participant);
+    const [manualIsSpeaking, setManualIsSpeaking] = useState(trackRef.participant.isSpeaking);
+
+    useEffect(() => {
+        const p = trackRef.participant;
+        const handleSpeakingChanged = (speaking: boolean) => {
+            setManualIsSpeaking(speaking);
+        };
+        p.on(ParticipantEvent.IsSpeakingChanged, handleSpeakingChanged);
+        return () => {
+            p.off(ParticipantEvent.IsSpeakingChanged, handleSpeakingChanged);
+        };
+    }, [trackRef.participant]);
+
+    const isSpeaking = hookIsSpeaking || manualIsSpeaking;
+
     return (
-        <div className="relative w-full h-full group">
+        <div className={`relative w-full h-full group transition-all duration-500 ${isSpeaking ? 'ring-4 ring-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.3)]' : ''}`}>
             <FocusLayout trackRef={trackRef} onParticipantClick={onParticipantClick} {...props} />
 
             {/* Explicit Placeholder for Camera Off in Focus Mode */}
@@ -159,13 +198,40 @@ function InnerVideoLayout({
     const { sessionId, title, userId } = useClassroom();
     console.log('DEBUG: InnerVideoLayout', { sessionId, userId, userRole });
     const [focusTrack, setFocusTrack] = useState<TrackReferenceOrPlaceholder | null>(null);
+    const room = useRoomContext();
+    const [activeSpeakers, setActiveSpeakers] = useState<Participant[]>([]);
+
+    useEffect(() => {
+        if (!room) return;
+        const handleActiveSpeakersChanged = (speakers: Participant[]) => {
+            setActiveSpeakers(speakers);
+        };
+        room.on(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged);
+        return () => {
+            room.off(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged);
+        };
+    }, [room]);
 
     // --- Pagination Logic ---
-    const sortedTracks = [...tracks].sort((a, b) => {
-        if (spotlightParticipant === a.participant.sid) return -1;
-        if (spotlightParticipant === b.participant.sid) return 1;
-        return 0;
-    });
+    const sortedTracks = useMemo(() => {
+        return [...tracks].sort((a, b) => {
+            // 1. Spotlighted participant always first
+            if (spotlightParticipant === a.participant.sid) return -1;
+            if (spotlightParticipant === b.participant.sid) return 1;
+
+            // 2. Screen share always higher priority
+            if (a.source === Track.Source.ScreenShare && b.source !== Track.Source.ScreenShare) return -1;
+            if (b.source === Track.Source.ScreenShare && a.source !== Track.Source.ScreenShare) return 1;
+
+            // 3. Active speakers move to top
+            const aIsSpeaking = activeSpeakers.some((p) => p.sid === a.participant.sid) || a.participant.isSpeaking;
+            const bIsSpeaking = activeSpeakers.some((p) => p.sid === b.participant.sid) || b.participant.isSpeaking;
+            if (aIsSpeaking && !bIsSpeaking) return -1;
+            if (bIsSpeaking && !aIsSpeaking) return 1;
+
+            return 0;
+        });
+    }, [tracks, spotlightParticipant, activeSpeakers]);
 
     const PAGE_SIZE = config.maxVisible; // Maximum tiles per page
     const [currentPage, setCurrentPage] = useState(1);
@@ -354,7 +420,7 @@ function InnerVideoLayout({
                                 }}
                             >
                                 <div className="flex sm:flex-col gap-1 sm:gap-2 h-full">
-                                    {carouselTracks.map((t) => (
+                                    {carouselTracks.slice(0, 4).map((t) => (
                                         <TileWrapper
                                             key={`${t.participant.sid}-${t.source}`}
                                             track={t}
@@ -363,6 +429,18 @@ function InnerVideoLayout({
                                             className="w-40 sm:w-full aspect-video flex-shrink-0"
                                         />
                                     ))}
+
+                                    {/* "More" Indicator Tile */}
+                                    {carouselTracks.length > 4 && (
+                                        <div className="w-40 sm:w-full aspect-video flex-shrink-0 bg-gray-800/50 rounded-lg flex flex-col items-center justify-center border border-dashed border-white/10 group hover:border-blue-500/50 transition-colors">
+                                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mb-1 group-hover:bg-blue-600/20 transition-colors">
+                                                <User className="w-5 h-5 text-gray-400 group-hover:text-blue-400" />
+                                            </div>
+                                            <span className="text-white font-bold text-lg">+{carouselTracks.length - 4}</span>
+                                            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-tighter">Others</span>
+                                        </div>
+                                    )}
+
                                     {carouselTracks.length === 0 && (
                                         <div className="flex-1 flex items-center justify-center text-gray-500 text-xs italic p-4 text-center">
                                             No other participants
