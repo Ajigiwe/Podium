@@ -42,7 +42,7 @@ import { NetworkQualityIndicator } from './NetworkQualityIndicator';
 import { roomOptions } from '@/config/livekit.config';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { MediaRestorationIndicator } from './MediaRestorationIndicator';
-import { useAutoPermissionInteraction } from '@/hooks/useAutoPermissionInteraction';
+import { DeviceFailureHandler } from './media/DeviceFailureHandler';
 
 
 // Inner component that can access the room context
@@ -285,7 +285,9 @@ function InnerVideoLayout({
     setLayout,
     unreadChatCount,
     showAlert,
-    isActive
+    customAlert,
+    isActive,
+    isDocked
 }: {
     onReaction: (emoji: string) => void;
     onLeave: () => void;
@@ -306,7 +308,9 @@ function InnerVideoLayout({
     setLayout: (layout: any) => void;
     unreadChatCount: number;
     showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+    customAlert: (options: any) => void;
     isActive: boolean;
+    isDocked?: boolean;
 }) {
     // We don't rely on layoutContext for basic chat toggle anymore
     // but we can still access it if needed for other things
@@ -468,23 +472,25 @@ function InnerVideoLayout({
                 }
             `}</style>
 
-            {/* Top Navbar */}
-            <div className="h-12 bg-black/60 backdrop-blur-md border-b border-white/5 px-4 flex items-center justify-between z-[100]">
-                <div className="flex items-center gap-3">
-                    <div className="bg-blue-600/20 p-1.5 rounded-lg border border-blue-500/20">
-                        <Video className="w-4 h-4 text-blue-500" />
+            {/* Top Navbar - Hide if docked in main classroom page */}
+            {!isDocked && (
+                <div className="h-12 bg-black/60 backdrop-blur-md border-b border-white/5 px-4 flex items-center justify-between z-[100]">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-600/20 p-1.5 rounded-lg border border-blue-500/20">
+                            <Video className="w-4 h-4 text-blue-500" />
+                        </div>
+                        <span className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md">
+                            {title || 'Current Class'}
+                        </span>
                     </div>
-                    <span className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md">
-                        {title || 'Current Class'}
-                    </span>
-                </div>
 
-                <div className="flex items-center gap-2">
-                    {userRole === 'lecturer' && (
-                        <SimpleAttendanceConsole sessionId={sessionId!} isActive={isActive} />
-                    )}
+                    <div className="flex items-center gap-2">
+                        {userRole === 'lecturer' && (
+                            <SimpleAttendanceConsole sessionId={sessionId!} isActive={isActive} />
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="flex-1 relative overflow-hidden flex flex-col sm:flex-row">
 
@@ -626,6 +632,7 @@ function InnerVideoLayout({
                 isHandRaised={isHandRaised}
                 unreadChatCount={unreadChatCount}
                 showAlert={showAlert}
+                customAlert={customAlert}
             />
 
             {/* Chat Sidebar - Persistent */}
@@ -681,20 +688,24 @@ function VideoLayout({
     userRole,
     userId,
     userName,
+    isActive,
     showAlert,
-    isActive
+    customAlert,
+    isDocked,
 }: {
     onReaction: (emoji: string) => void;
     onLeave: () => void;
     reactionRef: React.RefObject<ReactionOverlayHandle | null>;
     onToggleChat: () => void;
     isChatOpen: boolean;
-    unreadChatCount: number;
     userRole: string;
     userId: string;
     userName: string;
-    showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+    unreadChatCount: number;
     isActive: boolean;
+    showAlert: (message: string, type: any) => void;
+    customAlert: (options: any) => void;
+    isDocked?: boolean;
 }) {
     const { layout, setLayout, config, spotlightParticipant, setSpotlightParticipant } = useLayoutConfig();
     const { raisedHands, raiseHand, lowerHand, clearAllHands } = useRaisedHands();
@@ -711,7 +722,7 @@ function VideoLayout({
 
     const tracks = useTracks(
         [
-            { source: Track.Source.Camera, withPlaceholder: false },
+            { source: Track.Source.Camera, withPlaceholder: true },
             { source: Track.Source.ScreenShare, withPlaceholder: false },
         ],
         { onlySubscribed: false }
@@ -747,8 +758,10 @@ function VideoLayout({
                 isHandRaised={isHandRaised}
                 userRole={userRole}
                 setLayout={setLayout}
-                isActive={isActive}
                 showAlert={showAlert}
+                customAlert={customAlert}
+                isActive={isActive}
+                isDocked={isDocked}
             />
         </LayoutContextProvider>
     );
@@ -793,7 +806,13 @@ export default function GlobalClassroom() {
                     if (ctx.state === 'suspended') await ctx.resume();
                 }
 
-                // 2. Continuous Priming for PiP
+                // 2. Mark interaction for media restoration
+                if (typeof window !== 'undefined' && sessionStorage.getItem('podium_user_interacted') !== 'true') {
+                    console.log('✅ [GlobalClassroom] Interaction established via gesture');
+                    sessionStorage.setItem('podium_user_interacted', 'true');
+                }
+
+                // 3. Continuous Priming for PiP
                 // Browsers often disable auto-PiP if manually closed.
                 // We re-enable it on every interaction to stay resilient.
                 const videos = document.querySelectorAll('video');
@@ -827,9 +846,6 @@ export default function GlobalClassroom() {
     const router = useRouter();
 
     const [isPiPActive, setIsPiPActive] = useState(false);
-
-    // AUTOMATION: Establish interaction via permissions (Solution 2)
-    useAutoPermissionInteraction();
 
     // Use centralized LiveKit options for stability
     const finalRoomOptions = useMemo(() => ({
@@ -1143,32 +1159,6 @@ export default function GlobalClassroom() {
             audio={false} // Manage manually via Layout
             onConnected={() => setIsConnecting(false)}
             onDisconnected={handleDisconnected}
-            onMediaDeviceFailure={(e) => {
-                console.error('Media device failure:', e);
-
-                // e could be an Error object or a string depending on LiveKit version/implementation
-                const errorName = (e as any)?.name || '';
-                const errorMessage = (e as any)?.message || String(e || '');
-
-                const isPermissionError = errorName === 'NotAllowedError' ||
-                    errorMessage.includes('PermissionDenied') ||
-                    errorName === 'PermissionDeniedError';
-
-                if (isPermissionError) {
-                    customAlert({
-                        title: 'Camera/Mic Access Blocked',
-                        message: 'Podium needs access to your camera and microphone to let you participate. Please click the camera/lock icon in your browser address bar and select "Allow".',
-                        type: 'warning',
-                        confirmText: 'Try Again',
-                        cancelText: 'Join without Media',
-                        onConfirm: () => {
-                            window.location.reload();
-                        }
-                    });
-                } else {
-                    showAlert('Could not access camera or microphone. Please check your device connections.', 'error');
-                }
-            }}
             onError={handleLiveKitError}
             // Custom connection options for stability
             options={finalRoomOptions}
@@ -1180,6 +1170,7 @@ export default function GlobalClassroom() {
             <ConnectionRecoveryStatus />
             <NetworkQualityIndicator />
             <MediaRestorationIndicator />
+            <DeviceFailureHandler />
 
             {/* Student Attendance Verification Modal */}
             {userRole !== 'lecturer' && (
@@ -1197,6 +1188,8 @@ export default function GlobalClassroom() {
                 unreadChatCount={unreadChatCount}
                 isActive={isActive}
                 showAlert={showAlert}
+                customAlert={customAlert}
+                isDocked={!!(mountNode && !isMini && !isFloating)}
             />
             <RoomConnector onRoomReady={handleRoomReady} />
             <RoomAudioRenderer />

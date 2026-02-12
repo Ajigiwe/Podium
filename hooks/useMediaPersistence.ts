@@ -16,8 +16,21 @@ interface MediaState {
 }
 
 export const useMediaPersistence = () => {
-    const { localParticipant } = useLocalParticipant();
-    const room = useRoomContext();
+    // Context hooks that might throw if called outside LiveKitRoom
+    let localParticipant: any = null;
+    let room: any = { state: 'disconnected' };
+
+    try {
+        // These will throw if not inside a <LiveKitRoom>
+        const roomContext = useRoomContext();
+        const lpContext = useLocalParticipant();
+        room = roomContext;
+        localParticipant = lpContext.localParticipant;
+    } catch (e) {
+        // Gracefully handle missing context if called from a parent (like GlobalClassroom)
+        // This prevents the "No room provided" runtime crash.
+    }
+
     const isInitializedRef = useRef(false);
     const isRestoringRef = useRef(false);
     const [restorationStatus, setRestorationStatus] = useState<'pending' | 'success' | 'error'>('pending');
@@ -35,7 +48,9 @@ export const useMediaPersistence = () => {
                     return { camera: !!parsed.videoEnabled, microphone: !!parsed.audioEnabled };
                 } catch (e) { }
             }
-            return null;
+            // NEW USERS: Default to ON to ensure hardware actually tries to start
+            console.log('🆕 [MediaPersistence] New user detected, defaulting media to ON');
+            return { camera: true, microphone: true };
         }
 
         return {
@@ -122,7 +137,13 @@ export const useMediaPersistence = () => {
             // 3. Restore Microphone
             if (savedState.microphone) {
                 console.log('🎤 [MediaPersistence] Restoring Microphone...');
-                await localParticipant.setMicrophoneEnabled(true);
+                try {
+                    await localParticipant.setMicrophoneEnabled(true);
+                } catch (error: any) {
+                    console.error('🎤 [MediaPersistence] Mic restoration failed:', error);
+                    // If device is in use or blocked, don't try again next time
+                    localStorage.setItem(STORAGE_KEYS.MICROPHONE, 'false');
+                }
             } else {
                 console.log('🎤 [MediaPersistence] Mic was OFF, skipping.');
             }
@@ -130,23 +151,60 @@ export const useMediaPersistence = () => {
             // 4. Restore Camera
             if (savedState.camera) {
                 console.log('📹 [MediaPersistence] Restoring Camera...');
-                // Slight stagger to avoid simultaneous hardware lock issues
-                await new Promise(resolve => setTimeout(resolve, 800));
-                await localParticipant.setCameraEnabled(true);
+                // Increased stagger to 3s to ensure hardware stability between Mic and Cam
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                let camAttempts = 0;
+                const maxCamAttempts = 3;
+                let camSuccess = false;
+
+                while (camAttempts < maxCamAttempts && !camSuccess) {
+                    try {
+                        console.log(`📹 [MediaPersistence] Camera attempt ${camAttempts + 1}...`);
+                        await localParticipant.setCameraEnabled(true);
+                        camSuccess = true;
+                        console.log('📹 [MediaPersistence] Camera restored successfully');
+                    } catch (error: any) {
+                        camAttempts++;
+                        const isReadableError = error.name === 'NotReadableError' || error.message?.includes('Could not start');
+
+                        if (isReadableError && camAttempts < maxCamAttempts) {
+                            console.warn(`📹 [MediaPersistence] Camera busy/locked (Attempt ${camAttempts}), waiting 1.5s for cool-down...`);
+                            await new Promise(resolve => setTimeout(resolve, 1500));
+                        } else {
+                            console.error('📹 [MediaPersistence] Camera restoration failed definitively:', error);
+                            // If hardware is truly locked after retries or blocked, disable auto-restore
+                            // but keep the error status so the UI can react
+                            localStorage.setItem(STORAGE_KEYS.CAMERA, 'false');
+                            throw error; // Propagate to trigger status error
+                        }
+                    }
+                }
             } else {
                 console.log('📹 [MediaPersistence] Camera was OFF, skipping.');
             }
 
             console.log('🎉 [MediaPersistence] Media states successfully applied.');
-            isInitializedRef.current = true;
             setRestorationStatus('success');
         } catch (error) {
             console.error('❌ [MediaPersistence] Restoration failed:', error);
             setRestorationStatus('error');
         } finally {
             isRestoringRef.current = false;
+            // IMPORTANT: Mark as initialized even on error to stop the high-frequency 
+            // useEffect from re-triggering and hammering the hardware/CPU.
+            isInitializedRef.current = true;
         }
     }, [localParticipant, room.state, loadStates]);
+
+    // Manual Retry Function
+    const retryRestoration = useCallback(() => {
+        console.log('🔄 [MediaPersistence] Manual retry requested');
+        isInitializedRef.current = false;
+        isRestoringRef.current = false;
+        setRestorationStatus('pending');
+        // The useEffect below will detect isInitializedRef.current === false and call restore()
+    }, []);
 
     // Handle Restoration Timing - High frequency trigger to ensure we don't miss the window
     useEffect(() => {
@@ -165,5 +223,6 @@ export const useMediaPersistence = () => {
     return {
         isInitialized: isInitializedRef.current,
         restorationStatus,
+        retryRestoration, // Export for UI button
     };
 };

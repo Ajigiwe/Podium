@@ -10,6 +10,7 @@ interface AlertModalProps {
     message: string;
     type?: 'success' | 'error' | 'warning' | 'info';
     onConfirm?: () => void;
+    onCancel?: () => void;
     showCancel?: boolean;
     confirmText?: string;
     cancelText?: string;
@@ -22,6 +23,7 @@ export default function AlertModal({
     message,
     type = 'info',
     onConfirm,
+    onCancel,
     showCancel = false,
     confirmText = 'OK',
     cancelText = 'Cancel'
@@ -90,7 +92,10 @@ export default function AlertModal({
                         <div className="flex gap-3 w-full">
                             {showCancel && (
                                 <button
-                                    onClick={onClose}
+                                    onClick={() => {
+                                        if (onCancel) onCancel();
+                                        onClose();
+                                    }}
                                     className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     {cancelText}

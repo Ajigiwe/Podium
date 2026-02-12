@@ -13,6 +13,7 @@ import { db, handleFirestoreError } from '@/lib/firebase/config';
 import { doc, updateDoc } from 'firebase/firestore';
 import { RecordingControls } from './RecordingControls';
 import { LayoutSelector } from './LayoutSelector';
+import { SimpleAttendanceConsole } from './attendance/SimpleAttendanceConsole';
 
 interface ClassroomContentProps {
     session: Session;
@@ -55,7 +56,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     // Save meeting code to Firestore if it doesn't exist
     useEffect(() => {
         const saveMeetingCode = async () => {
-            if (!session.meetingCode && profile?.role === 'lecturer') {
+            if (!session.meetingCode && ctxUserRole === 'lecturer') {
                 try {
                     const generatedCode = generateMeetingCode(sessionId);
                     await updateDoc(doc(db, 'sessions', sessionId), {
@@ -98,7 +99,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
     const handleLeave = () => {
         leaveClass();
-        if (profile?.role === 'lecturer') {
+        if (ctxUserRole === 'lecturer') {
             router.push('/dashboard/lecturer');
         } else {
             router.push('/dashboard/student');
@@ -131,6 +132,12 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 isLecturer={ctxUserRole === 'lecturer' || ctxUserRole === 'admin'}
                             />
 
+                            {ctxUserRole === 'lecturer' && (
+                                <div className="hidden lg:block">
+                                    <SimpleAttendanceConsole sessionId={sessionId} isActive={session.isActive} />
+                                </div>
+                            )}
+
                             <div className="h-6 w-px bg-gray-800 mx-1 hidden lg:block" />
 
                             <div className="hidden lg:block">
@@ -153,7 +160,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <Users className="w-4 h-4" />
-                                <span className="hidden lg:inline">{profile?.role === 'lecturer' ? 'Manage' : 'Participants'}</span>
+                                <span className="hidden lg:inline">{ctxUserRole === 'lecturer' ? 'Manage' : 'Participants'}</span>
                                 <span className="bg-white/20 px-1.5 py-0.5 rounded text-xs">{participants.length}</span>
                             </button>
                             <button
@@ -174,6 +181,9 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
                         {/* Mobile Menu Button */}
                         <div className="flex md:hidden items-center gap-2">
+                            {ctxUserRole === 'lecturer' && (
+                                <SimpleAttendanceConsole sessionId={sessionId} isActive={session.isActive} />
+                            )}
                             <ThemeToggle />
                             <button
                                 onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -187,7 +197,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                     {/* Mobile Menu Dropdown */}
                     {showMobileMenu && (
                         <div className="md:hidden mt-3 pt-3 border-t border-gray-800 space-y-2">
-                            {profile?.role === 'lecturer' && (
+                            {ctxUserRole === 'lecturer' && (
                                 <button
                                     onClick={() => { setShowShareModal(true); setShowMobileMenu(false); }}
                                     className="w-full px-4 py-3 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors flex items-center justify-center gap-2"
@@ -201,7 +211,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 className="w-full px-4 py-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors flex items-center justify-center gap-2"
                             >
                                 <Users className="w-4 h-4" />
-                                {profile?.role === 'lecturer' ? 'Manage Participants' : 'Participants'} ({participants.length})
+                                {ctxUserRole === 'lecturer' ? 'Manage Participants' : 'Participants'} ({participants.length})
                             </button>
 
                             <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
@@ -264,7 +274,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
             {/* Share/Invite Modal - Lecturer Only */}
             {
-                showShareModal && profile?.role === 'lecturer' && (
+                showShareModal && ctxUserRole === 'lecturer' && (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowShareModal(false)} />
                         <div className="relative w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:fade-in sm:zoom-in duration-200 max-h-[90vh] overflow-y-auto">
@@ -407,7 +417,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                             </div>
 
                                             {/* Action Buttons - Only for non-local participants AND Lecturer Only */}
-                                            {!p.isLocal && profile?.role === 'lecturer' && (
+                                            {!p.isLocal && ctxUserRole === 'lecturer' && (
                                                 <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                                                     <button
                                                         onClick={() => askToUnmute(p.participantId)}

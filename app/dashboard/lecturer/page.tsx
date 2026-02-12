@@ -14,6 +14,7 @@ import {
     updateDoc,
     deleteDoc,
     doc,
+    getDoc,
     getDocs,
     orderBy,
     Timestamp,
@@ -22,7 +23,8 @@ import { AttendanceLog } from '@/lib/firebase/types';
 import { Session } from '@/lib/firebase/types';
 import { getSessionRevenue } from '@/lib/payments/verifyPayment';
 import { generateMeetingCode } from '@/lib/meetingCode';
-import { Plus, X, Download, Trash2, Video, Copy, Check, History, Users } from 'lucide-react';
+import { Plus, X, Download, Trash2, Video, Copy, Check, History, Users, ArrowRight } from 'lucide-react';
+import { isMeetingCode, normalizeCode } from '@/lib/meetingCode';
 import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
 
 export default function LecturerDashboard() {
@@ -49,6 +51,10 @@ export default function LecturerDashboard() {
 
     // History Modal State
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+    // Join Class State
+    const [joinLink, setJoinLink] = useState('');
+    const [joining, setJoining] = useState(false);
 
 
     useEffect(() => {
@@ -246,6 +252,77 @@ export default function LecturerDashboard() {
         }
     };
 
+    const handleJoinByLink = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!joinLink.trim() || !user) return;
+
+        setJoining(true);
+        try {
+            let sessionId = joinLink.trim();
+
+            // Resolve Meeting Code / Link
+            if (isMeetingCode(sessionId)) {
+                const sessionsRef = collection(db, 'sessions');
+                const normalizedInput = normalizeCode(sessionId);
+                const formattedCode = `pod-${normalizedInput.slice(0, 4)}-${normalizedInput.slice(4, 8)}`;
+
+                let q = query(sessionsRef, where('meetingCode', '==', formattedCode));
+                let querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty && sessionId !== formattedCode) {
+                    q = query(sessionsRef, where('meetingCode', '==', sessionId.toLowerCase()));
+                    querySnapshot = await getDocs(q);
+                }
+
+                if (querySnapshot.empty) {
+                    const allSessionsSnap = await getDocs(sessionsRef);
+                    const matchingSession = allSessionsSnap.docs.find(doc => {
+                        const data = doc.data();
+                        return data.meetingCode && normalizeCode(data.meetingCode) === normalizedInput;
+                    });
+                    if (matchingSession) {
+                        sessionId = matchingSession.id;
+                    } else {
+                        showAlert('Class not found. Please check the meeting code.', "error");
+                        setJoining(false);
+                        return;
+                    }
+                } else {
+                    sessionId = querySnapshot.docs[0].id;
+                }
+            } else if (joinLink.includes('/classroom/')) {
+                sessionId = joinLink.split('/classroom/')[1].split('?')[0];
+            }
+
+            // Verify session existence and HOST status
+            const sessionRef = doc(db, 'sessions', sessionId);
+            const sessionSnap = await getDoc(sessionRef);
+
+            if (!sessionSnap.exists()) {
+                showAlert("Class not found.", "error");
+                setJoining(false);
+                return;
+            }
+
+            const sessionData = sessionSnap.data() as Session;
+
+            if (sessionData.lecturerId === user.uid) {
+                showAlert("You are the host of this class. Please join via the 'Join' button in your dashboard to start the stream.", "info");
+                setJoining(false);
+                return;
+            }
+
+            // Redirect as guest
+            router.push(`/classroom/${sessionId}`);
+
+        } catch (err) {
+            console.error(err);
+            showAlert("Invalid link or session", "error");
+        } finally {
+            setJoining(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
@@ -308,6 +385,30 @@ export default function LecturerDashboard() {
                         </svg>
                     </div>
                 </div>
+            </div>
+
+            {/* Join Class Section */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-xl shadow-sm">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Join a Peer's Class</h2>
+                <form onSubmit={handleJoinByLink} className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1">
+                        <input
+                            type="text"
+                            value={joinLink}
+                            onChange={(e) => setJoinLink(e.target.value)}
+                            placeholder="Enter meeting code (pod-xxxx-xxxx) or link..."
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={joining || !joinLink}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {joining ? 'Checking...' : 'Join as Guest'}
+                        {!joining && <ArrowRight className="w-4 h-4" />}
+                    </button>
+                </form>
             </div>
 
             {/* Sessions Grid */}

@@ -59,11 +59,11 @@ export default function ClassroomPage() {
                 const sessionData = { id: sessionDoc.id, ...sessionDoc.data() } as Session;
                 setSession(sessionData);
 
-                // CRITICAL: Check if class is active FIRST for students
-                // Students cannot join until lecturer starts the class
-                const isLecturer = profile.role === 'lecturer' && sessionData.lecturerId === user.uid;
+                // CRITICAL: Check if user is the HOST of this session
+                const isHost = sessionData.lecturerId === user.uid;
+                const isLecturer = profile.role === 'lecturer';
 
-                if (!isLecturer && !sessionData.isActive) {
+                if (!isHost && !sessionData.isActive) {
                     console.log('Class not active - checking for scheduled time');
 
                     // Check if there's a scheduled start time in the future
@@ -131,7 +131,7 @@ export default function ClassroomPage() {
                     }
                 }
 
-                if (!isLecturer && !hasPaidAccess) {
+                if (!isHost && !isLecturer && !hasPaidAccess) {
                     const searchParams = new URLSearchParams(window.location.search);
                     const reference = searchParams.get('reference');
 
@@ -155,8 +155,8 @@ export default function ClassroomPage() {
                     return;
                 }
 
-                // Students MUST enter name and index number for attendance
-                if (profile.role === 'student') {
+                // Students AND Guest Lecturers MUST enter name and index number for attendance
+                if (!isHost) {
                     // Check if attendance is already logged for this session
                     const attendanceRef = collection(db, 'attendance_logs');
                     const q = query(
@@ -173,7 +173,10 @@ export default function ClassroomPage() {
 
                         // Join immediately since attendance is done
                         if (currentSessionId !== sessionId) {
-                            joinClass(sessionId, sessionData.title, profile.fullName, profile.role, user.uid);
+                            if (typeof window !== 'undefined') {
+                                sessionStorage.setItem('podium_user_interacted', 'true');
+                            }
+                            joinClass(sessionId, sessionData.title, profile.fullName, isHost ? 'lecturer' : 'student', user.uid);
                         }
 
                         setLoading(false);
@@ -193,7 +196,10 @@ export default function ClassroomPage() {
 
                 // Join the LiveKit room - Only if not already connected to this session
                 if (currentSessionId !== sessionId) {
-                    joinClass(sessionId, sessionData.title, profile.fullName, profile.role, user.uid);
+                    if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('podium_user_interacted', 'true');
+                    }
+                    joinClass(sessionId, sessionData.title, profile.fullName, isHost ? 'lecturer' : 'student', user.uid);
                 }
 
                 setLoading(false);
@@ -246,7 +252,12 @@ export default function ClassroomPage() {
             setCanAccess(true);
 
             // Join LiveKit after profile update
-            joinClass(sessionId, session?.title || 'Class', studentName, profile?.role || 'student', user.uid);
+            // If they are a guest lecturer, they MUST join as 'student' to avoid admin perms
+            const isHost = session?.lecturerId === user.uid;
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('podium_user_interacted', 'true');
+            }
+            joinClass(sessionId, session?.title || 'Class', studentName, isHost ? 'lecturer' : 'student', user.uid);
 
         } catch (error) {
             console.error("Error saving attendance:", error);

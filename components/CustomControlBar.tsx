@@ -22,6 +22,8 @@ interface CustomControlBarProps {
     onToggleHand: () => void;
     isHandRaised: boolean;
     unreadChatCount: number;
+    showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+    customAlert: (options: any) => void;
 }
 
 export default function CustomControlBar({
@@ -32,8 +34,9 @@ export default function CustomControlBar({
     onToggleHand,
     isHandRaised,
     unreadChatCount,
-    showAlert
-}: CustomControlBarProps & { showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void }) {
+    showAlert,
+    customAlert
+}: CustomControlBarProps) {
     const { saveAudioInputEnabled, saveVideoInputEnabled } = usePersistentUserChoices();
     const {
         localParticipant,
@@ -98,7 +101,20 @@ export default function CustomControlBar({
                 }
 
                 console.error('Failed to toggle microphone:', error);
-                showAlert(`Failed to toggle microphone: ${error.message || 'Unknown error'}`, 'error');
+                const errorName = error.name || 'Error';
+                const errorMessage = error.message || '';
+                const isConflict = errorName === 'AbortError' || errorName === 'NotReadableError' || errorMessage.includes('DeviceInUse');
+
+                if (isConflict) {
+                    customAlert({
+                        title: 'Microphone Already in Use',
+                        message: 'Another application is using your microphone. Please close other apps and try again.',
+                        type: 'error',
+                        confirmText: 'Dismiss'
+                    });
+                } else {
+                    showAlert(`Failed to toggle microphone: ${errorMessage || 'Unknown error'}`, 'error');
+                }
                 break;
             }
         }
@@ -131,7 +147,26 @@ export default function CustomControlBar({
                 }
 
                 console.error('Failed to toggle camera:', error);
-                showAlert(`Failed to toggle camera: ${error.message || 'Unknown error'}`, 'error');
+                const errorName = error.name || 'Error';
+                const errorMessage = error.message || '';
+                const isConflict = errorName === 'AbortError' || errorName === 'NotReadableError' || errorMessage.includes('DeviceInUse');
+
+                if (isConflict) {
+                    customAlert({
+                        title: 'Camera Already in Use',
+                        message: 'Another application (like Zoom, Teams, or another browser tab) is already using your camera. Please close those applications and try again.',
+                        type: 'error',
+                        confirmText: 'Dismiss',
+                        cancelText: 'Join without Media', // Use existing pattern
+                        onCancel: () => {
+                            if (typeof window !== 'undefined') {
+                                localStorage.setItem('podium_camera_state', 'false');
+                            }
+                        }
+                    });
+                } else {
+                    showAlert(`Failed to toggle camera: ${errorMessage || 'Unknown error'}`, 'error');
+                }
                 break;
             }
         }

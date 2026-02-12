@@ -10,6 +10,7 @@ interface AlertOptions {
     confirmText?: string;
     cancelText?: string;
     onConfirm?: () => void;
+    onCancel?: () => void;
 }
 
 interface AlertContextType {
@@ -63,9 +64,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
 
     const customAlert = useCallback((options: AlertOptions) => {
         setConfig(options);
-        setShowCancel(!!options.onConfirm); // If there's a confirm action, assume we might want cancel? Or explicilty pass showCancel?
-        // Actually for simplicity, let's treat 'customAlert' as a raw override.
-        // But for strict replacement of window.confirm, showConfirm is better.
+        setShowCancel(!!options.cancelText || !!options.onCancel);
         setIsOpen(true);
     }, []);
 
@@ -79,6 +78,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                 message={config.message}
                 type={config.type}
                 onConfirm={config.onConfirm}
+                onCancel={config.onCancel}
                 showCancel={showCancel}
                 confirmText={config.confirmText}
                 cancelText={config.cancelText}
