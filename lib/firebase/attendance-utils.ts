@@ -35,7 +35,7 @@ export const joinAttendanceSession = async (
 
     const record: Omit<AttendanceRecord, 'id'> = {
         studentName,
-        studentIndexNumber: studentIndexNumber || null,
+        studentIndexNumber: studentIndexNumber || undefined,
         joinedAt: Timestamp.now(),
         leftAt: null,
         totalVerificationsSent: 0,
