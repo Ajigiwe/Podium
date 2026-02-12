@@ -39,18 +39,39 @@ export async function GET(
 
         // Verify file exists
         if (!fs.existsSync(filePath)) {
-            console.error(`[DOWNLOAD] File MISSING on disk at: ${filePath}`);
-            return NextResponse.json({
-                error: 'File not found on server',
-                debug: {
-                    requestedPath: filePath,
-                    exists: false,
-                    dirContents: fs.existsSync(path.dirname(filePath)) ? fs.readdirSync(path.dirname(filePath)).slice(0, 5) : 'Dir not found'
-                }
-            }, { status: 404 });
-        }
-        console.log(`[DOWNLOAD] File found! Size: ${fs.statSync(filePath).size} bytes`);
+            console.warn(`[DOWNLOAD] Exact file MISSING at: ${filePath}. Trying fuzzy match...`);
 
+            const roomId = recording?.roomId;
+            const dir = path.dirname(filePath);
+
+            if (roomId && fs.existsSync(dir)) {
+                const files = fs.readdirSync(dir);
+                // Look for any file that starts with the roomId and ends with .mp4
+                const match = files.find(f => f.startsWith(roomId) && f.endsWith('.mp4'));
+
+                if (match) {
+                    const newPath = path.join(dir, match);
+                    console.log(`[DOWNLOAD] Fuzzy match found! Using: ${newPath}`);
+                    filePath = newPath;
+                } else {
+                    console.error(`[DOWNLOAD] No fuzzy match found for roomId: ${roomId} in ${dir}`);
+                    return NextResponse.json({
+                        error: 'File not found on server',
+                        debug: {
+                            requestedPath: filePath,
+                            dirContents: files.slice(0, 10)
+                        }
+                    }, { status: 404 });
+                }
+            } else {
+                return NextResponse.json({
+                    error: 'File not found on server',
+                    debug: { requestedPath: filePath }
+                }, { status: 404 });
+            }
+        }
+
+        console.log(`[DOWNLOAD] Final path being served: ${filePath}`);
         const stats = fs.statSync(filePath);
         const fileName = path.basename(filePath);
 
