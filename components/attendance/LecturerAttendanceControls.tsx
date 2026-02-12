@@ -121,10 +121,6 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
         }
     };
 
-    const downloadReport = () => {
-        window.open(`/api/attendance/download/${sessionId}`, '_blank');
-    };
-
     if (!isActive) return null;
 
     const nextChecks = stats?.scheduledVerifications.filter(m => m > minutesElapsed) || [];
@@ -205,14 +201,6 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
                                 <Zap className="w-4 h-4" />
                             )}
                             TRIGGER MANUAL CHECK
-                        </button>
-
-                        <button
-                            onClick={downloadReport}
-                            className="w-full bg-gray-800 hover:bg-gray-700 text-white text-[11px] font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all border border-gray-700 active:scale-[0.98]"
-                        >
-                            <Download className="w-4 h-4" />
-                            DOWNLOAD REPORT (CSV)
                         </button>
                     </div>
 

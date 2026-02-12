@@ -58,7 +58,33 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-        allow update, delete: if false; // Messages are immutable for now
+        allow update, delete: if false;
+      }
+
+      // NEW: Attendance subcollection
+      match /attendance/{studentId} {
+        // Student can read/write their own record
+        // Lecturer of the session can read all
+        allow read: if isSignedIn() && (
+          request.auth.uid == studentId ||
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
+        );
+        allow write: if isSignedIn();
+      }
+
+      // NEW: Verifications subcollection
+      match /verifications/{verifId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && 
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid;
+
+        match /responses/{studentId} {
+          allow read: if isSignedIn() && (
+            request.auth.uid == studentId ||
+            get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
+          );
+          allow create: if isSignedIn() && request.auth.uid == studentId;
+        }
       }
     }
     

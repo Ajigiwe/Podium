@@ -108,10 +108,6 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
         }
     };
 
-    const downloadReport = () => {
-        window.open(`/api/attendance/download/${sessionId}`, '_blank');
-    };
-
     if (!isActive) return null;
 
     return (
@@ -149,14 +145,6 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                             title="Trigger Manual Check"
                         >
                             {isTriggering ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                        </button>
-
-                        <button
-                            onClick={downloadReport}
-                            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                            title="Download Report"
-                        >
-                            <Download className="w-3.5 h-3.5" />
                         </button>
 
                         <button

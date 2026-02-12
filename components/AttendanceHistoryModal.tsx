@@ -81,21 +81,33 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
 
     const handleDownloadAttendance = async (sessionId: string, title: string) => {
         try {
-            // 1. Fetch Session Details (to get Lecturer Name, Program, Course)
+            // 1. Fetch Session Details (to get Lecturer Name, Program, Course, Time)
             const sessionRef = doc(db, 'sessions', sessionId);
             const sessionSnap = await getDoc(sessionRef);
 
             let lecturerName = 'N/A';
             let program = 'N/A';
             let course = 'N/A';
+            let classDate = 'N/A';
+            let classTime = 'N/A';
 
             if (sessionSnap.exists()) {
                 const data = sessionSnap.data();
                 lecturerName = data.lecturerName || 'N/A';
                 program = data.program || 'N/A';
                 course = data.course || 'N/A';
+
+                if (data.scheduledStartTime) {
+                    const dateObj = data.scheduledStartTime.toDate();
+                    classDate = dateObj.toLocaleDateString();
+                    classTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else if (data.createdAt) {
+                    const dateObj = data.createdAt.toDate();
+                    classDate = dateObj.toLocaleDateString();
+                    classTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
             } else {
-                // Fallback for hard-deleted sessions: Fetch Lecturer Name from Profile
+                // Fallback for hard-deleted sessions
                 try {
                     const profileRef = doc(db, 'profiles', userId);
                     const profileSnap = await getDoc(profileRef);
@@ -105,49 +117,78 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                 } catch (err) {
                     console.error("Error fetching profile fallback:", err);
                 }
-                program = 'N/A (Class Deleted)';
-                course = 'N/A (Class Deleted)';
             }
 
-            // 2. Fetch Logs
+            // 2. Fetch Join Logs (attendance_logs)
             const logsRef = collection(db, 'attendance_logs');
-            const q = query(
+            const qLogs = query(
                 logsRef,
-                where('sessionId', '==', sessionId),
-                orderBy('joinedAt', 'desc')
+                where('sessionId', '==', sessionId)
             );
+            const logsSnap = await getDocs(qLogs);
+            const basicLogs = logsSnap.docs
+                .map(doc => doc.data() as AttendanceLog)
+                .sort((a, b) => {
+                    const timeA = a.joinedAt?.toMillis?.() || 0;
+                    const timeB = b.joinedAt?.toMillis?.() || 0;
+                    return timeA - timeB;
+                });
 
-            const snapshot = await getDocs(q);
-            const logs = snapshot.docs.map(doc => doc.data() as AttendanceLog);
-
-            if (logs.length === 0) {
-                showAlert("No attendance records found for this class.", "info");
+            if (basicLogs.length === 0) {
+                showAlert("No join records found for this class.", "info");
                 return;
             }
 
-            // 3. Form CSV Content
+            // 3. Fetch Verification Stats (subcollection)
+            const attendanceSubRef = collection(db, 'sessions', sessionId, 'attendance');
+            const verifSnap = await getDocs(attendanceSubRef);
+            const verifData: Record<string, number> = {};
+            verifSnap.docs.forEach(doc => {
+                const data = doc.data();
+                verifData[doc.id] = data.totalVerificationsCompleted || 0;
+            });
+
+            // 4. Form CSV Content
             const csvRows = [];
 
             // Header Section
-            csvRows.push(['Attendance Report']);
-            csvRows.push([`Class Title,${title}`]);
-            csvRows.push([`Lecturer Name,${lecturerName}`]);
-            csvRows.push([`Program,${program}`]);
-            csvRows.push([`Course,${course}`]);
-            csvRows.push([`Date Generated,${new Date().toLocaleString()}`]);
+            csvRows.push(['ATTENDANCE REPORT']);
+            csvRows.push([`Class Title,${title.replace(/,/g, ' ')}`]);
+            csvRows.push([`Lecturer Name,${lecturerName.replace(/,/g, ' ')}`]);
+            csvRows.push([`Date,${classDate}`]);
+            csvRows.push([`Time,${classTime}`]);
+            csvRows.push([`Program,${program.replace(/,/g, ' ')}`]);
+            csvRows.push([`Course,${course.replace(/,/g, ' ')}`]);
+            csvRows.push([`Generated At,${new Date().toLocaleString()}`]);
             csvRows.push([]); // Empty line
 
             // Table Header
-            const headers = ['Student Name', 'Index Number', 'Joined At'];
+            const headers = ['Student Name', 'Index Number', 'Joined At', 'Presence Checks'];
             csvRows.push([headers.join(',')]);
 
-            // Table Data
-            logs.forEach(log => {
-                const date = log.joinedAt?.toDate ? log.joinedAt.toDate().toLocaleString() : 'N/A';
-                // Escape quotes in name
-                const name = `"${(log.userName || 'Unknown').replace(/"/g, '""')}"`;
-                const index = `"${(log.userIndexNumber || 'N/A').replace(/"/g, '""')}"`;
-                csvRows.push([name, index, `"${date}"`].join(','));
+            // Table Data (Group by student to avoid duplicates if they joined multiple times)
+            const uniqueStudents: Record<string, {
+                name: string;
+                index: string;
+                joinedAt: string;
+                checks: number;
+            }> = {};
+
+            basicLogs.forEach(log => {
+                if (!uniqueStudents[log.userId]) {
+                    uniqueStudents[log.userId] = {
+                        name: log.userName || 'Unknown',
+                        index: log.userIndexNumber || 'N/A',
+                        joinedAt: log.joinedAt?.toDate ? log.joinedAt.toDate().toLocaleString() : 'N/A',
+                        checks: verifData[log.userId] || 0
+                    };
+                }
+            });
+
+            Object.values(uniqueStudents).forEach(student => {
+                const name = `"${student.name.replace(/"/g, '""')}"`;
+                const index = `"${student.index.replace(/"/g, '""')}"`;
+                csvRows.push([name, index, `"${student.joinedAt}"`, student.checks].join(','));
             });
 
             const csvContent = csvRows.join('\n');
@@ -156,7 +197,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
 
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `${title.replace(/[^a-z0-9]/gi, '_')}_attendance.csv`);
+            link.setAttribute('download', `${title.replace(/[^a-z0-9]/gi, '_')}_attendance_full.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
