@@ -43,7 +43,40 @@ export interface Session {
     course?: string; // Course Name/Code (e.g. Data Structures)
     isDeleted?: boolean; // Soft delete flag
     scheduledStartTime?: Timestamp; // New field for class scheduling
+    durationMinutes?: number; // Attendance: total duration planned
+    verificationCount?: number; // Attendance: number of checks to perform
     createdAt: Timestamp;
+}
+
+// Attendance Statistics for a specific student in a session
+export interface AttendanceRecord {
+    id: string; // studentId
+    studentName: string;
+    studentIndexNumber?: string;
+    joinedAt: Timestamp;
+    leftAt?: Timestamp | null;
+    totalVerificationsSent: number;
+    totalVerificationsCompleted: number;
+    verificationPercentage: number; // calculated field
+    isPresent: boolean;
+}
+
+// A specific verification event (popup) triggered during a session
+export interface VerificationEvent {
+    id: string; // auto-gen
+    verificationNumber: number;
+    triggeredBy: 'automatic' | 'manual';
+    triggeredAt: Timestamp;
+    expiresAt: Timestamp;
+    timeLimitSeconds: number;
+}
+
+// A student's response to a specific verification event
+export interface VerificationResponse {
+    id: string; // studentId
+    attendanceRecordId: string;
+    respondedAt: Timestamp;
+    responseTimeSeconds: number; // How long it took to click (for engagement metrics)
 }
 
 // Transaction (Payment Record)

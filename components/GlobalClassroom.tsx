@@ -21,7 +21,7 @@ import {
     useIsSpeaking,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
-import { Room, Track, Participant, RoomEvent, ParticipantEvent } from 'livekit-client';
+import { Room, Track, Participant, RoomEvent, ParticipantEvent, ConnectionState } from 'livekit-client';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
 import { Maximize2, X, Minimize2, Pin, PinOff, Video, User, Mic, MoreVertical, MicOff, VideoOff, UserX } from 'lucide-react';
@@ -33,6 +33,16 @@ import { useRaisedHands } from '@/hooks/useRaisedHands';
 import { LayoutSelector } from './LayoutSelector';
 import { RaisedHandsBanner } from './RaisedHandsBanner';
 import { RecordingControls } from './RecordingControls';
+import { InstantPiPManager } from './media/InstantPiPManager';
+import { PiPPermissionPrompt } from './media/PiPPermissionPrompt';
+import { SimpleAttendanceConsole } from './attendance/SimpleAttendanceConsole';
+import { StudentVerificationModal } from './attendance/StudentVerificationModal';
+import { ConnectionRecoveryStatus } from './ConnectionRecoveryStatus';
+import { NetworkQualityIndicator } from './NetworkQualityIndicator';
+import { roomOptions } from '@/config/livekit.config';
+import { useMediaPersistence } from '@/hooks/useMediaPersistence';
+import { MediaRestorationIndicator } from './MediaRestorationIndicator';
+import { useAutoPermissionInteraction } from '@/hooks/useAutoPermissionInteraction';
 
 
 // Inner component that can access the room context
@@ -256,9 +266,7 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
 
 // Inner component to handle layout logic that needs LayoutContext
 function InnerVideoLayout({
-    onTogglePiP,
     onReaction,
-    isPiPActive,
     onLeave,
     reactionRef,
     tracks,
@@ -275,12 +283,11 @@ function InnerVideoLayout({
     isHandRaised,
     userRole,
     setLayout,
-    unreadChatCount
-
+    unreadChatCount,
+    showAlert,
+    isActive
 }: {
-    onTogglePiP: () => void;
     onReaction: (emoji: string) => void;
-    isPiPActive: boolean;
     onLeave: () => void;
     reactionRef: React.RefObject<ReactionOverlayHandle | null>;
     tracks: TrackReferenceOrPlaceholder[];
@@ -298,6 +305,8 @@ function InnerVideoLayout({
     userRole: string;
     setLayout: (layout: any) => void;
     unreadChatCount: number;
+    showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+    isActive: boolean;
 }) {
     // We don't rely on layoutContext for basic chat toggle anymore
     // but we can still access it if needed for other things
@@ -446,40 +455,8 @@ function InnerVideoLayout({
         }
     };
 
-    // If in PiP mode, provide a simplified, full-screen video layout
-    if (isPiPActive) {
-        return (
-            <div className="h-full w-full bg-black flex flex-col items-center justify-center overflow-hidden relative">
-                <ReactionOverlay ref={reactionRef} />
-                <div className="flex-1 w-full h-full relative">
-                    {focusTrack ? (
-                        <div className="absolute inset-0">
-                            <FocusLayout trackRef={focusTrack} />
-                        </div>
-                    ) : (
-                        <div className="absolute inset-0">
-                            <GridLayout tracks={tracks.slice(0, 1)}>
-                                <ParticipantTile />
-                            </GridLayout>
-                            {tracks.length > 1 && (
-                                <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur px-2 py-1 rounded text-xs text-white z-10">
-                                    + {tracks.length - 1} more participants
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-                {/* Add a tiny exit button for PiP window UX */}
-                <button
-                    onClick={onTogglePiP}
-                    className="absolute top-2 right-2 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white/70 hover:text-white transition-all z-50 ring-1 ring-white/10"
-                    title="Close PiP"
-                >
-                    <X className="w-4 h-4" />
-                </button>
-            </div>
-        );
-    }
+    // If in PiP mode, the video element itself handles the display. 
+    // The main UI stays as a classroom.
 
     return (
         <div className="flex flex-col h-full bg-[#0a0a0a] relative">
@@ -490,6 +467,24 @@ function InnerVideoLayout({
                     .mobile-hide-force { display: none !important; }
                 }
             `}</style>
+
+            {/* Top Navbar */}
+            <div className="h-12 bg-black/60 backdrop-blur-md border-b border-white/5 px-4 flex items-center justify-between z-[100]">
+                <div className="flex items-center gap-3">
+                    <div className="bg-blue-600/20 p-1.5 rounded-lg border border-blue-500/20">
+                        <Video className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <span className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md">
+                        {title || 'Current Class'}
+                    </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {userRole === 'lecturer' && (
+                        <SimpleAttendanceConsole sessionId={sessionId!} isActive={isActive} />
+                    )}
+                </div>
+            </div>
 
             <div className="flex-1 relative overflow-hidden flex flex-col sm:flex-row">
 
@@ -623,15 +618,14 @@ function InnerVideoLayout({
 
             {/* Custom Controls */}
             <CustomControlBar
-                onTogglePiP={onTogglePiP}
                 onReaction={onReaction}
-                isPiPActive={isPiPActive}
                 onLeave={onLeave}
                 onToggleChat={onToggleChat}
                 isChatOpen={isChatOpen}
                 onToggleHand={onToggleHand}
                 isHandRaised={isHandRaised}
                 unreadChatCount={unreadChatCount}
+                showAlert={showAlert}
             />
 
             {/* Chat Sidebar - Persistent */}
@@ -677,11 +671,8 @@ function InnerVideoLayout({
     );
 }
 
-// Wrapper component that provides LayoutContext
 function VideoLayout({
-    onTogglePiP,
     onReaction,
-    isPiPActive,
     onLeave,
     reactionRef,
     onToggleChat,
@@ -689,11 +680,11 @@ function VideoLayout({
     unreadChatCount,
     userRole,
     userId,
-    userName
+    userName,
+    showAlert,
+    isActive
 }: {
-    onTogglePiP: () => void;
     onReaction: (emoji: string) => void;
-    isPiPActive: boolean;
     onLeave: () => void;
     reactionRef: React.RefObject<ReactionOverlayHandle | null>;
     onToggleChat: () => void;
@@ -702,6 +693,8 @@ function VideoLayout({
     userRole: string;
     userId: string;
     userName: string;
+    showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+    isActive: boolean;
 }) {
     const { layout, setLayout, config, spotlightParticipant, setSpotlightParticipant } = useLayoutConfig();
     const { raisedHands, raiseHand, lowerHand, clearAllHands } = useRaisedHands();
@@ -718,7 +711,7 @@ function VideoLayout({
 
     const tracks = useTracks(
         [
-            { source: Track.Source.Camera, withPlaceholder: true },
+            { source: Track.Source.Camera, withPlaceholder: false },
             { source: Track.Source.ScreenShare, withPlaceholder: false },
         ],
         { onlySubscribed: false }
@@ -736,9 +729,7 @@ function VideoLayout({
     return (
         <LayoutContextProvider>
             <InnerVideoLayout
-                onTogglePiP={onTogglePiP}
                 onReaction={onReaction}
-                isPiPActive={isPiPActive}
                 onLeave={onLeave}
                 reactionRef={reactionRef}
                 tracks={tracks}
@@ -756,13 +747,14 @@ function VideoLayout({
                 isHandRaised={isHandRaised}
                 userRole={userRole}
                 setLayout={setLayout}
+                isActive={isActive}
+                showAlert={showAlert}
             />
         </LayoutContextProvider>
     );
 }
 
 export default function GlobalClassroom() {
-
     const {
         sessionId,
         title,
@@ -787,7 +779,46 @@ export default function GlobalClassroom() {
     const [isConnecting, setIsConnecting] = useState(false);
     const roomRef = useRef<Room | null>(null);
 
-    // Draggable State for floating/mini mode (desktop only)
+    // PERSISTENT GESTURE MONITOR
+    // This ensures that every click "re-primes" the browser interaction status
+    // which is needed for PiP if the user manually closes it.
+    useEffect(() => {
+        const resumeMedia = async () => {
+            console.log('🔈 [GlobalClassroom] Gesture refreshed: Re-priming media...');
+            try {
+                // 1. Resume AudioContext (re-check if suspended)
+                const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+                if (AC) {
+                    const ctx = new AC();
+                    if (ctx.state === 'suspended') await ctx.resume();
+                }
+
+                // 2. Continuous Priming for PiP
+                // Browsers often disable auto-PiP if manually closed.
+                // We re-enable it on every interaction to stay resilient.
+                const videos = document.querySelectorAll('video');
+                videos.forEach(video => {
+                    if (!(video as any).autoPictureInPicture) {
+                        (video as any).autoPictureInPicture = true;
+                    }
+                    if (video.srcObject || video.src) {
+                        video.play().catch(e => console.debug('Playback refresh deferred:', e));
+                    }
+                });
+            } catch (err) { }
+        };
+
+        window.addEventListener('click', resumeMedia);
+        window.addEventListener('touchstart', resumeMedia);
+        window.addEventListener('keydown', resumeMedia);
+
+        return () => {
+            window.removeEventListener('click', resumeMedia);
+            window.removeEventListener('touchstart', resumeMedia);
+            window.removeEventListener('keydown', resumeMedia);
+        };
+    }, []);
+    // Dragging State for floating/mini mode (desktop only)
     const [position, setPosition] = useState({ x: 20, y: 400 });
     const [size, setSize] = useState({ width: 400, height: 300 });
     const [isDragging, setIsDragging] = useState(false);
@@ -795,21 +826,18 @@ export default function GlobalClassroom() {
     const dragStartRef = useRef({ x: 0, y: 0 });
     const router = useRouter();
 
-    // Document PiP State
-    const pipWindowRef = useRef<Window | null>(null);
     const [isPiPActive, setIsPiPActive] = useState(false);
 
-    // Memoized LiveKit options for stability
-    const roomOptions = useMemo(() => ({
+    // AUTOMATION: Establish interaction via permissions (Solution 2)
+    useAutoPermissionInteraction();
+
+    // Use centralized LiveKit options for stability
+    const finalRoomOptions = useMemo(() => ({
+        ...roomOptions,
         publishDefaults: {
+            ...roomOptions.publishDefaults,
             simulcast: true,
-            videoSimulcastLayers: [
-                { width: 640, height: 360, encoding: { maxBitrate: 500 * 1000, maxFramerate: 20 }, resolution: { width: 640, height: 360, frameRate: 20 } },
-                { width: 320, height: 180, encoding: { maxBitrate: 150 * 1000, maxFramerate: 15 }, resolution: { width: 320, height: 180, frameRate: 15 } },
-            ]
-        },
-        adaptiveStream: true,
-        dynacast: true,
+        }
     }), []);
 
     const connectOptions = useMemo(() => ({
@@ -833,34 +861,21 @@ export default function GlobalClassroom() {
 
         // Cleanup on unmount
         return () => {
-            if (pipWindowRef.current) {
-                console.log('Unmounting GlobalClassroom, closing PiP');
-                try {
-                    pipWindowRef.current.close();
-                } catch (e) {
-                    console.error('Error closing PiP:', e);
-                }
-                pipWindowRef.current = null;
-            }
-            if (roomRef.current) {
+            if (roomRef.current && roomRef.current.state !== ConnectionState.Disconnected) {
+                console.log('Classroom unmounting, disconnecting room...');
                 roomRef.current.disconnect();
+                roomRef.current = null;
             }
         };
     }, []); // Only run once on mount/unmount
 
-    // Force close PiP when class becomes inactive (even if component stays mounted)
+    // Force close when class becomes inactive
     useEffect(() => {
-        if (!isActive && pipWindowRef.current) {
-            console.log('Class became inactive, closing PiP');
-            try {
-                pipWindowRef.current.close();
-            } catch (e) {
-                console.error('Error closing PiP:', e);
-            }
-            pipWindowRef.current = null;
-            setIsPiPActive(false);
-            if (roomRef.current) {
+        if (!isActive) {
+            if (roomRef.current && roomRef.current.state !== ConnectionState.Disconnected) {
+                console.log('Force disconnecting room as class is inactive');
                 roomRef.current.disconnect();
+                roomRef.current = null;
             }
         }
     }, [isActive]);
@@ -1003,10 +1018,6 @@ export default function GlobalClassroom() {
         if (roomRef.current) {
             roomRef.current.disconnect();
         }
-        if (pipWindowRef.current) {
-            pipWindowRef.current.close();
-            pipWindowRef.current = null;
-        }
         leaveClass();
 
         // Navigate to dashboard to ensure full exit
@@ -1017,17 +1028,26 @@ export default function GlobalClassroom() {
         }
     }, [leaveClass, userRole, router]);
 
-    // Handle disconnection callback
     const handleDisconnected = useCallback(() => {
         console.log('LiveKit room disconnected');
         roomRef.current = null;
         setLiveKitRoom(null);
-        if (pipWindowRef.current) {
-            pipWindowRef.current.close();
-            pipWindowRef.current = null;
-            setIsPiPActive(false);
-        }
     }, [setLiveKitRoom]);
+
+    const handleLiveKitError = useCallback((e: Error) => {
+        // Suppress errors that are expected during teardown or transient network issues
+        const isSuppressed =
+            e.message.includes('Negotiation') ||
+            e.message.includes('Received leave request') ||
+            e.message.includes('Signal connection closed');
+
+        if (isSuppressed) {
+            console.warn('Suppressed LiveKit error:', e.message);
+        } else {
+            console.error('LiveKit error:', e);
+            setTokenError(e.message);
+        }
+    }, []);
 
     // Handle maximize - go to classroom page
     const handleMaximize = useCallback(() => {
@@ -1035,69 +1055,12 @@ export default function GlobalClassroom() {
         router.push(`/classroom/${sessionId}`);
     }, [toggleMinimize, router, sessionId]);
 
-    // Toggle Document PiP
+    // Handle PiP Toggle (Placeholder for new implementation)
     const handleTogglePiP = useCallback(async () => {
-        // If already active, close it
-        if (pipWindowRef.current) {
-            pipWindowRef.current.close();
-            return;
-        }
-
-        // Check compatibility
-        if (!('documentPictureInPicture' in window)) {
-            showAlert('Picture-in-Picture API is not supported in this browser.', 'warning');
-            return;
-        }
-
-        try {
-            // Open PiP window
-            const win = await (window as any).documentPictureInPicture.requestWindow({
-                width: 800,
-                height: 600,
-            });
-
-            // Store ref
-            pipWindowRef.current = win;
-            setIsPiPActive(true);
-
-            // Copy styles
-            Array.from(document.styleSheets).forEach((styleSheet) => {
-                try {
-                    if (styleSheet.href) {
-                        const link = win.document.createElement('link');
-                        link.rel = 'stylesheet';
-                        link.href = styleSheet.href;
-                        win.document.head.appendChild(link);
-                    } else if (styleSheet.ownerNode instanceof HTMLStyleElement) {
-                        const style = win.document.createElement('style');
-                        style.textContent = styleSheet.ownerNode.textContent;
-                        win.document.head.appendChild(style);
-                    }
-                } catch (e) {
-                    console.warn('Failed to copy stylesheet:', e);
-                }
-            });
-
-            // Add utility classes specific to Pip
-            const style = win.document.createElement('style');
-            style.textContent = `
-                body { margin: 0; background-color: #0a0a0a; height: 100vh; overflow: hidden; }
-                .lk-video-conference { height: 100vh !important; }
-            `;
-            win.document.head.appendChild(style);
-
-            // Handle close
-            win.addEventListener('pagehide', () => {
-                pipWindowRef.current = null;
-                setIsPiPActive(false);
-            });
-
-        } catch (error) {
-            console.error('Failed to open PiP window:', error);
-            pipWindowRef.current = null;
-            setIsPiPActive(false);
-        }
-    }, []);
+        // We will implement the new Video Element PiP here or in a separate component
+        console.log('Toggle PiP clicked');
+        setIsPiPActive(!isPiPActive);
+    }, [isPiPActive]);
 
     // Send Reaction
     const handleReaction = useCallback(async (emoji: string) => {
@@ -1115,6 +1078,7 @@ export default function GlobalClassroom() {
             }
         }
     }, []);
+
 
     if (!mounted || !isActive || !sessionId || !userName) return null;
 
@@ -1205,24 +1169,24 @@ export default function GlobalClassroom() {
                     showAlert('Could not access camera or microphone. Please check your device connections.', 'error');
                 }
             }}
-            onError={(e) => {
-                console.error('LiveKit error:', e);
-                // Don't show alert for interruptions/timeouts repeatedly
-                if (e.message.includes('Negotiation')) {
-                    console.warn('Negotiation error suppressed - transient network issue suspected');
-                } else {
-                    setTokenError(e.message);
-                }
-            }}
+            onError={handleLiveKitError}
             // Custom connection options for stability
-            options={roomOptions}
+            options={finalRoomOptions}
             connectOptions={connectOptions}
             className="w-full h-full"
         >
+            <PiPPermissionPrompt />
+            <InstantPiPManager />
+            <ConnectionRecoveryStatus />
+            <NetworkQualityIndicator />
+            <MediaRestorationIndicator />
+
+            {/* Student Attendance Verification Modal */}
+            {userRole !== 'lecturer' && (
+                <StudentVerificationModal sessionId={sessionId!} />
+            )}
             <VideoLayout
-                onTogglePiP={handleTogglePiP}
                 onReaction={handleReaction}
-                isPiPActive={isPiPActive}
                 onLeave={handleLeave}
                 reactionRef={reactionRef}
                 onToggleChat={toggleChat}
@@ -1231,84 +1195,16 @@ export default function GlobalClassroom() {
                 userId={userId || ''}
                 userName={userName || ''}
                 unreadChatCount={unreadChatCount}
+                isActive={isActive}
+                showAlert={showAlert}
             />
             <RoomConnector onRoomReady={handleRoomReady} />
             <RoomAudioRenderer />
         </LiveKitRoom>
     );
 
-    // If PiP is active, render into PiP Window AND show placeholder in main window
-    if (isPiPActive && pipWindowRef.current) {
-        return (
-            <>
-                {createPortal(
-                    LiveKitContent,
-                    pipWindowRef.current.document.body
-                )}
-                {/* Main window placeholder - rendered in the mount point if possible, otherwise fixed */}
-                {mountNode && !isMini && !isFloating ? createPortal(
-                    <div className="absolute inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center p-6 text-center">
-                        <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mb-6">
-                            <Video className="w-10 h-10 text-blue-500 animate-pulse" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">Picture-in-Picture Active</h2>
-                        <p className="text-gray-400 max-w-sm mb-8">
-                            The classroom video is currently playing in a separate floating window.
-                        </p>
-                        <button
-                            onClick={handleTogglePiP}
-                            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:scale-105 active:scale-95"
-                        >
-                            Return to Main Window
-                        </button>
-                    </div>,
-                    mountNode
-                ) : (
-                    <div style={{
-                        position: 'fixed',
-                        inset: 0,
-                        zIndex: 9998,
-                        backgroundColor: '#0a0a0a',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '24px',
-                        textAlign: 'center'
-                    }}>
-                        <div style={{
-                            width: '80px',
-                            height: '80px',
-                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginBottom: '24px'
-                        }}>
-                            <Video style={{ width: '40px', height: '40px', color: '#3b82f6' }} />
-                        </div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>PiP Mode Active</h2>
-                        <p style={{ color: '#9ca3af', marginBottom: '32px', maxWidth: '320px' }}>Video is playing in a separate window.</p>
-                        <button
-                            onClick={handleTogglePiP}
-                            style={{
-                                padding: '12px 24px',
-                                backgroundColor: '#2563eb',
-                                color: 'white',
-                                borderRadius: '12px',
-                                border: 'none',
-                                fontWeight: '600',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Back to Classroom
-                        </button>
-                    </div>
-                )}
-            </>
-        );
-    }
+    // If PiP is active, we just show a subtle indicator or nothing special in the main UI
+    // since the video element itself will be in PiP mode.
 
     // Check if on mobile
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -1478,7 +1374,6 @@ export default function GlobalClassroom() {
                             </button>
                         </div>
                     </div>
-
                     {/* LiveKit fills remaining space */}
                     <div style={{ flex: 1, minHeight: 0, backgroundColor: '#0a0a0a' }}>
                         {LiveKitContent}

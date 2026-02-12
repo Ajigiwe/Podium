@@ -5,17 +5,17 @@ import {
     MediaDeviceMenu,
     useLocalParticipant,
     useLayoutContext,
+    useRoomContext,
 } from '@livekit/components-react';
-import { Track } from 'livekit-client';
+import { Track, ConnectionState } from 'livekit-client';
 import { Smile, PictureInPicture2, MoreVertical, Mic, VideoIcon, MicOff, VideoOff, MonitorUp, PhoneOff, MessageSquare, Hand } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ReactionModal } from './ReactionModal';
+import UnifiedMediaButton from './media/UnifiedMediaButton';
 
 interface CustomControlBarProps {
-    onTogglePiP: () => void; // Toggle PiP mode
     onReaction: (emoji: string) => void;
-    isPiPActive: boolean;
     onLeave: () => void;
     onToggleChat: () => void;
     isChatOpen: boolean;
@@ -25,16 +25,15 @@ interface CustomControlBarProps {
 }
 
 export default function CustomControlBar({
-    onTogglePiP,
     onReaction,
-    isPiPActive,
     onLeave,
     onToggleChat,
     isChatOpen,
     onToggleHand,
     isHandRaised,
-    unreadChatCount
-}: CustomControlBarProps) {
+    unreadChatCount,
+    showAlert
+}: CustomControlBarProps & { showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void }) {
     const { saveAudioInputEnabled, saveVideoInputEnabled } = usePersistentUserChoices();
     const {
         localParticipant,
@@ -42,6 +41,14 @@ export default function CustomControlBar({
         isCameraEnabled,
         isScreenShareEnabled
     } = useLocalParticipant();
+
+    const [isTogglingMic, setIsTogglingMic] = useState(false);
+    const [isTogglingVideo, setIsTogglingVideo] = useState(false);
+    const [isTogglingScreen, setIsTogglingScreen] = useState(false);
+
+    const room = useRoomContext();
+    const isConnected = room?.state === ConnectionState.Connected;
+    const isConnectingOrReconnecting = room?.state === ConnectionState.Connecting || room?.state === ConnectionState.Reconnecting;
 
     const [showReactions, setShowReactions] = useState(false);
     const reactionBtnRef = useRef<HTMLButtonElement>(null);
@@ -65,20 +72,122 @@ export default function CustomControlBar({
     // const layoutContext = useLayoutContext();
     // const { widgetState } = layoutContext;
 
+    const toggleMic = async () => {
+        if (!localParticipant || isTogglingMic || !isConnected) {
+            if (!isConnected) showAlert('Cannot toggle microphone while disconnected or reconnecting.', 'warning');
+            return;
+        }
+        setIsTogglingMic(true);
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+            try {
+                const newState = !isMicrophoneEnabled;
+                await localParticipant.setMicrophoneEnabled(newState);
+                if (saveAudioInputEnabled) saveAudioInputEnabled(newState);
+                break; // Success
+            } catch (error: any) {
+                attempts++;
+                const isEngineError = error.message?.includes('engine not connected') || error.message?.includes('timeout');
+
+                if (attempts < maxAttempts && isEngineError) {
+                    console.warn(`Microphone toggle retry ${attempts}/${maxAttempts} due to engine latency...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    continue;
+                }
+
+                console.error('Failed to toggle microphone:', error);
+                showAlert(`Failed to toggle microphone: ${error.message || 'Unknown error'}`, 'error');
+                break;
+            }
+        }
+        setIsTogglingMic(false);
+    };
+
+    const toggleVideo = async () => {
+        if (!localParticipant || isTogglingVideo || !isConnected) {
+            if (!isConnected) showAlert('Cannot toggle camera while disconnected or reconnecting.', 'warning');
+            return;
+        }
+        setIsTogglingVideo(true);
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+            try {
+                const newState = !isCameraEnabled;
+                await localParticipant.setCameraEnabled(newState);
+                if (saveVideoInputEnabled) saveVideoInputEnabled(newState);
+                break; // Success
+            } catch (error: any) {
+                attempts++;
+                const isEngineError = error.message?.includes('engine not connected') || error.message?.includes('timeout');
+
+                if (attempts < maxAttempts && isEngineError) {
+                    console.warn(`Camera toggle retry ${attempts}/${maxAttempts} due to engine latency...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    continue;
+                }
+
+                console.error('Failed to toggle camera:', error);
+                showAlert(`Failed to toggle camera: ${error.message || 'Unknown error'}`, 'error');
+                break;
+            }
+        }
+        setIsTogglingVideo(false);
+    };
+
+    const toggleScreenShare = async () => {
+        if (!localParticipant || isTogglingScreen || !isConnected) {
+            if (!isConnected) showAlert('Cannot toggle screen share while disconnected or reconnecting.', 'warning');
+            return;
+        }
+        setIsTogglingScreen(true);
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+            try {
+                const newState = !isScreenShareEnabled;
+                await localParticipant.setScreenShareEnabled(newState);
+                break; // Success
+            } catch (error: any) {
+                attempts++;
+                const isEngineError = error.message?.includes('engine not connected') || error.message?.includes('timeout');
+
+                if (attempts < maxAttempts && isEngineError) {
+                    console.warn(`Screen share toggle retry ${attempts}/${maxAttempts} due to engine latency...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    continue;
+                }
+
+                console.error('Failed to toggle screen share:', error);
+                showAlert(`Failed to toggle screen share: ${error.message || 'Unknown error'}`, 'error');
+                break;
+            }
+        }
+        setIsTogglingScreen(false);
+    };
+
     const emojis = ['👍', '👏', '❤️', '🔥', '🎉', '😂', '😮', '🤔'];
 
     return (
         <div className="lk-control-bar !border-t-0 !bg-gray-900/90 !backdrop-blur-sm !p-1 sm:!p-1.5 rounded-xl mb-4 sm:mb-6 mx-auto max-w-fit flex items-center gap-1 sm:gap-1.5 shadow-xl border border-white/10">
             {/* Microphone */}
             <div className="relative group">
-                <TrackToggle
-                    source={Track.Source.Microphone}
-                    showIcon={false}
-                    onChange={saveAudioInputEnabled}
-                    className="!bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg"
+                <button
+                    onClick={toggleMic}
+                    disabled={isTogglingMic || !isConnected}
+                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingMic || !isConnected) ? 'opacity-50 cursor-wait' : ''}`}
                 >
                     {isMicrophoneEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4 text-red-500" />}
-                </TrackToggle>
+                    {isTogglingMic && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        </div>
+                    )}
+                </button>
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block">
                     <MediaDeviceMenu kind="audioinput" />
                 </div>
@@ -86,37 +195,37 @@ export default function CustomControlBar({
 
             {/* Camera */}
             <div className="relative group">
-                <TrackToggle
-                    source={Track.Source.Camera}
-                    showIcon={false}
-                    onChange={saveVideoInputEnabled}
-                    className="!bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg"
+                <button
+                    onClick={toggleVideo}
+                    disabled={isTogglingVideo || !isConnected}
+                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingVideo || !isConnected) ? 'opacity-50 cursor-wait' : ''}`}
                 >
                     {isCameraEnabled ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4 text-red-500" />}
-                </TrackToggle>
+                    {isTogglingVideo && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        </div>
+                    )}
+                </button>
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block">
                     <MediaDeviceMenu kind="videoinput" />
                 </div>
             </div>
 
             {/* Screen Share */}
-            <div
-                onClickCapture={(e) => {
-                    if (isPiPActive) {
-                        e.stopPropagation();
-                        alert("Screen sharing is not supported in floating window mode due to browser security restrictions. Please return to the main window to start sharing.");
-                    }
-                }}
-            >
-                <TrackToggle
-                    source={Track.Source.ScreenShare}
-                    captureOptions={{ audio: true, selfBrowserSurface: 'include' }}
-                    showIcon={false}
-                    className={`!bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg ${isPiPActive ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={isPiPActive}
+            <div>
+                <button
+                    onClick={toggleScreenShare}
+                    disabled={isTogglingScreen || !isConnected}
+                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingScreen || !isConnected) ? 'opacity-50 cursor-wait' : ''}`}
                 >
                     <MonitorUp className={`w-4 h-4 ${isScreenShareEnabled ? 'text-green-500' : ''}`} />
-                </TrackToggle>
+                    {isTogglingScreen && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        </div>
+                    )}
+                </button>
             </div>
 
             <div className="w-px h-8 bg-gray-700 mx-1" />
@@ -166,14 +275,8 @@ export default function CustomControlBar({
                 document.body
             )}
 
-            {/* PiP Button */}
-            <button
-                onClick={onTogglePiP}
-                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg ${isPiPActive ? '!text-blue-500' : ''}`}
-                title={isPiPActive ? "Exit Picture-in-Picture" : "Picture-in-Picture"}
-            >
-                <PictureInPicture2 className="w-4 h-4" />
-            </button>
+            {/* Unified Media Button (PiP + Mobile Audio) */}
+            <UnifiedMediaButton />
 
             <div className="w-px h-8 bg-gray-700 mx-1" />
 

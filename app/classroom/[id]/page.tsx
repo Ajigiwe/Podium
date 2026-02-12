@@ -11,12 +11,14 @@ import ClassroomContent from '@/components/ClassroomContent';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { Clock, RefreshCw, ArrowLeft, Laptop } from 'lucide-react';
 import CountdownTimer from '@/components/CountdownTimer';
+import { useAlert } from '@/contexts/AlertContext';
 
 export default function ClassroomPage() {
     const params = useParams();
     const router = useRouter();
     const { user, profile, loading: authLoading } = useAuth();
     const { joinClass, sessionId: currentSessionId } = useClassroom();
+    const { showAlert } = useAlert();
     const sessionId = params.id as string;
 
     const [session, setSession] = useState<Session | null>(null);
@@ -49,7 +51,7 @@ export default function ClassroomPage() {
                 // Get session details
                 const sessionDoc = await getDoc(doc(db, 'sessions', sessionId));
                 if (!sessionDoc.exists()) {
-                    alert('Session not found');
+                    showAlert('Session not found', 'error');
                     router.push('/');
                     return;
                 }
@@ -118,7 +120,7 @@ export default function ClassroomPage() {
                                 if (!hasPaidAccess) {
                                     // Profile might not be a student or doesn't exist
                                     console.error('User profile may not be set as student. Role:', profile.role);
-                                    alert('Unable to enroll. Please ensure your account is set up as a student.');
+                                    showAlert('Unable to enroll. Please ensure your account is set up as a student.', 'error');
                                     router.push('/dashboard/student');
                                     return;
                                 }
@@ -148,7 +150,7 @@ export default function ClassroomPage() {
                         }
                     }
 
-                    alert('You need to pay to access this class');
+                    showAlert('You need to pay to access this class', 'warning');
                     router.push('/dashboard/student');
                     return;
                 }
@@ -197,7 +199,7 @@ export default function ClassroomPage() {
                 setLoading(false);
             } catch (error) {
                 console.error('Error loading session:', error);
-                alert('Failed to load session');
+                showAlert('Failed to load session', 'error');
                 router.push('/');
             }
         };
@@ -248,7 +250,7 @@ export default function ClassroomPage() {
 
         } catch (error) {
             console.error("Error saving attendance:", error);
-            alert("Failed to save details. Please try again.");
+            showAlert("Failed to save details. Please try again.", "error");
         } finally {
             setSubmittingProfile(false);
         }

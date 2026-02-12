@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Video, Square, Clock } from 'lucide-react';
+import { useAlert } from '@/contexts/AlertContext';
 
 interface RecordingControlsProps {
     roomId: string;
@@ -19,6 +20,7 @@ export const RecordingControls = ({
     const [egressId, setEgressId] = useState<string | null>(null);
     const [recordingTime, setRecordingTime] = useState(0);
     const [startTime, setStartTime] = useState<number | null>(null);
+    const { showAlert, showConfirm } = useAlert();
 
     // Timer for recording duration
     useEffect(() => {
@@ -51,44 +53,44 @@ export const RecordingControls = ({
                 setStartTime(Date.now());
                 console.log('Recording started:', data.egressId);
             } else {
-                alert('Failed to start recording: ' + (data.error || 'Unknown error'));
+                showAlert('Failed to start recording: ' + (data.error || 'Unknown error'), 'error');
             }
         } catch (error) {
             console.error('Failed to start recording:', error);
-            alert('Failed to start recording');
+            showAlert('Failed to start recording', 'error');
         }
     };
 
     const stopRecording = async () => {
         if (!egressId) return;
 
-        if (!confirm('Are you sure you want to stop the recording?')) return;
+        showConfirm('Are you sure you want to stop the recording?', async () => {
+            try {
+                const response = await fetch('/api/recordings/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        egressId,
+                        roomId,
+                    }),
+                });
 
-        try {
-            const response = await fetch('/api/recordings/stop', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    egressId,
-                    roomId,
-                }),
-            });
+                const data = await response.json();
 
-            const data = await response.json();
-
-            if (data.success) {
-                setIsRecording(false);
-                setEgressId(null);
-                setRecordingTime(0);
-                setStartTime(null);
-                alert('Recording saved! You can download it from your dashboard.');
-            } else {
-                alert('Failed to stop recording: ' + (data.error || 'Unknown error'));
+                if (data.success) {
+                    setIsRecording(false);
+                    setEgressId(null);
+                    setRecordingTime(0);
+                    setStartTime(null);
+                    showAlert('Recording saved! You can download it from your dashboard.', 'success');
+                } else {
+                    showAlert('Failed to stop recording: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Failed to stop recording:', error);
+                showAlert('Failed to stop recording', 'error');
             }
-        } catch (error) {
-            console.error('Failed to stop recording:', error);
-            alert('Failed to stop recording');
-        }
+        }, 'Stop Recording');
     };
 
     const formatTime = (seconds: number) => {

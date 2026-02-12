@@ -9,6 +9,7 @@ import { doc, updateDoc, collection, query, where, getDocs, Timestamp } from 'fi
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
 import { BookOpen, Users, CreditCard, CheckCircle, History } from 'lucide-react';
 import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
+import { RecordingsDashboard } from '@/components/RecordingsDashboard';
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -502,6 +503,13 @@ export default function ProfilePage() {
                     </button>
                 </div>
             </div>
+
+            {/* Recordings Section */}
+            {profile?.role === 'lecturer' && (
+                <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+                    <RecordingsDashboard lecturerId={user?.uid || ''} />
+                </div>
+            )}
         </div>
     );
 }

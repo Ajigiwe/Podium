@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase/config';
 import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { AttendanceLog } from '@/lib/firebase/types';
 import { X, History, Download } from 'lucide-react';
+import { useAlert } from '@/contexts/AlertContext';
 
 interface AttendanceHistoryModalProps {
     isOpen: boolean;
@@ -15,6 +16,7 @@ interface AttendanceHistoryModalProps {
 export default function AttendanceHistoryModal({ isOpen, onClose, userId }: AttendanceHistoryModalProps) {
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
+    const { showAlert } = useAlert();
 
     useEffect(() => {
         if (isOpen && userId) {
@@ -71,7 +73,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
             })).sort((a, b) => b.lastJoined.seconds - a.lastJoined.seconds));
         } catch (error) {
             console.error("Error fetching history:", error);
-            alert("Failed to load attendance history.");
+            showAlert("Failed to load attendance history.", "error");
         } finally {
             setLoadingHistory(false);
         }
@@ -119,7 +121,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
             const logs = snapshot.docs.map(doc => doc.data() as AttendanceLog);
 
             if (logs.length === 0) {
-                alert("No attendance records found for this class.");
+                showAlert("No attendance records found for this class.", "info");
                 return;
             }
 
@@ -160,7 +162,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
             document.body.removeChild(link);
         } catch (error) {
             console.error("Error downloading attendance:", error);
-            alert("Failed to download attendance.");
+            showAlert("Failed to download attendance.", "error");
         }
     };
 

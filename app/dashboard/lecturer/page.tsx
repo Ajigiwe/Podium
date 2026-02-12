@@ -24,7 +24,6 @@ import { getSessionRevenue } from '@/lib/payments/verifyPayment';
 import { generateMeetingCode } from '@/lib/meetingCode';
 import { Plus, X, Download, Trash2, Video, Copy, Check, History, Users } from 'lucide-react';
 import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
-import { RecordingsDashboard } from '@/components/RecordingsDashboard';
 
 export default function LecturerDashboard() {
     const router = useRouter();
@@ -43,6 +42,8 @@ export default function LecturerDashboard() {
     const [program, setProgram] = useState('');
     const [course, setCourse] = useState('');
     const [scheduledStartTime, setScheduledStartTime] = useState('');
+    const [durationMinutes, setDurationMinutes] = useState('60');
+    const [verificationCount, setVerificationCount] = useState('2');
     // Price state removed
 
 
@@ -137,6 +138,8 @@ export default function LecturerDashboard() {
                 program,
                 course,
                 scheduledStartTime: scheduledStartTime ? Timestamp.fromDate(new Date(scheduledStartTime)) : null,
+                durationMinutes: parseInt(durationMinutes) || 60,
+                verificationCount: parseInt(verificationCount) || 2,
                 createdAt: Timestamp.now(),
             });
 
@@ -420,10 +423,7 @@ export default function LecturerDashboard() {
                 )}
             </div>
 
-            {/* Recordings Section */}
-            <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
-                <RecordingsDashboard lecturerId={user?.uid || ''} />
-            </div>
+            {/* Recordings Section removed, moved to profile */}
 
             {/* Create Session Modal */}
             {
@@ -501,6 +501,32 @@ export default function LecturerDashboard() {
                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         Students will see a countdown if they join before this time.
                                     </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Duration (Mins)</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="5"
+                                            value={durationMinutes}
+                                            onChange={(e) => setDurationMinutes(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Checks Count</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="1"
+                                            max="10"
+                                            value={verificationCount}
+                                            onChange={(e) => setVerificationCount(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Price and IsFree removed as per subscription model */}
