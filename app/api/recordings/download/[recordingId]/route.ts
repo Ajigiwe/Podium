@@ -9,6 +9,7 @@ export async function GET(
 ) {
     try {
         const { recordingId } = await context.params;
+        console.log(`[DOWNLOAD] Request for recordingId: ${recordingId}`);
 
         if (!recordingId) {
             return NextResponse.json({ error: 'Missing recordingId' }, { status: 400 });
@@ -17,11 +18,13 @@ export async function GET(
         const recordingDoc = await adminDb.collection('recordings').doc(recordingId).get();
 
         if (!recordingDoc.exists) {
+            console.error(`[DOWNLOAD] Recording doc not found in Firestore: ${recordingId}`);
             return NextResponse.json({ error: 'Recording not found' }, { status: 404 });
         }
 
         const recording = recordingDoc.data();
         let filePath = recording?.filePath;
+        console.log(`[DOWNLOAD] Firestore filePath: ${filePath}`);
 
         if (!filePath) {
             return NextResponse.json({ error: 'File path not found in recording' }, { status: 404 });
@@ -31,16 +34,22 @@ export async function GET(
         if (!filePath.startsWith('/')) {
             const EGRESS_BASE_PATH = process.env.EGRESS_BASE_PATH || '/var/recordings';
             filePath = path.join(EGRESS_BASE_PATH, filePath);
+            console.log(`[DOWNLOAD] Resolved relative path to: ${filePath}`);
         }
 
         // Verify file exists
         if (!fs.existsSync(filePath)) {
-            console.error(`File missing at path: ${filePath}`);
+            console.error(`[DOWNLOAD] File MISSING on disk at: ${filePath}`);
             return NextResponse.json({
                 error: 'File not found on server',
-                debug: { path: filePath }
+                debug: {
+                    requestedPath: filePath,
+                    exists: false,
+                    dirContents: fs.existsSync(path.dirname(filePath)) ? fs.readdirSync(path.dirname(filePath)).slice(0, 5) : 'Dir not found'
+                }
             }, { status: 404 });
         }
+        console.log(`[DOWNLOAD] File found! Size: ${fs.statSync(filePath).size} bytes`);
 
         const stats = fs.statSync(filePath);
         const fileName = path.basename(filePath);
