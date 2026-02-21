@@ -34,14 +34,15 @@ export async function POST(request: NextRequest) {
         const at = new AccessToken(apiKey, apiSecret, {
             identity: participantId || `user_${Date.now()}`,
             name: participantName,
-            // Token expires in 24 hours
-            ttl: 60 * 60 * 24,
             metadata: JSON.stringify({
                 role,
                 userId,
                 name: participantName,
             }),
         });
+
+        // Explicitly set TTL to 24 hours to ensure it's not ignored
+        at.ttl = '24h';
 
         // Define video grants based on role
         const videoGrant: VideoGrant = {

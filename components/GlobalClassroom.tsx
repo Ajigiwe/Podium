@@ -43,11 +43,15 @@ import { roomOptions } from '@/config/livekit.config';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { MediaRestorationIndicator } from './MediaRestorationIndicator';
 import { DeviceFailureHandler } from './media/DeviceFailureHandler';
+import { useScreenSharePersistence } from '@/hooks/useScreenSharePersistence';
 
 
 // Inner component that can access the room context
 function RoomConnector({ onRoomReady }: { onRoomReady: (room: Room) => void }) {
     const room = useRoomContext();
+
+    // Auto-restore screen share across network reconnects
+    useScreenSharePersistence();
 
     useEffect(() => {
         if (room) {
@@ -485,12 +489,12 @@ function InnerVideoLayout({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {userRole === 'lecturer' && (
-                            <SimpleAttendanceConsole sessionId={sessionId!} isActive={isActive} />
-                        )}
+                        {/* Removed Lecturer tools from here so they aren't hidden when docked */}
                     </div>
                 </div>
             )}
+
+
 
             <div className="flex-1 relative overflow-hidden flex flex-col sm:flex-row">
 
@@ -624,6 +628,8 @@ function InnerVideoLayout({
 
             {/* Custom Controls */}
             <CustomControlBar
+                roomId={sessionId!}
+                isLecturer={userRole === 'lecturer'}
                 onReaction={onReaction}
                 onLeave={onLeave}
                 onToggleChat={onToggleChat}
@@ -720,13 +726,23 @@ function VideoLayout({
         setIsHandRaised(!isHandRaised);
     }, [isHandRaised, lowerHand, raiseHand, userId, userName]);
 
+    const room = useRoomContext();
     const tracks = useTracks(
         [
             { source: Track.Source.Camera, withPlaceholder: true },
             { source: Track.Source.ScreenShare, withPlaceholder: false },
         ],
         { onlySubscribed: false }
-    ).filter(track => track.participant !== undefined && track.participant.sid !== undefined);
+    ).filter(track => {
+        if (!track.participant || !track.participant.sid) return false;
+        // Ensure participant actually exists in the room or is local
+        if (room) {
+            const isLocal = track.participant.sid === room.localParticipant.sid;
+            const isRemote = room.remoteParticipants.has(track.participant.identity);
+            return isLocal || isRemote;
+        }
+        return true;
+    });
 
     // Sync hand status if cleared by lecturer
     useEffect(() => {
@@ -901,7 +917,7 @@ export default function GlobalClassroom() {
 
     // Fetch token when session becomes active
     useEffect(() => {
-        if (!isActive || !sessionId || !userName || !userRole) {
+        if (!isActive || !sessionId || !userName || !userRole || !userId) {
             setToken(null);
             return;
         }
@@ -918,7 +934,7 @@ export default function GlobalClassroom() {
             setTokenError(null);
 
             try {
-                console.log('Fetching LiveKit token for:', sessionId, userName);
+                console.log('Fetching LiveKit token for:', sessionId, userName, userId);
                 const response = await fetch('/api/livekit/token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1055,7 +1071,14 @@ export default function GlobalClassroom() {
         const isSuppressed =
             e.message.includes('Negotiation') ||
             e.message.includes('Received leave request') ||
-            e.message.includes('Signal connection closed');
+            e.message.includes('Signal connection closed') ||
+            e.message.includes("participant, that's not present");
+
+        if (e.message.toLowerCase().includes('expired') || e.message.toLowerCase().includes('validation failed')) {
+            console.warn('LiveKit token expired or invalid, clearing token to trigger refetch');
+            setToken(null);
+            return;
+        }
 
         if (isSuppressed) {
             console.warn('Suppressed LiveKit error:', e.message);
@@ -1063,7 +1086,7 @@ export default function GlobalClassroom() {
             console.error('LiveKit error:', e);
             setTokenError(e.message);
         }
-    }, []);
+    }, [setToken]);
 
     // Handle maximize - go to classroom page
     const handleMaximize = useCallback(() => {

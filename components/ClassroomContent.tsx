@@ -5,7 +5,7 @@ import { Session } from '@/lib/firebase/types';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
-import { Users, MicOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X } from 'lucide-react';
+import { Users, MicOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X, Mic, VideoIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { JitsiParticipant } from '@/contexts/ClassroomContext';
 import { generateMeetingCode } from '@/lib/meetingCode';
@@ -14,6 +14,17 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { RecordingControls } from './RecordingControls';
 import { LayoutSelector } from './LayoutSelector';
 import { SimpleAttendanceConsole } from './attendance/SimpleAttendanceConsole';
+import {
+    subscribeToPermissionRequests,
+    subscribeToAllPermissions,
+    grantPermission,
+    denyPermission,
+    revokePermission,
+    revokeAllPermissions,
+    PermissionRequest,
+    ParticipantPermissions,
+    PermissionType
+} from '@/lib/firebase/permissions';
 
 interface ClassroomContentProps {
     session: Session;
@@ -41,13 +52,86 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         kickParticipant,
         askToUnmute,
     } = useClassroom();
-    const { showConfirm } = useAlert();
+    const { showAlert, showConfirm } = useAlert();
 
     const [showParticipantsModal, setShowParticipantsModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [copiedCode, setCopiedCode] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
+
+    // Permission Management State
+    const [pendingRequests, setPendingRequests] = useState<PermissionRequest[]>([]);
+    const [activePermissions, setActivePermissions] = useState<{ participantId: string; permissions: ParticipantPermissions }[]>([]);
+
+    // Subscribe to permissions if lecturer
+    useEffect(() => {
+        if (ctxUserRole !== 'lecturer' || !sessionId) return;
+
+        const unsubscribeRequests = subscribeToPermissionRequests(sessionId, (requests) => {
+            setPendingRequests(requests);
+        });
+
+        const unsubscribeAllPerms = subscribeToAllPermissions(sessionId, (perms) => {
+            setActivePermissions(perms);
+        });
+
+        return () => {
+            unsubscribeRequests();
+            unsubscribeAllPerms();
+        };
+    }, [sessionId, ctxUserRole]);
+
+    // Permission Handlers
+    const handleGrant = async (identity: string, type: PermissionType) => {
+        try {
+            await grantPermission(sessionId, identity, ctxUserId || '', type);
+        } catch (error) {
+            console.error('Failed to grant permission:', error);
+        }
+    };
+
+    const handleDeny = async (identity: string) => {
+        try {
+            await denyPermission(sessionId, identity);
+        } catch (error) {
+            console.error('Failed to deny permission:', error);
+        }
+    };
+
+    const handleRevoke = async (identity: string, type: PermissionType) => {
+        try {
+            await revokePermission(sessionId, identity, type);
+        } catch (error) {
+            console.error('Failed to revoke permission:', error);
+        }
+    };
+
+    const handleMuteStudent = async (participantId: string, identity: string) => {
+        muteParticipant(participantId);
+        try {
+            await revokePermission(sessionId, identity, 'microphone');
+            showAlert('Student muted and permission revoked', 'success');
+        } catch (err) {
+            console.error('Error revoking student permission:', err);
+        }
+    };
+
+    const handleMuteAll = async () => {
+        muteAllParticipants();
+        const studentIdentities = participants
+            .filter(p => !p.isLocal && p.role !== 'moderator')
+            .map(p => p.identity);
+
+        if (studentIdentities.length > 0) {
+            try {
+                await revokeAllPermissions(sessionId, studentIdentities, 'microphone');
+                showAlert('Muted all and revoked permissions', 'success');
+            } catch (err) {
+                console.error('Error revoking all permissions:', err);
+            }
+        }
+    };
 
     // Get or generate meeting code
     const meetingCode = session.meetingCode || generateMeetingCode(sessionId);
@@ -157,11 +241,16 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
                             <button
                                 onClick={() => setShowParticipantsModal(true)}
-                                className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                className="relative px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <Users className="w-4 h-4" />
                                 <span className="hidden lg:inline">{ctxUserRole === 'lecturer' ? 'Manage' : 'Participants'}</span>
                                 <span className="bg-white/20 px-1.5 py-0.5 rounded text-xs">{participants.length}</span>
+                                {ctxUserRole === 'lecturer' && pendingRequests.length > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-pulse">
+                                        {pendingRequests.length}
+                                    </span>
+                                )}
                             </button>
                             <button
                                 onClick={() => router.push('/')}
@@ -208,10 +297,15 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             )}
                             <button
                                 onClick={() => { setShowParticipantsModal(true); setShowMobileMenu(false); }}
-                                className="w-full px-4 py-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors flex items-center justify-center gap-2"
+                                className="relative w-full px-4 py-3 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors flex items-center justify-center gap-2"
                             >
                                 <Users className="w-4 h-4" />
                                 {ctxUserRole === 'lecturer' ? 'Manage Participants' : 'Participants'} ({participants.length})
+                                {ctxUserRole === 'lecturer' && pendingRequests.length > 0 && (
+                                    <span className="absolute right-4 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
+                                        {pendingRequests.length} New
+                                    </span>
+                                )}
                             </button>
 
                             <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
@@ -365,10 +459,10 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             </div>
 
                             {/* Quick Actions - Lecturer Only */}
-                            {profile?.role === 'lecturer' && (
+                            {ctxUserRole === 'lecturer' && (
                                 <div className="flex gap-2 mb-4 shrink-0">
                                     <button
-                                        onClick={() => muteAllParticipants()}
+                                        onClick={() => handleMuteAll()}
                                         className="flex-1 px-4 py-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm font-bold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors flex items-center justify-center gap-2"
                                     >
                                         <MicOff className="w-4 h-4" />
@@ -377,86 +471,166 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 </div>
                             )}
 
-                            {/* Participants List */}
-                            <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3">
-                                {participants.length === 0 ? (
-                                    <div className="text-center py-8 sm:py-12">
-                                        <Users className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                                        <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">No participants yet</p>
-                                        <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">Students will appear here when they join</p>
-                                    </div>
-                                ) : (
-                                    participants.map((p: JitsiParticipant) => (
-                                        <div
-                                            key={p.participantId}
-                                            className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-all ${p.isLocal
-                                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
-                                                : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shrink-0 ${p.isLocal
-                                                    ? 'bg-blue-600'
-                                                    : 'bg-gray-500 dark:bg-gray-600'
-                                                    }`}>
-                                                    {p.displayName?.[0]?.toUpperCase() || '?'}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="font-bold text-gray-900 dark:text-white text-xs sm:text-sm flex items-center gap-1 sm:gap-2 truncate">
-                                                        <span className="truncate">{p.displayName || 'Guest'}</span>
-                                                        {p.isLocal && (
-                                                            <span className="text-[9px] sm:text-[10px] uppercase tracking-wider bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-1 sm:px-1.5 py-0.5 rounded font-bold shrink-0">
-                                                                You
-                                                            </span>
-                                                        )}
-                                                    </p>
-                                                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                                        {p.role === 'moderator' ? 'Moderator' : 'Participant'}
-                                                    </p>
-                                                </div>
-                                            </div>
+                            {/* Modal Content - Streamlined */}
+                            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
 
-                                            {/* Action Buttons - Only for non-local participants AND Lecturer Only */}
-                                            {!p.isLocal && ctxUserRole === 'lecturer' && (
-                                                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                                                    <button
-                                                        onClick={() => askToUnmute(p.participantId)}
-                                                        className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-                                                        title="Ask to Unmute"
-                                                    >
-                                                        <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => muteParticipant(p.participantId)}
-                                                        className="p-1.5 sm:p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors"
-                                                        title="Mute Participant"
-                                                    >
-                                                        <MicOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            showConfirm(`Remove ${p.displayName} from the class?`, () => {
-                                                                kickParticipant(p.participantId);
-                                                            }, 'Remove Participant');
-                                                        }}
-                                                        className="p-1.5 sm:p-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                                                        title="Remove from Class"
-                                                    >
-                                                        <UserX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                                    </button>
+                                {/* Pending Requests - Compact */}
+                                {ctxUserRole === 'lecturer' && pendingRequests.length > 0 && (
+                                    <div className="mb-6">
+                                        <h3 className="text-[10px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                            Pending Requests ({pendingRequests.length})
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {pendingRequests.map(request => (
+                                                <div key={request.id} className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                                    <div className="min-w-0 pr-4">
+                                                        <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                                            {request.participantName || 'Guest'}
+                                                        </p>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            {request.requestType.includes('microphone') || request.requestType === 'both' ? <Mic className="w-3 h-3 text-blue-500" /> : null}
+                                                            {request.requestType.includes('camera') || request.requestType === 'both' ? <VideoIcon className="w-3 h-3 text-purple-500" /> : null}
+                                                            <span className="text-[10px] text-gray-500 font-medium uppercase">{request.requestType} requested</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-1.5">
+                                                        <button
+                                                            onClick={() => handleGrant(request.participantId, request.requestType)}
+                                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold py-1 px-2 rounded-lg transition-colors border border-green-500/30"
+                                                        >
+                                                            Accept
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeny(request.participantId)}
+                                                            className="flex-1 bg-red-600/10 hover:bg-red-600/20 text-red-500 text-[10px] font-bold py-1 px-2 rounded-lg transition-colors border border-red-500/20"
+                                                        >
+                                                            Decline
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            )}
+                                            ))}
                                         </div>
-                                    ))
+                                    </div>
                                 )}
+
+                                {/* Active Participants List */}
+                                <div>
+                                    <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 px-1">
+                                        In Classroom ({participants.length})
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {participants.length === 0 ? (
+                                            <div className="text-center py-10 bg-gray-50/50 dark:bg-gray-900/30 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
+                                                <Users className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto mb-2" />
+                                                <p className="text-xs text-gray-400">Waiting for participants...</p>
+                                            </div>
+                                        ) : (
+                                            participants.map((p) => {
+                                                const studentPerms = activePermissions.find(ap => ap.participantId === p.participantId)?.permissions;
+                                                const hasMic = studentPerms?.micPermission;
+                                                const hasCam = studentPerms?.cameraPermission;
+
+                                                return (
+                                                    <div
+                                                        key={p.participantId}
+                                                        className={`group flex items-center justify-between p-3 rounded-2xl border transition-all ${p.isLocal
+                                                            ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30'
+                                                            : 'bg-white dark:bg-gray-900/40 border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 shadow-sm hover:shadow-md'
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-inner ${p.isLocal ? 'bg-indigo-600' : 'bg-gray-400 dark:bg-gray-700'
+                                                                }`}>
+                                                                {p.displayName?.[0]?.toUpperCase() || '?'}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                                                        {p.displayName || 'Guest'}
+                                                                    </p>
+                                                                    {p.isLocal && (
+                                                                        <span className="text-[8px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-lg uppercase tracking-tighter">YOU</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    <span className={`text-[10px] font-bold uppercase tracking-tight ${p.role === 'moderator' ? 'text-blue-500' : 'text-gray-500'
+                                                                        }`}>
+                                                                        {p.role === 'moderator' ? 'Lecturer' : 'Student'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Actions Container */}
+                                                        <div className="flex items-center gap-1.5">
+                                                            {!p.isLocal && ctxUserRole === 'lecturer' && (
+                                                                <>
+                                                                    {/* Permission Group */}
+                                                                    <div className="flex items-center bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl gap-0.5">
+                                                                        {/* Mic Toggle */}
+                                                                        <button
+                                                                            onClick={() => hasMic ? handleRevoke(p.identity, 'microphone') : handleGrant(p.identity, 'microphone')}
+                                                                            className={`p-2 rounded-lg transition-all ${hasMic
+                                                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                                                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                                                                }`}
+                                                                            title={hasMic ? "Revoke Microphone" : "Grant Microphone"}
+                                                                        >
+                                                                            <Mic className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                        {/* Cam Toggle */}
+                                                                        <button
+                                                                            onClick={() => hasCam ? handleRevoke(p.identity, 'camera') : handleGrant(p.identity, 'camera')}
+                                                                            className={`p-2 rounded-lg transition-all ${hasCam
+                                                                                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
+                                                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                                                                }`}
+                                                                            title={hasCam ? "Revoke Camera" : "Grant Camera"}
+                                                                        >
+                                                                            <VideoIcon className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    </div>
+
+                                                                    {/* Separator */}
+                                                                    <div className="w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
+
+                                                                    {/* Quick Moderation Group */}
+                                                                    <div className="flex items-center gap-1">
+                                                                        <button
+                                                                            onClick={() => askToUnmute(p.participantId)}
+                                                                            className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                                                            title="Ask to Unmute"
+                                                                        >
+                                                                            <Volume2 className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleMuteStudent(p.participantId, p.identity)}
+                                                                            className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all"
+                                                                            title="Force Mute"
+                                                                        >
+                                                                            <MicOff className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => showConfirm(`Remove ${p.displayName}?`, () => kickParticipant(p.participantId))}
+                                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                                                            title="Remove Student"
+                                                                        >
+                                                                            <LogOut className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Info Footer */}
-                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
-                                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center">
-                                    You can also use Jitsi&apos;s built-in controls by clicking on participants in the video
-                                </p>
-                            </div>
+
                         </div>
                     </div>
                 )
