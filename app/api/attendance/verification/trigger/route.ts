@@ -9,7 +9,7 @@ import { RoomServiceClient } from 'livekit-server-sdk';
  */
 export async function POST(request: NextRequest) {
     try {
-        const { sessionId, triggeredBy, timeLimitSeconds = 60 } = await request.json();
+        const { sessionId, triggeredBy, timeLimitSeconds = 30 } = await request.json();
 
         if (!sessionId || !triggeredBy) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
