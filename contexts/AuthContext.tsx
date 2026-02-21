@@ -97,35 +97,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Create user profile in Firestore
-        try {
-            await setDoc(doc(db, 'profiles', user.uid), {
-                id: user.uid,
-                email: user.email,
-                fullName,
-                role: email === 'minatoflash82@gmail.com' ? 'admin' : role,
-                createdAt: new Date(),
-            });
-        } catch (error) {
-            console.error('Error creating profile:', error);
-            const handled = await handleFirestoreError(db, error);
-            if (handled) {
-                // Retry once more after handling the error
-                try {
-                    await setDoc(doc(db, 'profiles', user.uid), {
-                        id: user.uid,
-                        email: user.email,
-                        fullName,
-                        role: email === 'minatoflash82@gmail.com' ? 'admin' : role,
-                        createdAt: new Date(),
-                    });
-                } catch (retryError) {
-                    console.error('Retry failed to create profile:', retryError);
-                    throw retryError; // Re-throw to prevent user from continuing
+        // Force a token refresh to ensure auth state is immediately propagated
+        // to the backend rules engine before attempting a write
+        await user.getIdToken(true);
+
+        // Create user profile in Firestore with a resilient retry mechanism
+        // to handle the short delay between Auth creation and Firestore awareness
+        let profileCreated = false;
+        let retries = 4;
+        let lastError: any = null;
+
+        while (!profileCreated && retries > 0) {
+            try {
+                await setDoc(doc(db, 'profiles', user.uid), {
+                    id: user.uid,
+                    email: user.email,
+                    fullName,
+                    role: email === 'minatoflash82@gmail.com' ? 'admin' : role,
+                    createdAt: new Date(),
+                });
+                profileCreated = true;
+            } catch (error: any) {
+                lastError = error;
+                console.error(`Error creating profile (retries left: ${retries - 1}):`, error);
+
+                // If it's a permission sync delay, simply wait and try again
+                if (error.code === 'permission-denied') {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    retries--;
+                } else {
+                    const handled = await handleFirestoreError(db, error);
+                    if (handled) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        retries--;
+                    } else {
+                        throw error; // Irrecoverable error
+                    }
                 }
-            } else {
-                throw error; // Re-throw original error
             }
+        }
+
+        if (!profileCreated) {
+            console.error('Failed to create profile after all retries');
+            // We should ideally clean up the Auth user here if profile creation definitively fails
+            throw lastError || new Error('Failed to fully create your account. Please try again.');
         }
 
         // Send email verification

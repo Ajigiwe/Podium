@@ -337,10 +337,14 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         updateParticipants();
 
         // Listen for participant changes
+        liveKitRoom.on(RoomEvent.Connected, updateParticipants);
+        liveKitRoom.on(RoomEvent.Reconnected, updateParticipants);
         liveKitRoom.on(RoomEvent.ParticipantConnected, updateParticipants);
         liveKitRoom.on(RoomEvent.ParticipantDisconnected, updateParticipants);
         liveKitRoom.on(RoomEvent.TrackMuted, updateParticipants);
         liveKitRoom.on(RoomEvent.TrackUnmuted, updateParticipants);
+        liveKitRoom.on(RoomEvent.LocalTrackPublished, updateParticipants);
+        liveKitRoom.on(RoomEvent.LocalTrackUnpublished, updateParticipants);
         liveKitRoom.on(RoomEvent.ParticipantMetadataChanged, updateParticipants);
         liveKitRoom.on(RoomEvent.ActiveSpeakersChanged, updateParticipants);
 

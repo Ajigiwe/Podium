@@ -1,5 +1,6 @@
 import {
     usePersistentUserChoices,
+    useMediaDeviceSelect,
     TrackToggle,
     ChatToggle,
     MediaDeviceMenu,
@@ -7,14 +8,52 @@ import {
     useLayoutContext,
     useRoomContext,
 } from '@livekit/components-react';
+
+const HoverDeviceMenu = ({ kind }: { kind: 'audioinput' | 'videoinput' }) => {
+    const { devices, activeDeviceId, setActiveMediaDevice } = useMediaDeviceSelect({ kind });
+
+    if (!devices || devices.length <= 1) return null; // Only show if there are options
+
+    return (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 hidden group-hover:block z-50">
+            <div className="bg-gray-900 border border-gray-700/80 rounded-lg shadow-2xl p-1.5 min-w-[220px] max-w-[300px] flex flex-col gap-0.5 animate-in fade-in slide-in-from-bottom-2">
+                <div className="px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-800/50 mb-1">
+                    Select {kind === 'audioinput' ? 'Microphone' : 'Camera'}
+                </div>
+                <div className="max-h-48 overflow-y-auto scrollbar-thin">
+                    {devices.map((device) => (
+                        <button
+                            key={device.deviceId}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMediaDevice(device.deviceId);
+                            }}
+                            className={`text-left px-2.5 py-2 text-xs rounded-md transition-colors truncate w-full flex items-center gap-2 ${activeDeviceId === device.deviceId
+                                ? 'bg-blue-600/20 text-blue-400 font-medium'
+                                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                }`}
+                            title={device.label || 'Unknown Device'}
+                        >
+                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeDeviceId === device.deviceId ? 'bg-blue-500' : 'bg-transparent'}`} />
+                            <span className="truncate">{device.label || `Device ${device.deviceId.slice(0, 5)}`}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
 import { Track, ConnectionState } from 'livekit-client';
-import { Smile, PictureInPicture2, MoreVertical, Mic, VideoIcon, MicOff, VideoOff, MonitorUp, PhoneOff, MessageSquare, Hand } from 'lucide-react';
+import { Smile, PictureInPicture2, MoreVertical, Mic, VideoIcon, MicOff, VideoOff, MonitorUp, PhoneOff, MessageSquare, Hand, Lock } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ReactionModal } from './ReactionModal';
 import UnifiedMediaButton from './media/UnifiedMediaButton';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface CustomControlBarProps {
+    roomId: string; // Added roomId for permissions
+    isLecturer: boolean; // Added role check for permissions
     onReaction: (emoji: string) => void;
     onLeave: () => void;
     onToggleChat: () => void;
@@ -27,6 +66,8 @@ interface CustomControlBarProps {
 }
 
 export default function CustomControlBar({
+    roomId,
+    isLecturer,
     onReaction,
     onLeave,
     onToggleChat,
@@ -37,6 +78,7 @@ export default function CustomControlBar({
     showAlert,
     customAlert
 }: CustomControlBarProps) {
+    const { permissions, hasPendingRequest, requestPermission } = usePermissions(roomId, isLecturer);
     const { saveAudioInputEnabled, saveVideoInputEnabled } = usePersistentUserChoices();
     const {
         localParticipant,
@@ -80,6 +122,13 @@ export default function CustomControlBar({
             if (!isConnected) showAlert('Cannot toggle microphone while disconnected or reconnecting.', 'warning');
             return;
         }
+
+        if (!permissions.mic) {
+            await requestPermission('microphone');
+            showAlert('Requested microphone permission from the host.', 'info');
+            return;
+        }
+
         setIsTogglingMic(true);
         let attempts = 0;
         const maxAttempts = 3;
@@ -126,6 +175,13 @@ export default function CustomControlBar({
             if (!isConnected) showAlert('Cannot toggle camera while disconnected or reconnecting.', 'warning');
             return;
         }
+
+        if (!permissions.camera) {
+            await requestPermission('camera');
+            showAlert('Requested camera permission from the host.', 'info');
+            return;
+        }
+
         setIsTogglingVideo(true);
         let attempts = 0;
         const maxAttempts = 3;
@@ -214,18 +270,29 @@ export default function CustomControlBar({
                 <button
                     onClick={toggleMic}
                     disabled={isTogglingMic || !isConnected}
-                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingMic || !isConnected) ? 'opacity-50 cursor-wait' : ''}`}
+                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingMic || !isConnected) ? 'opacity-50 cursor-wait' :
+                        !permissions.mic ? 'opacity-80' : ''
+                        }`}
+                    title={
+                        !permissions.mic ? 'Request mic permission' :
+                            isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone'
+                    }
                 >
                     {isMicrophoneEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4 text-red-500" />}
+
+                    {!permissions.mic && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center shadow-md border border-gray-900">
+                            <Lock className="w-2.5 h-2.5 text-white" />
+                        </div>
+                    )}
+
                     {isTogglingMic && (
                         <div className="absolute inset-0 flex items-center justify-center">
                             <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         </div>
                     )}
                 </button>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block">
-                    <MediaDeviceMenu kind="audioinput" />
-                </div>
+                <HoverDeviceMenu kind="audioinput" />
             </div>
 
             {/* Camera */}
@@ -233,18 +300,29 @@ export default function CustomControlBar({
                 <button
                     onClick={toggleVideo}
                     disabled={isTogglingVideo || !isConnected}
-                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingVideo || !isConnected) ? 'opacity-50 cursor-wait' : ''}`}
+                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingVideo || !isConnected) ? 'opacity-50 cursor-wait' :
+                        !permissions.camera ? 'opacity-80' : ''
+                        }`}
+                    title={
+                        !permissions.camera ? 'Request camera permission' :
+                            isCameraEnabled ? 'Turn off camera' : 'Turn on camera'
+                    }
                 >
                     {isCameraEnabled ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4 text-red-500" />}
+
+                    {!permissions.camera && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center shadow-md border border-gray-900">
+                            <Lock className="w-2.5 h-2.5 text-white" />
+                        </div>
+                    )}
+
                     {isTogglingVideo && (
                         <div className="absolute inset-0 flex items-center justify-center">
                             <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         </div>
                     )}
                 </button>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block">
-                    <MediaDeviceMenu kind="videoinput" />
-                </div>
+                <HoverDeviceMenu kind="videoinput" />
             </div>
 
             {/* Screen Share */}

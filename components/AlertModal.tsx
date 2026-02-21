@@ -44,13 +44,13 @@ export default function AlertModal({
     const getIcon = () => {
         switch (type) {
             case 'success':
-                return <CheckCircle className="w-10 h-10 text-green-500" />;
+                return <CheckCircle className="w-8 h-8 text-green-500" />;
             case 'error':
-                return <AlertOctagon className="w-10 h-10 text-red-500" />;
+                return <AlertOctagon className="w-8 h-8 text-red-500" />;
             case 'warning':
-                return <AlertTriangle className="w-10 h-10 text-amber-500" />;
+                return <AlertTriangle className="w-8 h-8 text-amber-500" />;
             default:
-                return <Info className="w-10 h-10 text-blue-500" />;
+                return <Info className="w-8 h-8 text-blue-500" />;
         }
     };
 
@@ -65,38 +65,38 @@ export default function AlertModal({
 
     return (
         <div
-            className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'
+            className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'
                 }`}
             onClick={(e) => {
                 if (e.target === e.currentTarget && !showCancel) onClose();
             }}
         >
             <div
-                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
+                className={`bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xs sm:max-w-sm transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
                     }`}
             >
-                <div className="p-6">
+                <div className="p-5">
                     <div className="flex flex-col items-center text-center">
-                        <div className={`mb-4 p-3 rounded-full bg-gray-50 dark:bg-gray-700/50`}>
+                        <div className={`mb-3 p-2.5 rounded-full bg-gray-50 dark:bg-gray-700/50`}>
                             {getIcon()}
                         </div>
 
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5">
                             {title}
                         </h3>
 
-                        <p className="text-gray-600 dark:text-gray-300 mb-6">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
                             {message}
                         </p>
 
-                        <div className="flex gap-3 w-full">
+                        <div className="flex gap-2.5 w-full">
                             {showCancel && (
                                 <button
                                     onClick={() => {
                                         if (onCancel) onCancel();
                                         onClose();
                                     }}
-                                    className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     {cancelText}
                                 </button>
@@ -106,7 +106,7 @@ export default function AlertModal({
                                     if (onConfirm) onConfirm();
                                     onClose();
                                 }}
-                                className={`flex-1 px-4 py-2.5 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/20 transition-all active:scale-95 ${getColor()}`}
+                                className={`flex-1 px-3 py-2 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-500/20 transition-all active:scale-95 ${getColor()}`}
                             >
                                 {confirmText}
                             </button>

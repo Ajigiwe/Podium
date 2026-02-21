@@ -86,6 +86,16 @@ service cloud.firestore {
           allow create: if isSignedIn() && request.auth.uid == studentId;
         }
       }
+
+      // NEW: Permissions subcollection
+      match /permissions/{participantId} {
+        allow read, write: if isSignedIn();
+      }
+
+      // NEW: Permission Requests subcollection
+      match /permission_requests/{requestId} {
+        allow read, write, create, update, delete: if isSignedIn();
+      }
     }
     
     // Transactions collection
