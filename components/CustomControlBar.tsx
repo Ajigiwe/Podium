@@ -125,7 +125,6 @@ export default function CustomControlBar({
 
         if (!permissions.mic) {
             await requestPermission('microphone');
-            showAlert('Requested microphone permission from the host.', 'info');
             return;
         }
 
@@ -178,7 +177,6 @@ export default function CustomControlBar({
 
         if (!permissions.camera) {
             await requestPermission('camera');
-            showAlert('Requested camera permission from the host.', 'info');
             return;
         }
 
@@ -264,13 +262,13 @@ export default function CustomControlBar({
     const emojis = ['👍', '👏', '❤️', '🔥', '🎉', '😂', '😮', '🤔'];
 
     return (
-        <div className="lk-control-bar !border-t-0 !bg-gray-900/90 !backdrop-blur-sm !p-1 sm:!p-1.5 rounded-xl mb-4 sm:mb-6 mx-auto max-w-fit flex items-center gap-1 sm:gap-1.5 shadow-xl border border-white/10">
+        <div className="lk-control-bar !border-t-0 !bg-gray-900/90 !backdrop-blur-sm !p-1 sm:!p-1.5 rounded-xl mb-4 sm:mb-6 mx-auto max-w-[95vw] sm:max-w-fit flex items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1.5 shadow-xl border border-white/10">
             {/* Microphone */}
             <div className="relative group">
                 <button
                     onClick={toggleMic}
                     disabled={isTogglingMic || !isConnected}
-                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingMic || !isConnected) ? 'opacity-50 cursor-wait' :
+                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-all relative ${(isTogglingMic || !isConnected) ? 'opacity-50 cursor-wait' :
                         !permissions.mic ? 'opacity-80' : ''
                         }`}
                     title={
@@ -300,7 +298,7 @@ export default function CustomControlBar({
                 <button
                     onClick={toggleVideo}
                     disabled={isTogglingVideo || !isConnected}
-                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingVideo || !isConnected) ? 'opacity-50 cursor-wait' :
+                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-all relative ${(isTogglingVideo || !isConnected) ? 'opacity-50 cursor-wait' :
                         !permissions.camera ? 'opacity-80' : ''
                         }`}
                     title={
@@ -326,11 +324,11 @@ export default function CustomControlBar({
             </div>
 
             {/* Screen Share */}
-            <div>
+            <div className="hidden sm:block">
                 <button
                     onClick={toggleScreenShare}
                     disabled={isTogglingScreen || !isConnected}
-                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all relative ${(isTogglingScreen || !isConnected) ? 'opacity-50 cursor-wait' : ''}`}
+                    className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-all relative ${(isTogglingScreen || !isConnected) ? 'opacity-50 cursor-wait' : ''}`}
                 >
                     <MonitorUp className={`w-4 h-4 ${isScreenShareEnabled ? 'text-green-500' : ''}`} />
                     {isTogglingScreen && (
@@ -346,11 +344,11 @@ export default function CustomControlBar({
             {/* Chat */}
             <button
                 onClick={onToggleChat}
-                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg relative ${isChatOpen ? '!text-blue-500' : ''}`}
+                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 sm:!p-2.5 !h-10 sm:!h-11 !w-auto px-3 sm:px-4 rounded-xl relative ${isChatOpen ? '!text-blue-500' : ''}`}
             >
                 <div className="flex items-center gap-2 text-sm font-medium">
-                    <MessageSquare className="w-4 h-4" />
-                    <span className="hidden sm:inline">Chat</span>
+                    <MessageSquare className="w-5 h-5 sm:w-4 sm:h-4" />
+                    <span className="hidden md:inline">Chat</span>
                 </div>
                 {unreadChatCount > 0 && !isChatOpen && (
                     <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 border-2 border-gray-900 animate-in zoom-in duration-200">
@@ -362,19 +360,19 @@ export default function CustomControlBar({
             {/* Raise Hand */}
             <button
                 onClick={onToggleHand}
-                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-all ${isHandRaised ? '!bg-yellow-500 !text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]' : ''}`}
+                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-all ${isHandRaised ? '!bg-yellow-500 !text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]' : ''}`}
                 title={isHandRaised ? "Lower Hand" : "Raise Hand"}
             >
-                <Hand className={`w-4 h-4 ${isHandRaised ? 'animate-bounce' : ''}`} />
+                <Hand className={`w-5 h-5 sm:w-4 sm:h-4 ${isHandRaised ? 'animate-bounce' : ''}`} />
             </button>
 
             {/* Reactions */}
             <button
                 onClick={() => setShowReactions(true)}
-                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-1.5 sm:!p-2 !h-auto !w-auto rounded-lg transition-colors ${showReactions ? '!bg-blue-600 !text-white' : ''}`}
+                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-colors ${showReactions ? '!bg-blue-600 !text-white' : ''}`}
                 title="Reactions"
             >
-                <Smile className="w-4 h-4" />
+                <Smile className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
 
             {/* Reaction Modal Portal */}
@@ -388,15 +386,15 @@ export default function CustomControlBar({
                 document.body
             )}
 
-            {/* Unified Media Button (PiP + Mobile Audio) */}
-            <UnifiedMediaButton />
+            {/* Unified Media Button (PiP + Mobile Audio -> now Mobile Leave) */}
+            <UnifiedMediaButton onLeave={onLeave} />
 
-            <div className="w-px h-8 bg-gray-700 mx-1" />
+            <div className="w-px h-8 bg-gray-700 mx-1 hidden sm:block" />
 
-            {/* Leave */}
+            {/* Leave - Hidden on mobile because it's now in UnifiedMediaButton */}
             <button
                 onClick={onLeave}
-                className="bg-red-600 hover:bg-red-700 text-white p-1.5 sm:px-3 sm:py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 font-medium text-sm"
+                className="hidden sm:flex bg-red-600 hover:bg-red-700 text-white p-1.5 sm:px-3 sm:py-2 rounded-lg items-center gap-2 transition-colors duration-200 font-medium text-sm"
             >
                 <PhoneOff className="w-4 h-4" />
                 <span className="hidden sm:inline">Leave</span>

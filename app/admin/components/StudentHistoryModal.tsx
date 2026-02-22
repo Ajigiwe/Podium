@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase/config';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { AttendanceLog } from '@/lib/firebase/types';
 import { X, Calendar, BookOpen } from 'lucide-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface StudentHistoryModalProps {
     isOpen: boolean;
@@ -70,8 +71,10 @@ export default function StudentHistoryModal({ isOpen, onClose, studentId, studen
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto min-h-0 pr-2">
                     {loading ? (
-                        <div className="flex justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600/30 border-t-blue-600"></div>
+                        <div className="space-y-3">
+                            {[1, 2, 3, 4].map(i => (
+                                <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                            ))}
                         </div>
                     ) : logs.length === 0 ? (
                         <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">

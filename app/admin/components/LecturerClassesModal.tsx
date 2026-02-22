@@ -3,6 +3,7 @@ import { db } from '@/lib/firebase/config';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { Session } from '@/lib/firebase/types';
 import { X, Calendar, Clock, Video, Users, CreditCard } from 'lucide-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface LecturerClassesModalProps {
     isOpen: boolean;
@@ -68,9 +69,10 @@ export default function LecturerClassesModal({ isOpen, onClose, lecturerId, lect
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center h-48 space-y-3">
-                            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-sm text-gray-500">Loading classes...</p>
+                        <div className="space-y-4">
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                            ))}
                         </div>
                     ) : sessions.length === 0 ? (
                         <div className="text-center py-12">
@@ -106,8 +108,8 @@ export default function LecturerClassesModal({ isOpen, onClose, lecturerId, lect
                                             </td>
                                             <td className="p-4">
                                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${session.isActive
-                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                        : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                                                     }`}>
                                                     <span className={`w-1.5 h-1.5 rounded-full ${session.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
                                                     {session.isActive ? 'Active' : 'Ended'}

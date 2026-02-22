@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { GraduationCap, ArrowLeft } from 'lucide-react';
+import { getFriendlyAuthErrorMessage } from '@/lib/firebase/auth-errors';
 
 export default function ForgotPasswordPage() {
     const { resetPassword } = useAuth();
@@ -22,7 +23,7 @@ export default function ForgotPasswordPage() {
             await resetPassword(email);
             setMessage('Check your inbox (including spam/junk folder) for password reset instructions.');
         } catch (err: any) {
-            setError(err.message || 'Failed to reset password');
+            setError(getFriendlyAuthErrorMessage(err));
         } finally {
             setLoading(false);
         }

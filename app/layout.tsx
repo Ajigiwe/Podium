@@ -6,12 +6,14 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ClassroomProvider } from "@/contexts/ClassroomContext";
 import { AlertProvider } from "@/contexts/AlertContext";
 import GlobalClassroom from "@/components/GlobalClassroom";
+import QueryProvider from "@/components/providers/QueryProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Podium - Elevate Your Learning",
   description: "The premium virtual classroom platform for modern education in Ghana.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -21,21 +23,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <AlertProvider>
-            <AuthProvider>
-              <ClassroomProvider>
-                {children}
-                <GlobalClassroom />
-              </ClassroomProvider>
-            </AuthProvider>
-          </AlertProvider>
+          <QueryProvider>
+            <AlertProvider>
+              <AuthProvider>
+                <ClassroomProvider>
+                  {children}
+                  <GlobalClassroom />
+                </ClassroomProvider>
+              </AuthProvider>
+            </AlertProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

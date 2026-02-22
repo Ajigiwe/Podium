@@ -13,6 +13,7 @@ export interface Profile {
     subscriptionExpiresAt?: Timestamp; // When subscription ends
     createdAt: Timestamp;
     updatedAt?: Timestamp;
+    classCount?: number; // Total unique classes joined (aggregated)
 }
 
 export type UserProfile = Profile;
@@ -45,6 +46,12 @@ export interface Session {
     scheduledStartTime?: Timestamp; // New field for class scheduling
     durationMinutes?: number; // Attendance: total duration planned
     verificationCount?: number; // Attendance: number of checks to perform
+    autoAttendanceSettings?: {
+        isEnabled: boolean;
+        frequencyMinutes: number;
+        lastTriggeredAt?: Timestamp;
+    };
+    autoApproveMic?: boolean; // New field for bulk permission granting
     createdAt: Timestamp;
 }
 

@@ -19,82 +19,93 @@ service cloud.firestore {
     
     // Helper function to check if user is lecturer (safe version)
     function isLecturer() {
-      return isSignedIn() && profileExists() && getUserProfile().role == 'lecturer';
+      return isSignedIn() && profileExists() && getUserProfile().get('role', '') == 'lecturer';
     }
     
     // Helper function to check if user is student (safe version)
     function isStudent() {
-      return isSignedIn() && profileExists() && getUserProfile().role == 'student';
+      return isSignedIn() && profileExists() && getUserProfile().get('role', '') == 'student';
+    }
+
+    // Helper function to check if user is admin (safe version)
+    // Priorities email check to avoid rule errors if profile is partially missing
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'minatoflash82@gmail.com' ||
+        (profileExists() && getUserProfile().get('role', '') == 'admin')
+      );
     }
     
     // Profiles collection
     match /profiles/{userId} {
-      // Anyone can read profiles
       allow read: if isSignedIn();
-      
-      // Users can create their own profile
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      
-      // Users can update their own profile, but cannot change role or email
-      // Users can update their own profile (temporarily relaxed for admin promotion)
-      allow update: if isSignedIn() && request.auth.uid == userId;
-        
-      allow delete: if false; // Prevent profile deletion
+      allow write: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow delete: if false;
     }
     
     // Sessions collection
     match /sessions/{sessionId} {
-      // Anyone authenticated can read sessions
       allow read: if isSignedIn();
-      
-      // Only lecturers can create sessions
       allow create: if isLecturer() && request.resource.data.lecturerId == request.auth.uid;
-      
-      // Only the session owner (lecturer) can update or delete
       allow update: if isSignedIn() && resource.data.lecturerId == request.auth.uid;
       allow delete: if isSignedIn() && resource.data.lecturerId == request.auth.uid;
 
-      // Messages subcollection for persistent chat
+      // Messages subcollection
       match /messages/{messageId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+        allow create: if isSignedIn();
         allow update, delete: if false;
       }
 
-      // NEW: Attendance subcollection
+      // Attendance subcollection
       match /attendance/{studentId} {
-        // Student can read/write their own record
-        // Lecturer of the session can read all
-        allow read: if isSignedIn() && (
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (
           request.auth.uid == studentId ||
           get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
         );
-        allow write: if isSignedIn();
       }
 
-      // NEW: Verifications subcollection
+      // Verifications subcollection
       match /verifications/{verifId} {
         allow read: if isSignedIn();
         allow write: if isSignedIn() && 
           get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid;
 
         match /responses/{studentId} {
-          allow read: if isSignedIn() && (
-            request.auth.uid == studentId ||
-            get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
-          );
+          allow read: if isSignedIn();
           allow create: if isSignedIn() && request.auth.uid == studentId;
         }
       }
 
-      // NEW: Permissions subcollection
+      // Permissions subcollection
       match /permissions/{participantId} {
-        allow read, write: if isSignedIn();
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (
+          request.auth.uid == participantId ||
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
+        );
       }
 
-      // NEW: Permission Requests subcollection
+      // Permission Requests subcollection
       match /permission_requests/{requestId} {
-        allow read, write, create, update, delete: if isSignedIn();
+        allow read: if isSignedIn();
+        allow create, delete: if isSignedIn() && (
+          request.auth.uid == requestId ||
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
+        );
+      }
+
+      // Chat History subcollection
+      match /chat_history/{docId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && 
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid;
+      }
+
+      // DIAGNOSTIC: Broad read for all subcollections
+      match /{allSubcollections=**} {
+        allow read: if isSignedIn();
       }
     }
     
@@ -131,7 +142,9 @@ service cloud.firestore {
     // Attendance logs collection
     match /attendance_logs/{logId} {
       // Anyone authenticated can read attendance logs
+      // Admins can manage everything in logs
       allow read: if isSignedIn();
+      allow write: if isAdmin();
       
       // Users can create their own attendance logs
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -143,11 +156,8 @@ service cloud.firestore {
     // Settings collection
     match /system_settings/{docId} {
       allow read: if isSignedIn();
-      // Allow write if admin: Check either the role in profile OR hardcoded email for safety
-      allow write: if isSignedIn() && (
-        (profileExists() && getUserProfile().role == 'admin') ||
-        request.auth.token.email == 'minatoflash82@gmail.com'
-      );
+      // Only admins can update system settings
+      allow write: if isAdmin();
     }
   }
 }

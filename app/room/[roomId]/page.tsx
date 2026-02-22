@@ -8,6 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Session } from '@/lib/firebase/types';
 import ClassroomContent from '@/components/ClassroomContent';
 import { useClassroom } from '@/contexts/ClassroomContext';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useAlert } from '@/contexts/AlertContext';
 
 export default function RoomPage() {
@@ -44,7 +45,7 @@ export default function RoomPage() {
 
                 // Join the LiveKit room via context
                 if (currentSessionId !== roomId) {
-                    joinClass(roomId, sessionData.title, profile.fullName, profile.role, user.uid);
+                    joinClass(roomId, sessionData.title, profile.fullName, profile.role, user.uid, profile.photoURL);
                 }
 
                 setLoading(false);
@@ -60,10 +61,13 @@ export default function RoomPage() {
 
     if (loading || !session) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-950">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/30 border-t-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-400">Entering room...</p>
+            <div className="min-h-screen bg-gray-950 p-8 space-y-8">
+                <div className="max-w-7xl mx-auto">
+                    <div className="h-10 w-48 bg-gray-800 rounded-lg mb-12 animate-pulse" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[600px]">
+                        <Skeleton className="h-full w-full rounded-2xl bg-gray-800" />
+                        <Skeleton className="h-full w-full rounded-2xl bg-gray-800" />
+                    </div>
                 </div>
             </div>
         );

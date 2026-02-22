@@ -6,6 +6,7 @@ import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc } fr
 import { AttendanceLog } from '@/lib/firebase/types';
 import { X, History, Download } from 'lucide-react';
 import { useAlert } from '@/contexts/AlertContext';
+import { Skeleton } from './ui/Skeleton';
 
 interface AttendanceHistoryModalProps {
     isOpen: boolean;
@@ -115,7 +116,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                         lecturerName = profileSnap.data().fullName || 'N/A';
                     }
                 } catch (err) {
-                    console.error("Error fetching profile fallback:", err);
+                    console.error("[AttendanceHistory:ProfileFallback] Error fetching profile fallback:", err);
                 }
             }
 
@@ -202,7 +203,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
             link.click();
             document.body.removeChild(link);
         } catch (error) {
-            console.error("Error downloading attendance:", error);
+            console.error("[AttendanceHistory:Download] Error downloading attendance:", error);
             showAlert("Failed to download attendance.", "error");
         }
     };
@@ -233,8 +234,16 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
 
                 <div className="flex-1 overflow-y-auto min-h-0">
                     {loadingHistory ? (
-                        <div className="flex justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600/30 border-t-blue-600"></div>
+                        <div className="p-6 space-y-4">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="flex gap-4 p-4 border border-gray-100 dark:border-gray-800 rounded-xl">
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-5 w-1/3" />
+                                        <Skeleton className="h-3 w-1/4" />
+                                    </div>
+                                    <Skeleton className="h-10 w-32" />
+                                </div>
+                            ))}
                         </div>
                     ) : historyData.length === 0 ? (
                         <div className="text-center py-12 text-gray-500 dark:text-gray-400">

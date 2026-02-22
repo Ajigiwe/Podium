@@ -38,10 +38,8 @@ import { PiPPermissionPrompt } from './media/PiPPermissionPrompt';
 import { SimpleAttendanceConsole } from './attendance/SimpleAttendanceConsole';
 import { StudentVerificationModal } from './attendance/StudentVerificationModal';
 import { ConnectionRecoveryStatus } from './ConnectionRecoveryStatus';
-import { NetworkQualityIndicator } from './NetworkQualityIndicator';
 import { roomOptions } from '@/config/livekit.config';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
-import { MediaRestorationIndicator } from './MediaRestorationIndicator';
 import { DeviceFailureHandler } from './media/DeviceFailureHandler';
 import { useScreenSharePersistence } from '@/hooks/useScreenSharePersistence';
 
@@ -129,6 +127,17 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { userRole, userId } = useClassroom();
 
+    // Extract photoURL from metadata
+    let photoURL = null;
+    try {
+        if (participant.metadata) {
+            const metadata = JSON.parse(participant.metadata);
+            photoURL = metadata.photoURL;
+        }
+    } catch (e) {
+        console.error('Error parsing participant metadata:', e);
+    }
+
     // Check if we can show menu (lecturer only, and not on self)
     const showMenu = userRole === 'lecturer' && participant.identity !== userId;
 
@@ -146,10 +155,10 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
 
     return (
         <div
-            className={`h-full relative group cursor-pointer min-h-[160px] sm:min-h-0 rounded-lg overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : ''} ${className || ''}`}
+            className={`h-full relative group cursor-pointer aspect-[3/4] sm:aspect-video rounded-lg overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : ''} ${className || ''}`}
             onClick={() => onTileClick(track)}
         >
-            <ParticipantTile trackRef={track} {...props} />
+            <ParticipantTile trackRef={track} {...props} className="!w-full !h-full [&_video]:!object-cover [&_video]:!object-center" />
 
             {/* Speaking Indicator Badge */}
             {isSpeaking && (
@@ -182,8 +191,12 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
             {/* Explicit Placeholder for Camera Off */}
             {isCameraOff && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 border border-gray-700 rounded-lg">
-                    <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-2">
-                        <User className="w-10 h-10 text-gray-400" />
+                    <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-2 overflow-hidden">
+                        {photoURL ? (
+                            <img src={photoURL} alt={participant.name || 'User'} className="w-full h-full object-cover" />
+                        ) : (
+                            <User className="w-10 h-10 text-gray-400" />
+                        )}
                     </div>
                     <span className="text-gray-300 font-medium text-sm">
                         {participant.name || participant.identity || 'Participant'}
@@ -602,10 +615,12 @@ function InnerVideoLayout({
                                 </div>
                             )}
 
-                            <div className={`grid gap-1 w-full h-full p-1 content-start overflow-y-auto pb-24 sm:pb-0`}
+                            <div className={`grid gap-2 w-full h-full p-2 content-start overflow-y-auto pb-28 sm:pb-0`}
                                 style={{
-                                    gridTemplateColumns: `repeat(${config.columns}, minmax(0, 1fr))`,
-                                    gridAutoRows: typeof window !== 'undefined' && window.innerWidth < 768 ? 'minmax(160px, auto)' : '1fr',
+                                    gridTemplateColumns: typeof window !== 'undefined' && window.innerWidth < 768
+                                        ? `repeat(${paginatedTracks.length > 1 ? 2 : 1}, 1fr)`
+                                        : `repeat(${config.columns}, minmax(0, 1fr))`,
+                                    gridAutoRows: typeof window !== 'undefined' && window.innerWidth < 768 ? 'auto' : '1fr',
                                     gridTemplateRows: typeof window !== 'undefined' && window.innerWidth < 768 ? 'none' : `repeat(${config.rows}, minmax(0, 1fr))`,
                                 }}
                             >
@@ -615,7 +630,7 @@ function InnerVideoLayout({
                                         track={trackRef}
                                         participant={trackRef.participant}
                                         onTileClick={handleTileClick}
-                                        className="w-full h-full bg-gray-900 rounded-lg overflow-hidden border border-gray-800/50 shadow-md"
+                                        className="w-full bg-gray-900 rounded-lg overflow-hidden border border-gray-800/50 shadow-md"
                                     />
                                 ))}
                             </div>
@@ -799,11 +814,12 @@ export default function GlobalClassroom() {
         toggleChat,
         isChatOpen,
         unreadChatCount,
+        token,
+        setToken,
     } = useClassroom();
     const { showAlert, customAlert } = useAlert();
 
     const [mounted, setMounted] = useState(false);
-    const [token, setToken] = useState<string | null>(null);
     const [tokenError, setTokenError] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
     const roomRef = useRef<Room | null>(null);
@@ -915,15 +931,13 @@ export default function GlobalClassroom() {
     // Ref to track if we're currently fetching to prevent double-firing
     const isFetchingRef = useRef(false);
 
-    // Fetch token when session becomes active
+    // Fetch token when session becomes active if not already pre-warmed
     useEffect(() => {
         if (!isActive || !sessionId || !userName || !userRole || !userId) {
-            setToken(null);
             return;
         }
 
         // If we already have a token for this session/user, don't refetch
-        // unless it's null. This prevents strict mode double-fetch.
         if (token) return;
 
         const fetchToken = async () => {
@@ -934,7 +948,7 @@ export default function GlobalClassroom() {
             setTokenError(null);
 
             try {
-                console.log('Fetching LiveKit token for:', sessionId, userName, userId);
+                console.log('Fetching LiveKit token (fallback) for:', sessionId, userName, userId);
                 const response = await fetch('/api/livekit/token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -965,7 +979,7 @@ export default function GlobalClassroom() {
         };
 
         fetchToken();
-    }, [isActive, sessionId, userName, userRole, userId, token]);
+    }, [isActive, sessionId, userName, userRole, userId, token, setToken]);
 
     // Dragging handlers - desktop only
     const handleMouseDown = (e: React.MouseEvent, type: 'drag' | 'resize') => {
@@ -1191,8 +1205,6 @@ export default function GlobalClassroom() {
             <PiPPermissionPrompt />
             <InstantPiPManager />
             <ConnectionRecoveryStatus />
-            <NetworkQualityIndicator />
-            <MediaRestorationIndicator />
             <DeviceFailureHandler />
 
             {/* Student Attendance Verification Modal */}

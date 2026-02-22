@@ -1,7 +1,7 @@
-import { 
-  Firestore, 
-  enableNetwork, 
-  disableNetwork, 
+import {
+  Firestore,
+  enableNetwork,
+  disableNetwork,
   terminate,
   waitForPendingWrites
 } from 'firebase/firestore';
@@ -26,7 +26,7 @@ export async function reconnectFirestore(db: Firestore): Promise<boolean> {
     }
     return true;
   } catch (error) {
-    console.error('Error enabling Firestore network:', error);
+    console.error('[Firestore:Reconnect] Error enabling Firestore network:', error);
     return false;
   }
 }
@@ -40,7 +40,7 @@ export async function disconnectFirestore(db: Firestore): Promise<void> {
     isNetworkEnabled = false;
     console.log('Firestore network connection disabled');
   } catch (error) {
-    console.error('Error disabling Firestore network:', error);
+    console.error('[Firestore:Disconnect] Error disabling Firestore network:', error);
   }
 }
 
@@ -53,7 +53,7 @@ export async function terminateFirestore(db: Firestore): Promise<void> {
     await terminate(db);
     console.log('Firestore instance terminated');
   } catch (error) {
-    console.error('Error terminating Firestore:', error);
+    console.error('[Firestore:Terminate] Error terminating Firestore:', error);
   }
 }
 
@@ -61,28 +61,29 @@ export async function terminateFirestore(db: Firestore): Promise<void> {
  * Handles Firestore connection errors and implements retry logic
  */
 export async function handleFirestoreError(
-  db: Firestore, 
+  db: Firestore,
   error: any,
-  maxRetries: number = 3
+  maxRetries: number = 3,
+  tag: string = '[Firestore:Global]'
 ): Promise<boolean> {
-  console.error('Firestore error occurred:', error);
-  
+  console.error(`${tag} Firestore error occurred:`, error);
+
   // Check if it's a network-related error
   if (
-    error.code === 'unavailable' || 
+    error.code === 'unavailable' ||
     error.message.includes('backend') ||
     error.message.includes('network') ||
     error.message.includes('timeout')
   ) {
     console.log(`Attempting to reconnect to Firestore (network issue detected)...`);
-    
+
     // Try to reconnect
     const reconnected = await reconnectFirestore(db);
     if (reconnected) {
       return true;
     }
   }
-  
+
   // For other errors, return false to indicate it's not recoverable
   return false;
 }

@@ -8,7 +8,7 @@ import { AccessToken, VideoGrant, TrackSource } from 'livekit-server-sdk';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { roomName, participantName, participantId, role, userId } = body;
+        const { roomName, participantName, participantId, role, userId, photoURL } = body;
 
         // Validate required fields
         if (!roomName || !participantName || !role) {
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
                 role,
                 userId,
                 name: participantName,
+                photoURL: photoURL || null,
             }),
         });
 
@@ -105,6 +106,7 @@ export async function GET(request: NextRequest) {
     const participantId = searchParams.get('participantId');
     const role = searchParams.get('role') || 'student';
     const userId = searchParams.get('userId');
+    const photoURL = searchParams.get('photoURL');
 
     if (!roomName || !participantName) {
         return NextResponse.json(
@@ -121,6 +123,7 @@ export async function GET(request: NextRequest) {
             participantId,
             role,
             userId,
+            photoURL,
         }),
     } as NextRequest;
 

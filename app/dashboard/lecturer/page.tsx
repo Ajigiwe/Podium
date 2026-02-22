@@ -26,6 +26,7 @@ import { generateMeetingCode } from '@/lib/meetingCode';
 import { Plus, X, Download, Trash2, Video, Copy, Check, History, Users, ArrowRight } from 'lucide-react';
 import { isMeetingCode, normalizeCode } from '@/lib/meetingCode';
 import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function LecturerDashboard() {
     const router = useRouter();
@@ -93,7 +94,7 @@ export default function LecturerDashboard() {
 
             setLoading(false);
         }, (error) => {
-            console.error("Error fetching sessions:", error);
+            console.error("[LecturerDashboard:Sessions] Error fetching sessions:", error);
             setLoading(false);
             if (error.code === 'permission-denied') {
                 showAlert("Error: You do not have permission to view these sessions.", "error");
@@ -316,7 +317,7 @@ export default function LecturerDashboard() {
             router.push(`/classroom/${sessionId}`);
 
         } catch (err) {
-            console.error(err);
+            console.error('[Lecturer:JoinLink] Error joining class by link:', err);
             showAlert("Invalid link or session", "error");
         } finally {
             setJoining(false);
@@ -325,8 +326,27 @@ export default function LecturerDashboard() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/30 border-t-blue-600"></div>
+            <div className="space-y-8 max-w-7xl mx-auto">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                    <div className="space-y-3">
+                        <Skeleton className="h-10 w-64" />
+                        <Skeleton className="h-6 w-32" />
+                    </div>
+                    <div className="flex gap-2">
+                        <Skeleton className="h-12 w-40" />
+                        <Skeleton className="h-12 w-40" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Skeleton className="h-32 w-full rounded-xl" />
+                    <Skeleton className="h-32 w-full rounded-xl" />
+                </div>
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[1, 2, 3].map(i => (
+                        <Skeleton key={i} className="h-64 w-full rounded-xl" />
+                    ))}
+                </div>
             </div>
         );
     }

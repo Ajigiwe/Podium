@@ -10,11 +10,17 @@ import {
     collection,
     getDocs,
     orderBy,
-    query
+    query,
+    limit,
+    startAfter,
+    getCountFromServer,
+    where,
+    writeBatch
 } from 'firebase/firestore';
 import { SystemSettings, UserProfile, AttendanceLog } from '@/lib/firebase/types';
-import { ArrowUpDown, ArrowUp, ArrowDown, Settings, Save, AlertCircle, Users, Search, Shield, GraduationCap, User } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Settings, Save, AlertCircle, Users, Search, Shield, GraduationCap, User, Trash2, UserX, UserCheck, MoreVertical, RefreshCw } from 'lucide-react';
 import StudentHistoryModal from './components/StudentHistoryModal';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function AdminPage() {
     const [activeTab, setActiveTab] = useState<'settings' | 'users'>('settings');
@@ -30,12 +36,27 @@ export default function AdminPage() {
     const [users, setUsers] = useState<(UserProfile & { classCount?: number })[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [totalUsers, setTotalUsers] = useState(0);
+    const [globalStats, setGlobalStats] = useState({ total: 0, students: 0, lecturers: 0, admins: 0 });
+
+    // Pagination State
+    const PAGE_SIZE = 100;
+    const [lastDocs, setLastDocs] = useState<(any)[]>([null]); // Array of cursors
+    const [page, setPage] = useState(0);
+    const [isLastPage, setIsLastPage] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
 
     // Sorting State
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
     // History Modal State
     const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string } | null>(null);
+
+    // Management State
+    const [managingUser, setManagingUser] = useState<string | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+    const [processingAction, setProcessingAction] = useState<string | null>(null);
 
     // Fetch Settings
     useEffect(() => {
@@ -71,58 +92,173 @@ export default function AdminPage() {
         fetchSettings();
     }, []);
 
-    // Fetch Users when tab changes
+    // Fetch Users when tab changes or page changes
     useEffect(() => {
-        if (activeTab === 'users' && users.length === 0) {
-            const fetchUsersAndLogs = async () => {
+        if (activeTab === 'users') {
+            const fetchUsers = async () => {
                 setLoadingUsers(true);
                 try {
-                    // 1. Fetch Users
                     const usersRef = collection(db, 'profiles');
-                    const q = query(usersRef, orderBy('createdAt', 'desc'));
+
+                    // Base query
+                    let q = query(
+                        usersRef,
+                        orderBy('createdAt', 'desc'),
+                        limit(PAGE_SIZE + 1) // Fetch one extra to check if there is a next page
+                    );
+
+                    // Apply pagination cursor
+                    if (lastDocs[page]) {
+                        q = query(
+                            usersRef,
+                            orderBy('createdAt', 'desc'),
+                            startAfter(lastDocs[page]),
+                            limit(PAGE_SIZE + 1)
+                        );
+                    }
+
                     const userSnapshot = await getDocs(q);
-                    const fetchedUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
 
-                    // 2. Fetch All Attendance Logs (Aggregate Count)
-                    // Note: In a large app, we would use a counter trigger, but for this scale, fetching logs is okay
-                    // We only need logs to count for each student.
-                    // Doing client-side aggregation for now.
-                    const logsRef = collection(db, 'attendance_logs');
-                    const logsSnapshot = await getDocs(logsRef);
-                    const logs = logsSnapshot.docs.map(doc => doc.data() as AttendanceLog);
+                    const docs = userSnapshot.docs;
+                    const hasNext = docs.length > PAGE_SIZE;
+                    setIsLastPage(!hasNext);
 
-                    // Map studentId -> Set of sessionIds (to count unique classes)
-                    const studentClassCounts: Record<string, Set<string>> = {};
+                    // Slice to batch size
+                    const batchDocs = hasNext ? docs.slice(0, PAGE_SIZE) : docs;
 
-                    logs.forEach(log => {
-                        if (log.userId) {
-                            if (!studentClassCounts[log.userId]) {
-                                studentClassCounts[log.userId] = new Set();
-                            }
-                            // Store sessionId to count distinct classes joined
-                            // If user joined same class multiple times, we usually just want to know how many distinct classes.
-                            // User asked: "number of classes a student has joined".
-                            // Usually implies distinct classes.
-                            studentClassCounts[log.userId].add(log.sessionId);
-                        }
-                    });
+                    const fetchedUsers = batchDocs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        classCount: doc.data().classCount || 0
+                    } as (UserProfile & { classCount: number })));
 
-                    // Merge counts into users
-                    const usersWithCounts = fetchedUsers.map(user => ({
-                        ...user,
-                        classCount: studentClassCounts[user.id]?.size || 0
-                    }));
+                    setUsers(fetchedUsers);
 
-                    setUsers(usersWithCounts);
+                    // Update cursor for next page if we haven't already
+                    if (hasNext && !lastDocs[page + 1]) {
+                        const newLastDocs = [...lastDocs];
+                        newLastDocs[page + 1] = docs[PAGE_SIZE - 1];
+                        setLastDocs(newLastDocs);
+                    }
+
                 } catch (error) {
                     console.error('Error fetching users:', error);
                 } finally {
                     setLoadingUsers(false);
                 }
             };
-            fetchUsersAndLogs();
+            if (!isSearching) {
+                fetchUsers();
+            }
         }
-    }, [activeTab, users.length]);
+    }, [activeTab, page, isSearching]);
+
+    // Global Search Effect
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (searchTerm.length >= 3) {
+                setIsSearching(true);
+                setLoadingUsers(true);
+                try {
+                    const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchTerm)}`);
+                    const data = await res.json();
+                    if (data.users) {
+                        setSearchResults(data.users);
+                    }
+                } catch (error) {
+                    console.error('Global search error:', error);
+                } finally {
+                    setLoadingUsers(false);
+                }
+            } else {
+                setIsSearching(false);
+                setSearchResults([]);
+            }
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Fetch Global Stats independently
+    useEffect(() => {
+        if (activeTab === 'users') {
+            const fetchGlobalStats = async () => {
+                try {
+                    const usersRef = collection(db, 'profiles');
+
+                    const [totalSnap, studentSnap, lecturerSnap, adminSnap] = await Promise.all([
+                        getCountFromServer(query(usersRef)),
+                        getCountFromServer(query(usersRef, where('role', '==', 'student'))),
+                        getCountFromServer(query(usersRef, where('role', '==', 'lecturer'))),
+                        getCountFromServer(query(usersRef, where('role', '==', 'admin')))
+                    ]);
+
+                    setGlobalStats({
+                        total: totalSnap.data().count,
+                        students: studentSnap.data().count,
+                        lecturers: lecturerSnap.data().count,
+                        admins: adminSnap.data().count
+                    });
+                } catch (error) {
+                    console.error('Error fetching global stats:', error);
+                }
+            };
+            fetchGlobalStats();
+        }
+    }, [activeTab]); // Removed users.length check to allow re-fetching on page change
+
+    const recalculateClassCounts = async () => {
+        if (!confirm('This will scan all attendance logs to update student class counts. Continue?')) return;
+        setLoadingUsers(true);
+        setMessage({ type: 'success', text: 'Fetching attendance logs...' });
+
+        try {
+            // 1. Fetch all attendance logs
+            const logsRef = collection(db, 'attendance_logs');
+            const logsSnapshot = await getDocs(logsRef);
+            const logs = logsSnapshot.docs.map(doc => doc.data() as AttendanceLog);
+
+            // 2. Aggregate counts per user
+            const counts: Record<string, Set<string>> = {};
+            logs.forEach(log => {
+                if (log.userId) {
+                    if (!counts[log.userId]) counts[log.userId] = new Set();
+                    counts[log.userId].add(log.sessionId);
+                }
+            });
+
+            const userIds = Object.keys(counts);
+            const totalToUpdate = userIds.length;
+            setMessage({ type: 'success', text: `Preparing updates for ${totalToUpdate} students...` });
+
+            // 3. Update profiles in batches of 500 (Firestore limit)
+            const BATCH_SIZE = 500;
+            let processed = 0;
+
+            for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+                const batch = writeBatch(db);
+                const chunk = userIds.slice(i, i + BATCH_SIZE);
+
+                chunk.forEach(userId => {
+                    const profileRef = doc(db, 'profiles', userId);
+                    batch.set(profileRef, { classCount: counts[userId].size }, { merge: true });
+                });
+
+                await batch.commit();
+                processed += chunk.length;
+                setMessage({ type: 'success', text: `Updated ${processed}/${totalToUpdate} student profiles...` });
+            }
+
+            // 4. Reset local users state to trigger re-fetch
+            setUsers([]);
+            setMessage({ type: 'success', text: 'Class counts recalculated successfully!' });
+        } catch (error) {
+            console.error('Recalculation error:', error);
+            setMessage({ type: 'error', text: 'Recalculation failed.' });
+        } finally {
+            setLoadingUsers(false);
+        }
+    };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -146,6 +282,75 @@ export default function AdminPage() {
         }
     };
 
+    const handleUserAction = async (userId: string, action: 'role' | 'disable' | 'enable' | 'delete', data?: any) => {
+        // Immediate UI feedback
+        setManagingUser(null);
+        if (action !== 'delete') {
+            setProcessingAction(userId);
+        }
+
+        // Snapshot for rollback
+        const previousUsers = [...users];
+
+        // Optimistic Update
+        if (action === 'delete') {
+            setUsers(prev => prev.filter(u => u.id !== userId));
+            setConfirmDelete(null);
+        } else {
+            setUsers(prev => prev.map(u => {
+                if (u.id === userId) {
+                    const updated = { ...u };
+                    if (action === 'role') updated.role = data;
+                    if (action === 'disable') (updated as any).status = 'disabled';
+                    if (action === 'enable') (updated as any).status = 'active';
+                    return updated;
+                }
+                return u;
+            }));
+        }
+
+        try {
+            let res;
+            if (action === 'delete') {
+                res = await fetch('/api/admin/users', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+            } else {
+                const body: any = { userId };
+                if (action === 'role') body.role = data;
+                if (action === 'disable') body.disabled = true;
+                if (action === 'enable') body.disabled = false;
+
+                res = await fetch('/api/admin/users', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+            }
+
+            const result = await res.json();
+            if (!result.success) {
+                // Rollback on failure
+                setUsers(previousUsers);
+                setMessage({ type: 'error', text: result.error || 'Action failed' });
+            } else {
+                // Success - Message is optional since UI already updated
+                if (action === 'delete') {
+                    setMessage({ type: 'success', text: result.message });
+                }
+            }
+        } catch (error) {
+            console.error('Error performing user action:', error);
+            // Rollback on error
+            setUsers(previousUsers);
+            setMessage({ type: 'error', text: 'An unexpected error occurred' });
+        } finally {
+            setProcessingAction(null);
+        }
+    };
+
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -155,11 +360,13 @@ export default function AdminPage() {
     };
 
     // Filter and Sort Users
-    const processedUsers = [...users]
-        .filter(user =>
-            user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+    const usersToProcess = isSearching ? searchResults : users;
+    const processedUsers = [...usersToProcess]
+        .filter(user => {
+            if (isSearching) return true; // Already filtered by server
+            return user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+        })
         .sort((a, b) => {
             if (!sortConfig) return 0;
 
@@ -178,12 +385,7 @@ export default function AdminPage() {
             return 0;
         });
 
-    const stats = {
-        total: users.length,
-        students: users.filter(u => u.role === 'student').length,
-        lecturers: users.filter(u => u.role === 'lecturer').length,
-        admins: users.filter(u => u.role === 'admin').length
-    };
+    const stats = globalStats;
 
     const SortIcon = ({ columnKey }: { columnKey: string }) => {
         if (sortConfig?.key !== columnKey) return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
@@ -194,7 +396,26 @@ export default function AdminPage() {
         );
     };
 
-    if (loadingSettings) return <div className="flex items-center justify-center h-64">Loading...</div>;
+    if (loadingSettings) {
+        return (
+            <div className="max-w-6xl mx-auto space-y-8">
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-10 w-48" />
+                    <Skeleton className="h-10 w-64" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                        <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                    ))}
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 h-96">
+                    <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <Skeleton className="h-6 w-32" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
@@ -330,12 +551,22 @@ export default function AdminPage() {
                     </div>
 
                     {/* Users Table */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between gap-4">
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <Users className="w-5 h-5" />
-                                Registered Users
-                            </h2>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative">
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex flex-col sm:flex-row items-center gap-4">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Users className="w-5 h-5" />
+                                    Registered Users
+                                </h2>
+                                <button
+                                    onClick={recalculateClassCounts}
+                                    title="Recalculate class counts from logs"
+                                    className="p-1 px-2 text-[10px] uppercase font-bold tracking-wider bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-blue-600 rounded transition-colors flex items-center gap-1 border border-gray-200 dark:border-gray-700"
+                                >
+                                    <RefreshCw className="w-3 h-3" />
+                                    Sync Counts
+                                </button>
+                            </div>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
@@ -348,113 +579,201 @@ export default function AdminPage() {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 dark:bg-gray-800/50">
-                                    <tr>
-                                        <th
-                                            className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                            onClick={() => handleSort('fullName')}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                User
-                                                <SortIcon columnKey="fullName" />
+                        <div className="overflow-x-auto min-h-[300px] pb-32">
+                            {loadingUsers ? (
+                                <div className="p-6 space-y-4">
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <div key={i} className="flex gap-4">
+                                            <Skeleton className="h-12 w-12 rounded-full" />
+                                            <div className="flex-1 space-y-2">
+                                                <Skeleton className="h-4 w-1/4" />
+                                                <Skeleton className="h-3 w-1/2" />
                                             </div>
-                                        </th>
-                                        <th
-                                            className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                            onClick={() => handleSort('role')}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                Role
-                                                <SortIcon columnKey="role" />
-                                            </div>
-                                        </th>
-                                        <th
-                                            className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                            onClick={() => handleSort('classCount')}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                Classes Joined
-                                                <SortIcon columnKey="classCount" />
-                                            </div>
-                                        </th>
-                                        <th
-                                            className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                            onClick={() => handleSort('createdAt')}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                Joined At
-                                                <SortIcon columnKey="createdAt" />
-                                            </div>
-                                        </th>
-                                        <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                    {loadingUsers ? (
+                                            <Skeleton className="h-10 w-24" />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-gray-50 dark:bg-gray-800/50">
                                         <tr>
-                                            <td colSpan={5} className="p-8 text-center text-gray-500">Loading users...</td>
+                                            <th
+                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                onClick={() => handleSort('fullName')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    User
+                                                    <SortIcon columnKey="fullName" />
+                                                </div>
+                                            </th>
+                                            <th
+                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                onClick={() => handleSort('role')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Role
+                                                    <SortIcon columnKey="role" />
+                                                </div>
+                                            </th>
+                                            <th
+                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                onClick={() => handleSort('classCount')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Classes Joined
+                                                    <SortIcon columnKey="classCount" />
+                                                </div>
+                                            </th>
+                                            <th
+                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                onClick={() => handleSort('createdAt')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Joined At
+                                                    <SortIcon columnKey="createdAt" />
+                                                </div>
+                                            </th>
+                                            <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                                         </tr>
-                                    ) : processedUsers.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="p-8 text-center text-gray-500">No users found.</td>
-                                        </tr>
-                                    ) : (
-                                        processedUsers.map((user) => (
-                                            <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                                <td className="p-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                                                            {user.photoURL ? (
-                                                                <img src={user.photoURL} alt={user.fullName} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <span className="text-sm font-bold text-gray-500">{user.fullName?.[0] || '?'}</span>
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-medium text-gray-900 dark:text-white">{user.fullName}</p>
-                                                            <p className="text-sm text-gray-500">{user.email}</p>
-                                                        </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                        {loadingUsers ? (
+                                            <tr>
+                                                <td colSpan={5} className="p-8 text-center text-gray-500">Loading users...</td>
+                                            </tr>
+                                        ) : processedUsers.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="p-12 text-center">
+                                                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                                                        <Search className="w-8 h-8 opacity-20" />
+                                                        <p className="text-sm text-gray-500">No users found{isSearching ? ' for this search' : ''}.</p>
                                                     </div>
                                                 </td>
-                                                <td className="p-4">
-                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex w-fit items-center gap-1 ${user.role === 'admin' ? 'bg-red-100 text-red-700' :
-                                                        user.role === 'lecturer' ? 'bg-purple-100 text-purple-700' :
-                                                            'bg-blue-100 text-blue-700'
-                                                        }`}>
-                                                        {user.role === 'admin' && <Shield className="w-3 h-3" />}
-                                                        {user.role === 'lecturer' && <GraduationCap className="w-3 h-3" />}
-                                                        {user.role === 'student' && <User className="w-3 h-3" />}
-                                                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4">
-                                                    {user.role === 'student' ? (
-                                                        <span className="font-medium text-gray-900 dark:text-white">
-                                                            {user.classCount || 0}
-                                                        </span>
-                                                    ) : '-'}
-                                                </td>
-                                                <td className="p-4 text-sm text-gray-500">
-                                                    {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : 'N/A'}
-                                                </td>
-                                                <td className="p-4">
-                                                    {user.role === 'student' && (
-                                                        <button
-                                                            onClick={() => setSelectedStudent({ id: user.id, name: user.fullName })}
-                                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
-                                                        >
-                                                            View History
-                                                        </button>
-                                                    )}
-                                                </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                                        ) : (
+                                            processedUsers.map((user) => (
+                                                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
+                                                                {user.photoURL ? (
+                                                                    <img src={user.photoURL} alt={user.fullName} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className="text-sm font-bold text-gray-500">{user.fullName?.[0] || '?'}</span>
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-gray-900 dark:text-white">{user.fullName}</p>
+                                                                <p className="text-sm text-gray-500">{user.email}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex w-fit items-center gap-1 ${user.role === 'admin' ? 'bg-red-100 text-red-700' :
+                                                            user.role === 'lecturer' ? 'bg-purple-100 text-purple-700' :
+                                                                'bg-blue-100 text-blue-700'
+                                                            }`}>
+                                                            {user.role === 'admin' && <Shield className="w-3 h-3" />}
+                                                            {user.role === 'lecturer' && <GraduationCap className="w-3 h-3" />}
+                                                            {user.role === 'student' && <User className="w-3 h-3" />}
+                                                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {user.role === 'student' ? (
+                                                            <span className="font-medium text-gray-900 dark:text-white">
+                                                                {user.classCount || 0}
+                                                            </span>
+                                                        ) : '-'}
+                                                    </td>
+                                                    <td className="p-4 text-sm text-gray-500">
+                                                        {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-2">
+                                                            {user.role === 'student' && (
+                                                                <button
+                                                                    onClick={() => setSelectedStudent({ id: user.id, name: user.fullName })}
+                                                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                                                                >
+                                                                    History
+                                                                </button>
+                                                            )}
+
+                                                            <div className="relative">
+                                                                <button
+                                                                    onClick={() => setManagingUser(managingUser === user.id ? null : user.id)}
+                                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                                                                    disabled={processingAction === user.id}
+                                                                >
+                                                                    <MoreVertical className="w-4 h-4 text-gray-400" />
+                                                                </button>
+
+                                                                {managingUser === user.id && (
+                                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50">
+                                                                        <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Change Role</div>
+                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'admin')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                            <Shield className="w-4 h-4 text-red-500" /> Admin
+                                                                        </button>
+                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'lecturer')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                            <GraduationCap className="w-4 h-4 text-purple-500" /> Lecturer
+                                                                        </button>
+                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'student')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                            <User className="w-4 h-4 text-blue-500" /> Student
+                                                                        </button>
+
+                                                                        <div className="h-px bg-gray-100 dark:bg-gray-700 my-1" />
+
+                                                                        {(user as any).status === 'disabled' ? (
+                                                                            <button onClick={() => handleUserAction(user.id, 'enable')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                                <UserCheck className="w-4 h-4" /> Enable Account
+                                                                            </button>
+                                                                        ) : (
+                                                                            <button onClick={() => handleUserAction(user.id, 'disable')} className="w-full text-left px-3 py-2 text-sm text-orange-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                                <UserX className="w-4 h-4" /> Disable Account
+                                                                            </button>
+                                                                        )}
+
+                                                                        <button onClick={() => setConfirmDelete({ id: user.id, name: user.fullName })} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                            <Trash2 className="w-4 h-4" /> Delete Permanently
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
+
+                        {/* Pagination Controls - Hide during search */}
+                        {!isSearching && (
+                            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+                                <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                    Page <span className="font-bold text-gray-900 dark:text-white">{page + 1}</span>
+                                </span>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(0, p - 1))}
+                                        disabled={page === 0 || loadingUsers}
+                                        className="px-4 py-2 text-sm font-semibold border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        Previous
+                                    </button>
+                                    <button
+                                        onClick={() => setPage(p => p + 1)}
+                                        disabled={isLastPage || loadingUsers}
+                                        className="px-4 py-2 text-sm font-semibold bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -466,6 +785,36 @@ export default function AdminPage() {
                     studentId={selectedStudent.id}
                     studentName={selectedStudent.name}
                 />
+            )}
+
+            {confirmDelete && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-3 text-red-600 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <Trash2 className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-bold">Delete Account?</h3>
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            Are you sure you want to delete <span className="font-bold text-gray-900 dark:text-white">{confirmDelete.name}</span>? This action is irreversible and will remove their access and profile.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmDelete(null)}
+                                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleUserAction(confirmDelete.id, 'delete')}
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
+                            >
+                                Delete Permanently
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

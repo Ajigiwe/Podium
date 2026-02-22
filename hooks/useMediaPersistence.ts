@@ -138,7 +138,10 @@ export const useMediaPersistence = () => {
                 } else {
                     setIsWaitingForInteraction(false);
                     if (attempts >= maxAttempts) {
-                        throw new Error(`Restoration timeout: Room or Participant not ready after ${maxAttempts}s`);
+                        console.warn(`⚠️ [MediaPersistence] Restoration timed out after ${maxAttempts}s. Proceeding without auto-restoration.`);
+                        isInitializedRef.current = true;
+                        setRestorationStatus('success'); // Fallback to success to allow normal join
+                        return;
                     }
 
                     if (!isConnected) {

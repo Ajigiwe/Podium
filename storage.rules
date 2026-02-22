@@ -7,15 +7,15 @@ service firebase.storage {
     }
     
     // Profile pictures
-    match /profile-pictures/{fileName} {
+    match /profile-pictures/{userId} {
       // Anyone can view profile pictures
       allow read: if isSignedIn();
       
-      // Only user can upload their own profile picture (must be named {userId}.jpg)
+      // Only user can upload their own profile picture
       allow write: if isSignedIn() 
-        && fileName == request.auth.uid + '.jpg'
+        && userId == request.auth.uid
         && request.resource.size < 5 * 1024 * 1024 // 5MB max
-        && request.resource.contentType == 'image/jpeg'; // Enforce JPEG
+        && request.resource.contentType.matches('image/.*'); // Allow all images
     }
     
     // Default deny

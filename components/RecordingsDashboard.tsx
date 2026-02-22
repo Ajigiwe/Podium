@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Download, Clock, HardDrive, Video, Trash2, Calendar, RefreshCw } from 'lucide-react';
 import { useAlert } from '@/contexts/AlertContext';
+import { Skeleton } from './ui/Skeleton';
 
 interface Recording {
     id: string;
@@ -40,7 +41,7 @@ export const RecordingsDashboard = ({ lecturerId }: RecordingsDashboardProps) =>
                 setRecordings(data.recordings);
             }
         } catch (error) {
-            console.error('Failed to fetch recordings:', error);
+            console.error('[Recordings:Dashboard:Fetch] Failed to fetch recordings:', error);
         } finally {
             setLoading(false);
         }
@@ -60,16 +61,25 @@ export const RecordingsDashboard = ({ lecturerId }: RecordingsDashboardProps) =>
             document.body.removeChild(link);
 
         } catch (error) {
-            console.error('Download failed:', error);
+            console.error('[Recordings:Dashboard:Download] Download failed:', error);
             showAlert('Failed to download recording', 'error');
         }
     };
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 min-h-[300px]">
-                <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600/30 border-t-blue-600 mb-4"></div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Loading your recordings...</p>
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-64" />
+                    </div>
+                </div>
+                <div className="grid gap-4">
+                    {[1, 2, 3].map(i => (
+                        <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+                    ))}
+                </div>
             </div>
         );
     }

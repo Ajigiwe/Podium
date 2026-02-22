@@ -13,8 +13,9 @@ import {
     sendEmailVerification,
 } from 'firebase/auth';
 import { auth, db, handleFirestoreError } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { Profile } from '@/lib/firebase/types';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface AuthContextType {
     user: User | null;
@@ -32,52 +33,54 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [authLoading, setAuthLoading] = useState(true);
+    const queryClient = useQueryClient();
+
+    // Profile Query
+    const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
+        queryKey: ['profile', user?.uid],
+        queryFn: async () => {
+            if (!user) return null;
+            try {
+                const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+                if (profileDoc.exists()) {
+                    const data = profileDoc.data() as Profile;
+                    // Auto-promote admin (fix for existing users)
+                    if (user.email === 'minatoflash82@gmail.com' && data.role !== 'admin') {
+                        console.log('Auto-promoting user to admin:', user.email);
+                        await updateDoc(doc(db, 'profiles', user.uid), { role: 'admin' });
+                        data.role = 'admin';
+                    }
+                    return data;
+                }
+                return null;
+            } catch (error) {
+                console.error('[Auth:Profile] Error fetching profile:', error);
+                const handled = await handleFirestoreError(db, error, 1, '[Auth:Profile]');
+                if (handled) {
+                    // Retry once if error was recoverable
+                    const retryDoc = await getDoc(doc(db, 'profiles', user.uid));
+                    return retryDoc.data() as Profile;
+                }
+                throw error;
+            }
+        },
+        enabled: !!user,
+    });
+
+    const loading = authLoading || (!!user && profileLoading);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
-
-            if (user) {
-                // Fetch user profile
-                try {
-                    const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-                    if (profileDoc.exists()) {
-                        const data = profileDoc.data() as Profile;
-                        // Auto-promote admin (fix for existing users)
-                        if (user.email === 'minatoflash82@gmail.com' && data.role !== 'admin') {
-                            console.log('Auto-promoting user to admin:', user.email);
-                            await updateDoc(doc(db, 'profiles', user.uid), { role: 'admin' });
-                            data.role = 'admin';
-                        }
-                        setProfile(data);
-                    }
-                } catch (error) {
-                    console.error('Error fetching profile:', error);
-                    // Attempt to handle Firestore error and retry
-                    const handled = await handleFirestoreError(db, error);
-                    if (handled) {
-                        // Retry once more after handling the error
-                        try {
-                            const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-                            if (profileDoc.exists()) {
-                                setProfile(profileDoc.data() as Profile);
-                            }
-                        } catch (retryError) {
-                            console.error('Retry failed to fetch profile:', retryError);
-                        }
-                    }
-                }
-            } else {
-                setProfile(null);
+            setAuthLoading(false);
+            if (!user) {
+                queryClient.setQueryData(['profile', undefined], null);
             }
-
-            setLoading(false);
         });
 
         return unsubscribe;
-    }, []);
+    }, [queryClient]);
 
     const signIn = async (email: string, password: string) => {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -126,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     retries--;
                 } else {
-                    const handled = await handleFirestoreError(db, error);
+                    const handled = await handleFirestoreError(db, error, 1, '[Auth:SignUp]');
                     if (handled) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         retries--;
@@ -145,7 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Send email verification
         await sendEmailVerification(user);
-        await firebaseSignOut(auth); // Sign out immediately so they have to login (and check verification)
+        await firebaseSignOut(auth);
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
     };
 
     const signInWithGoogle = async (role: 'student' | 'lecturer' | 'admin' = 'student') => {
@@ -171,8 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     });
                 }
             } catch (error) {
-                console.error('Error checking/creating profile for Google sign-in:', error);
-                const handled = await handleFirestoreError(db, error);
+                console.error('[Auth:Google] Error checking/creating profile for Google sign-in:', error);
+                const handled = await handleFirestoreError(db, error, 1, '[Auth:Google]');
                 if (handled) {
                     // Retry once more after handling the error
                     try {
@@ -187,18 +191,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             });
                         }
                     } catch (retryError) {
-                        console.error('Retry failed for Google sign-in profile:', retryError);
+                        console.error('[Auth:Google:Retry] Retry failed for Google sign-in profile:', retryError);
                     }
                 }
             }
         } catch (error) {
             console.error('Google Sign In Error:', error);
             throw error;
+        } finally {
+            queryClient.invalidateQueries({ queryKey: ['profile', user?.uid] });
         }
     };
 
     const signOut = async () => {
         await firebaseSignOut(auth);
+        queryClient.clear();
     };
 
     const resetPassword = async (email: string) => {
@@ -215,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         <AuthContext.Provider
             value={{
                 user,
-                profile,
+                profile: profile || null,
                 loading,
                 signIn,
                 signUp,

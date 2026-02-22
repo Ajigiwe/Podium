@@ -59,7 +59,7 @@ export function usePiPPersistence() {
                 await videoRef.current.requestPictureInPicture();
             }
         } catch (error) {
-            console.error('Failed to toggle PiP:', error);
+            console.error('[PiP] Failed to toggle PiP:', error);
         }
     }, []);
 

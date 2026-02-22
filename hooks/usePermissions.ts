@@ -106,7 +106,7 @@ export const usePermissions = (roomId: string, isLecturer: boolean) => {
             );
             console.log('Sent permission request for', type);
         } catch (error) {
-            console.error('Failed to request permission:', error);
+            console.error('[Permissions:Request:Failed] Failed to request permission:', error);
             setHasPendingRequest(false);
         }
     }, [localParticipant, localParticipant?.identity, roomId, isLecturer]);

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, GraduationCap } from 'lucide-react';
+import { getFriendlyAuthErrorMessage } from '@/lib/firebase/auth-errors';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -31,7 +32,8 @@ export default function LoginPage() {
             await signIn(email, password);
             router.push(redirectUrl);
         } catch (err: any) {
-            setError(err.message || 'Failed to sign in');
+            const friendlyMessage = getFriendlyAuthErrorMessage(err);
+            setError(friendlyMessage);
             if (err.message && err.message.includes('verify your email')) {
                 setShowResend(true);
             }
@@ -61,7 +63,7 @@ export default function LoginPage() {
             await signInWithGoogle(role);
             router.push(redirectUrl);
         } catch (err: any) {
-            setError(err.message || 'Failed to sign in with Google');
+            setError(getFriendlyAuthErrorMessage(err));
         } finally {
             setLoading(false);
         }

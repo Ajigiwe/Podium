@@ -9,9 +9,9 @@ import { collection, query, where, onSnapshot, orderBy, doc, getDoc, updateDoc, 
 import { Session, Transaction, AttendanceLog, SystemSettings } from '@/lib/firebase/types';
 import { initializeSubscription } from '@/lib/payments/initializeSubscription';
 import { isMeetingCode, normalizeCode } from '@/lib/meetingCode';
-import { Trash2, Video, ArrowRight, History, X, CreditCard, Lock, CheckCircle, Users } from 'lucide-react';
-
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Suspense } from 'react';
+import { CheckCircle, Lock, History, CreditCard, ArrowRight, Trash2, Video, Users, X } from 'lucide-react';
 
 function StudentDashboardContent() {
     const router = useRouter();
@@ -65,7 +65,7 @@ function StudentDashboardContent() {
                     setIsPayToUse(data.isPayToUse !== undefined ? data.isPayToUse : true);
                 }
             } catch (error) {
-                console.error("Error fetching settings:", error);
+                console.error("[Student:Settings] Error fetching settings:", error);
             }
         };
         fetchSettings();
@@ -87,14 +87,17 @@ function StudentDashboardContent() {
         const qPayments = query(
             paymentsRef,
             where('userId', '==', user.uid),
-            where('isHidden', '==', false)
-            // We don't filter by status='succeeded' strictly if we use amount 0, but good practice
+            where('isHidden', '==', false),
+            orderBy('createdAt', 'desc')
         );
 
         const unsubscribe = onSnapshot(qPayments, (snapshot) => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
             setPayments(data);
             if (snapshot.empty) setLoading(false);
+        }, (error) => {
+            console.error('[StudentDashboard:Transactions] Error listening to transactions:', error);
+            setLoading(false);
         });
 
         return () => unsubscribe();
@@ -130,7 +133,6 @@ function StudentDashboardContent() {
             }
         };
 
-        fetchEnrolledSessions();
         fetchEnrolledSessions();
     }, [payments]);
 
@@ -279,7 +281,7 @@ function StudentDashboardContent() {
             router.push(`/classroom/${sessionId}`);
 
         } catch (err) {
-            console.error(err);
+            console.error('[Student:JoinLink] Error joining class by link:', err);
             showAlert("Invalid link or session", "error");
         } finally {
             setJoining(false);
@@ -297,7 +299,7 @@ function StudentDashboardContent() {
                     await updateDoc(d.ref, { isHidden: true });
                 });
             } catch (error) {
-                console.error('Error removing class:', error);
+                console.error('[StudentDashboard:RemoveClass] Error removing class:', error);
             }
         });
     };
@@ -319,7 +321,7 @@ function StudentDashboardContent() {
             const snapshot = await getDocs(q);
             setHistoryData(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog)));
         } catch (error) {
-            console.error(error);
+            console.error('[Student:LogsRef] Error getting logs ref:', error);
         } finally {
             setLoadingHistory(false);
         }
@@ -331,7 +333,7 @@ function StudentDashboardContent() {
                 await deleteDoc(doc(db, 'attendance_logs', id));
                 setHistoryData(prev => prev.filter(item => item.id !== id));
             } catch (e) {
-                console.error(e);
+                console.error('[StudentDashboard:DeleteHistory] ', e);
             }
         });
     };
@@ -341,8 +343,19 @@ function StudentDashboardContent() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/30 border-t-blue-600"></div>
+            <div className="space-y-8 max-w-7xl mx-auto">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                    <div className="space-y-3">
+                        <Skeleton className="h-10 w-64" />
+                        <Skeleton className="h-6 w-32" />
+                    </div>
+                    <Skeleton className="h-12 w-40" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {[1, 2, 3].map(i => (
+                        <Skeleton key={i} className="h-48 w-full rounded-xl" />
+                    ))}
+                </div>
             </div>
         );
     }
@@ -580,8 +593,19 @@ function StudentDashboardContent() {
 export default function StudentDashboard() {
     return (
         <Suspense fallback={
-            <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/30 border-t-blue-600"></div>
+            <div className="space-y-8 max-w-7xl mx-auto">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                    <div className="space-y-3">
+                        <Skeleton className="h-10 w-64" />
+                        <Skeleton className="h-6 w-32" />
+                    </div>
+                    <Skeleton className="h-12 w-40" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {[1, 2, 3].map(i => (
+                        <Skeleton key={i} className="h-48 w-full rounded-xl" />
+                    ))}
+                </div>
             </div>
         }>
             <StudentDashboardContent />

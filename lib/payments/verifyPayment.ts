@@ -20,7 +20,7 @@ export async function hasUserPaid(
         const snapshot = await getDocs(q);
         return !snapshot.empty;
     } catch (error) {
-        console.error('Error checking payment status:', error);
+        console.error('[Payments:Verify] Error checking payment status:', error);
         // Attempt to handle Firestore error and retry
         const handled = await handleFirestoreError(db, error);
         if (handled) {
@@ -36,7 +36,7 @@ export async function hasUserPaid(
                 const snapshot = await getDocs(q);
                 return !snapshot.empty;
             } catch (retryError) {
-                console.error('Retry failed to check payment status:', retryError);
+                console.error('[Payments:Verify:Retry] Retry failed to check payment status:', retryError);
                 return false;
             }
         }
@@ -61,7 +61,7 @@ export async function getUserTransactions(userId: string) {
             ...doc.data(),
         }));
     } catch (error) {
-        console.error('Error fetching transactions:', error);
+        console.error('[Payments:History] Error fetching transactions:', error);
         // Attempt to handle Firestore error and retry
         const handled = await handleFirestoreError(db, error);
         if (handled) {
@@ -78,7 +78,7 @@ export async function getUserTransactions(userId: string) {
                     ...doc.data(),
                 }));
             } catch (retryError) {
-                console.error('Retry failed to fetch transactions:', retryError);
+                console.error('[Payments:History:Retry] Retry failed to fetch transactions:', retryError);
                 return [];
             }
         }
@@ -113,7 +113,7 @@ export async function getSessionRevenue(sessionId: string) {
             transactions,
         };
     } catch (error) {
-        console.error('Error fetching session revenue:', error);
+        console.error('[Payments:Revenue] Error fetching session revenue:', error);
         // Attempt to handle Firestore error and retry
         const handled = await handleFirestoreError(db, error);
         if (handled) {
@@ -140,7 +140,7 @@ export async function getSessionRevenue(sessionId: string) {
                     transactions,
                 };
             } catch (retryError) {
-                console.error('Retry failed to fetch session revenue:', retryError);
+                console.error('[Payments:Revenue:Retry] Retry failed to fetch session revenue:', retryError);
                 return {
                     totalRevenue: 0,
                     transactionCount: 0,

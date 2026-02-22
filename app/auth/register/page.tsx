@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, GraduationCap, BookOpen, Briefcase } from 'lucide-react';
+import { getFriendlyAuthErrorMessage } from '@/lib/firebase/auth-errors';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -28,7 +29,7 @@ export default function RegisterPage() {
             await signUp(email, password, fullName, role);
             setSuccess(true);
         } catch (err: any) {
-            setError(err.message || 'Failed to create account');
+            setError(getFriendlyAuthErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -42,7 +43,7 @@ export default function RegisterPage() {
             await signInWithGoogle(role);
             router.push('/dashboard');
         } catch (err: any) {
-            setError(err.message || 'Failed to sign up with Google');
+            setError(getFriendlyAuthErrorMessage(err));
         } finally {
             setLoading(false);
         }

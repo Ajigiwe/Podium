@@ -8,6 +8,7 @@ import {
   deleteDoc,
   query,
   where,
+  orderBy,
   getDocs,
   serverTimestamp,
   getDoc
@@ -45,6 +46,9 @@ export const subscribeToPermissions = (
       // Default to no permissions if doc doesn't exist yet
       onUpdate({ micPermission: false, cameraPermission: false });
     }
+  }, (error) => {
+    console.error(`[Permissions:Participant] Error subscribing to participant ${participantId}:`, error);
+    onUpdate({ micPermission: false, cameraPermission: false });
   });
 };
 
@@ -54,7 +58,11 @@ export const subscribeToPermissionRequests = (
   onUpdate: (requests: PermissionRequest[]) => void
 ) => {
   const requestsRef = collection(db, 'sessions', sessionId, 'permission_requests');
-  const q = query(requestsRef, where('status', '==', 'pending'));
+  const q = query(
+    requestsRef,
+    where('status', '==', 'pending'),
+    orderBy('requestedAt', 'asc')
+  );
 
   return onSnapshot(q, (snapshot) => {
     const requests = snapshot.docs.map(doc => ({
@@ -62,16 +70,10 @@ export const subscribeToPermissionRequests = (
       ...doc.data()
     })) as PermissionRequest[];
 
-    // Sort by requested time (oldest first)
-    requests.sort((a, b) => {
-      const timeA = a.requestedAt?.toMillis?.() || 0;
-      const timeB = b.requestedAt?.toMillis?.() || 0;
-      return timeA - timeB;
-    });
-
+    // Sorting is now handled by Firestore query
     onUpdate(requests);
   }, (error) => {
-    console.error("Error subscribing to permission requests:", error);
+    console.error(`[Permissions:Requests] Error subscribing to permission requests:`, error);
     onUpdate([]);
   });
 };
@@ -89,6 +91,9 @@ export const subscribeToAllPermissions = (
       permissions: doc.data() as ParticipantPermissions
     }));
     onUpdate(permissionsList);
+  }, (error) => {
+    console.error(`[Permissions:All] Error subscribing to all session permissions:`, error);
+    onUpdate([]);
   });
 };
 

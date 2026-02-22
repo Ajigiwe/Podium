@@ -43,7 +43,7 @@ export async function uploadProfilePicture(userId: string, file: File): Promise<
 
         return downloadURL;
     } catch (error) {
-        console.error('Error uploading profile picture:', error);
+        console.error('[Storage:Upload] Error uploading profile picture:', error);
         throw new Error('Failed to upload profile picture');
     }
 }
@@ -69,7 +69,7 @@ export async function deleteProfilePicture(userId: string): Promise<void> {
             }
         }
     } catch (error) {
-        console.error('Error deleting profile picture:', error);
+        console.error('[Storage:Delete] Error deleting profile picture:', error);
         // Don't throw error - it's okay if file doesn't exist
     }
 }

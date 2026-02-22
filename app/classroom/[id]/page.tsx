@@ -4,24 +4,38 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/config';
-import { doc, getDoc, addDoc, updateDoc, collection, Timestamp, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, collection, Timestamp, query, where, getDocs, increment } from 'firebase/firestore';
 import { Session } from '@/lib/firebase/types';
 import { hasUserPaid } from '@/lib/payments/verifyPayment';
 import ClassroomContent from '@/components/ClassroomContent';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { Clock, RefreshCw, ArrowLeft, Laptop } from 'lucide-react';
 import CountdownTimer from '@/components/CountdownTimer';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useAlert } from '@/contexts/AlertContext';
+import { useQuery } from '@tanstack/react-query';
 
 export default function ClassroomPage() {
     const params = useParams();
     const router = useRouter();
     const { user, profile, loading: authLoading } = useAuth();
-    const { joinClass, sessionId: currentSessionId } = useClassroom();
+    const { joinClass, preWarmToken, sessionId: currentSessionId } = useClassroom();
     const { showAlert } = useAlert();
     const sessionId = params.id as string;
 
-    const [session, setSession] = useState<Session | null>(null);
+    // Session Query
+    const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery({
+        queryKey: ['session', sessionId],
+        queryFn: async () => {
+            const sessionDoc = await getDoc(doc(db, 'sessions', sessionId));
+            if (!sessionDoc.exists()) {
+                throw new Error('Session not found');
+            }
+            return { id: sessionDoc.id, ...sessionDoc.data() } as Session;
+        },
+        staleTime: 30000, // 30 seconds
+    });
+
     const [loading, setLoading] = useState(true);
     const [canAccess, setCanAccess] = useState(false);
     const [attendanceSubmitted, setAttendanceSubmitted] = useState(false);
@@ -35,63 +49,51 @@ export default function ClassroomPage() {
     const [submittingProfile, setSubmittingProfile] = useState(false);
 
     useEffect(() => {
-        if (authLoading) return;
+        if (authLoading || sessionLoading) return;
 
-        // Don't re-run if attendance already submitted
-        if (attendanceSubmitted) return;
-
-        if (!user || !profile) {
-            const currentPath = window.location.pathname + window.location.search;
-            router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
+        if (sessionError) {
+            showAlert('Session not found', 'error');
+            router.push('/');
             return;
         }
 
-        const loadSession = async () => {
+        if (!user || !profile || !session) {
+            if (!authLoading && !user) {
+                const currentPath = window.location.pathname + window.location.search;
+                router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
+            }
+            return;
+        }
+
+        const verifyAccess = async () => {
             try {
-                // Get session details
-                const sessionDoc = await getDoc(doc(db, 'sessions', sessionId));
-                if (!sessionDoc.exists()) {
-                    showAlert('Session not found', 'error');
-                    router.push('/');
-                    return;
-                }
-
-                const sessionData = { id: sessionDoc.id, ...sessionDoc.data() } as Session;
-                setSession(sessionData);
-
                 // CRITICAL: Check if user is the HOST of this session
-                const isHost = sessionData.lecturerId === user.uid;
+                const isHost = session.lecturerId === user.uid;
                 const isLecturer = profile.role === 'lecturer';
 
-                if (!isHost && !sessionData.isActive) {
-                    console.log('Class not active - checking for scheduled time');
-
+                if (!isHost && !session.isActive) {
                     // Check if there's a scheduled start time in the future
-                    if (sessionData.scheduledStartTime) {
+                    if (session.scheduledStartTime) {
                         const now = new Date();
-                        const startTime = sessionData.scheduledStartTime.toDate();
+                        const startTime = session.scheduledStartTime.toDate();
 
                         if (startTime > now) {
-                            console.log('Class is scheduled for the future. Showing countdown.');
                             setIsScheduledWait(true);
                             setLoading(false);
                             return;
                         }
                     }
 
-                    console.log('Class not active - showing waiting room for student');
                     setWaitingForLecturer(true);
                     setLoading(false);
-                    return; // Stop here - show waiting room
+                    return;
                 }
 
                 // Check payment access
-                let hasPaidAccess = sessionData.isFree || (await hasUserPaid(user.uid, sessionId));
+                let hasPaidAccess = session.isFree || (await hasUserPaid(user.uid, sessionId));
 
-                // If it's a free class and user hasn't "paid" (enrolled), create a $0 transaction so it shows on dashboard
-                // Only students can create these transactions per Firestore rules
-                if (sessionData.isFree && !hasPaidAccess && profile.role === 'student' && !isLecturer) {
-                    // First double-check they don't already have a transaction (race condition prevention)
+                // If it's a free class and user hasn't enrolled
+                if (session.isFree && !hasPaidAccess && profile.role === 'student' && !isLecturer) {
                     const existingAccess = await hasUserPaid(user.uid, sessionId);
                     if (!existingAccess) {
                         try {
@@ -101,7 +103,7 @@ export default function ClassroomPage() {
                                 amount: 0,
                                 currency: 'GHS',
                                 paystackReference: `free_${sessionId}_${user.uid}_${Date.now()}`,
-                                paymentChannel: 'mobile_money_mtn', // Default for free
+                                paymentChannel: 'mobile_money_mtn',
                                 status: 'succeeded',
                                 email: user.email || '',
                                 createdAt: Timestamp.now(),
@@ -109,17 +111,10 @@ export default function ClassroomPage() {
                                 isHidden: false
                             });
                             hasPaidAccess = true;
-                            console.log('Free class enrollment successful');
                         } catch (e: any) {
-                            console.error("Failed to enroll in free class:", e?.message || e);
-                            // If permission denied, might be already enrolled or profile issue
                             if (e?.code === 'permission-denied') {
-                                console.log('Permission denied - checking if already enrolled...');
-                                // Re-check in case of race condition
                                 hasPaidAccess = await hasUserPaid(user.uid, sessionId);
                                 if (!hasPaidAccess) {
-                                    // Profile might not be a student or doesn't exist
-                                    console.error('User profile may not be set as student. Role:', profile.role);
                                     showAlert('Unable to enroll. Please ensure your account is set up as a student.', 'error');
                                     router.push('/dashboard/student');
                                     return;
@@ -132,32 +127,16 @@ export default function ClassroomPage() {
                 }
 
                 if (!isHost && !isLecturer && !hasPaidAccess) {
-                    const searchParams = new URLSearchParams(window.location.search);
-                    const reference = searchParams.get('reference');
-
-                    if (reference) {
-                        try {
-                            const verifyRes = await fetch(`/api/paystack/verify?reference=${reference}`);
-                            const verifyData = await verifyRes.json();
-
-                            if (verifyRes.ok && verifyData.success) {
-                                setCanAccess(true);
-                                setLoading(false);
-                                return;
-                            }
-                        } catch (err) {
-                            console.error("Manual verification failed", err);
-                        }
-                    }
-
                     showAlert('You need to pay to access this class', 'warning');
                     router.push('/dashboard/student');
                     return;
                 }
 
-                // Students AND Guest Lecturers MUST enter name and index number for attendance
+                // Pre-warm LiveKit token in background!
+                preWarmToken(sessionId, profile.fullName, isHost ? 'lecturer' : 'student', user.uid, profile.photoURL);
+
+                // Attendance check
                 if (!isHost) {
-                    // Check if attendance is already logged for this session
                     const attendanceRef = collection(db, 'attendance_logs');
                     const q = query(
                         attendanceRef,
@@ -167,51 +146,36 @@ export default function ClassroomPage() {
                     const snapshot = await getDocs(q);
 
                     if (!snapshot.empty) {
-                        console.log('Attendance already submitted for this session');
                         setAttendanceSubmitted(true);
                         setCanAccess(true);
-
-                        // Join immediately since attendance is done
                         if (currentSessionId !== sessionId) {
-                            if (typeof window !== 'undefined') {
-                                sessionStorage.setItem('podium_user_interacted', 'true');
-                            }
-                            joinClass(sessionId, sessionData.title, profile.fullName, isHost ? 'lecturer' : 'student', user.uid);
+                            joinClass(sessionId, session.title, profile.fullName, isHost ? 'lecturer' : 'student', user.uid, profile.photoURL);
                         }
-
                         setLoading(false);
                         return;
                     }
 
-                    // If not found, show modal
-                    // Pre-fill with existing data if available
                     setStudentName(profile.fullName || '');
                     setStudentIndex(profile.indexNumber || '');
                     setShowProfileModal(true);
                     setLoading(false);
-                    return; // Wait for modal submit
+                    return;
                 }
 
                 setCanAccess(true);
-
-                // Join the LiveKit room - Only if not already connected to this session
                 if (currentSessionId !== sessionId) {
-                    if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('podium_user_interacted', 'true');
-                    }
-                    joinClass(sessionId, sessionData.title, profile.fullName, isHost ? 'lecturer' : 'student', user.uid);
+                    joinClass(sessionId, session.title, profile.fullName, isHost ? 'lecturer' : 'student', user.uid, profile.photoURL);
                 }
-
                 setLoading(false);
             } catch (error) {
-                console.error('Error loading session:', error);
+                console.error('[Classroom:MainVerify] Error verifying access:', error);
                 showAlert('Failed to load session', 'error');
                 router.push('/');
             }
         };
 
-        loadSession();
-    }, [user, profile, sessionId, router, authLoading, currentSessionId, joinClass, attendanceSubmitted]);
+        verifyAccess();
+    }, [user, profile, sessionId, router, authLoading, sessionLoading, session, sessionError, currentSessionId, joinClass, preWarmToken, attendanceSubmitted]);
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -224,6 +188,7 @@ export default function ClassroomPage() {
                 await updateDoc(doc(db, 'profiles', user.uid), {
                     fullName: studentName,
                     indexNumber: studentIndex,
+                    classCount: increment(1),
                     updatedAt: Timestamp.now()
                 });
             } catch (profileError) {
@@ -257,10 +222,10 @@ export default function ClassroomPage() {
             if (typeof window !== 'undefined') {
                 sessionStorage.setItem('podium_user_interacted', 'true');
             }
-            joinClass(sessionId, session?.title || 'Class', studentName, isHost ? 'lecturer' : 'student', user.uid);
+            joinClass(sessionId, session?.title || 'Class', studentName, isHost ? 'lecturer' : 'student', user.uid, profile?.photoURL);
 
         } catch (error) {
-            console.error("Error saving attendance:", error);
+            console.error("[Classroom:AttendanceLog] Error saving attendance:", error);
             showAlert("Failed to save details. Please try again.", "error");
         } finally {
             setSubmittingProfile(false);
@@ -269,10 +234,16 @@ export default function ClassroomPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-950">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/30 border-t-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-400">Loading classroom...</p>
+            <div className="min-h-screen bg-gray-950 p-8 space-y-8">
+                <div className="max-w-7xl mx-auto">
+                    <div className="flex items-center justify-between mb-12">
+                        <Skeleton className="h-10 w-48 bg-gray-800" />
+                        <Skeleton className="h-10 w-32 bg-gray-800" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[600px]">
+                        <Skeleton className="h-full w-full rounded-2xl bg-gray-800" />
+                        <Skeleton className="h-full w-full rounded-2xl bg-gray-800" />
+                    </div>
                 </div>
             </div>
         );

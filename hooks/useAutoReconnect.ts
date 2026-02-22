@@ -29,7 +29,7 @@ export const useAutoReconnect = (url: string, token: string, maxAttempts = 5) =>
                     break;
 
                 } catch (error) {
-                    console.error('Reconnect failed:', error);
+                    console.error('[Reconnect] Reconnect failed:', error);
                     reconnectAttempts++;
 
                     if (reconnectAttempts < maxAttempts) {
@@ -37,7 +37,7 @@ export const useAutoReconnect = (url: string, token: string, maxAttempts = 5) =>
                         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
                         await new Promise(resolve => setTimeout(resolve, delay));
                     } else {
-                        console.error('Max reconnect attempts reached');
+                        console.error('[Reconnect] Max reconnect attempts reached');
                         // We can't really do an alert here easily if it blocks execution, 
                         // but we can log it. The UI should show the Disconnected state.
                     }

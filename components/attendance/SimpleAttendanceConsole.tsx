@@ -7,9 +7,13 @@ import {
     Play,
     CheckCircle2,
     RefreshCw,
-    Clock
+    Clock,
+    Settings,
+    ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/lib/firebase/config';
+import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 
 interface SimpleAttendanceConsoleProps {
     sessionId: string;
@@ -30,6 +34,10 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
     } | null>(null);
 
     const [minutesElapsed, setMinutesElapsed] = useState(0);
+    const [showSettings, setShowSettings] = useState(false);
+    const [autoVerify, setAutoVerify] = useState(false);
+    const [frequency, setFrequency] = useState(15); // Default 15 mins
+    const [lastAutoTrigger, setLastAutoTrigger] = useState(0);
 
     const fetchStatus = useCallback(async () => {
         try {
@@ -50,13 +58,29 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                 }
             }
         } catch (error) {
-            console.error('Error fetching attendance status:', error);
+            console.error('[Attendance:Console:FetchStatus] Error fetching attendance status:', error);
         }
     }, [sessionId]);
 
     useEffect(() => {
-        if (isActive) fetchStatus();
-    }, [isActive, fetchStatus]);
+        if (!isActive) return;
+        fetchStatus();
+
+        // Subscribe to session for auto-attendance settings
+        const sessionRef = doc(db, 'sessions', sessionId);
+        const unsubscribe = onSnapshot(sessionRef, (doc) => {
+            const data = doc.data();
+            if (data?.autoAttendanceSettings) {
+                setAutoVerify(!!data.autoAttendanceSettings.isEnabled);
+                setFrequency(data.autoAttendanceSettings.frequencyMinutes ?? 15);
+                setLastAutoTrigger(data.autoAttendanceSettings.lastTriggeredAt?.toMillis() || 0);
+            }
+        }, (error) => {
+            console.error('[Attendance:Console] Error listening to session:', error);
+        });
+
+        return () => unsubscribe();
+    }, [isActive, sessionId, fetchStatus]);
 
     useEffect(() => {
         if (!stats?.startedAt) return;
@@ -64,11 +88,25 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
             const now = Date.now();
             const elapsed = Math.floor((now - stats.startedAt!) / 60000);
             setMinutesElapsed(elapsed);
+
+            // Auto-trigger logic
+            if (autoVerify && elapsed > 0) {
+                const nextTrigger = lastAutoTrigger > 0
+                    ? lastAutoTrigger + (frequency * 60000)
+                    : stats.startedAt! + (frequency * 60000);
+
+                if (now >= nextTrigger && !isTriggering) {
+                    console.log(`Auto-triggering verification at ${elapsed}m`);
+                    triggerManualCheck('automatic');
+                    // We update lastAutoTrigger in Firestore inside triggerManualCheck logic if possible,
+                    // or here locally then Firestore.
+                }
+            }
         };
         updateElapsed();
-        const interval = setInterval(updateElapsed, 30000);
+        const interval = setInterval(updateElapsed, 10000); // Check more frequently for auto-trigger
         return () => clearInterval(interval);
-    }, [stats?.startedAt]);
+    }, [stats?.startedAt, autoVerify, frequency, lastAutoTrigger, isTriggering]);
 
     const handleStartAttendance = async () => {
         if (!user) return;
@@ -90,28 +128,59 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
         }
     };
 
-    const triggerManualCheck = async () => {
+    const triggerManualCheck = async (type: 'manual' | 'automatic' = 'manual') => {
         setIsTriggering(true);
         try {
             const response = await fetch('/api/attendance/verification/trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId, triggeredBy: 'manual' })
+                body: JSON.stringify({ sessionId, triggeredBy: type })
             });
             if (response.ok) {
+                // Update persistent last trigger time
+                const sessionRef = doc(db, 'sessions', sessionId);
+                await updateDoc(sessionRef, {
+                    'autoAttendanceSettings.lastTriggeredAt': new Date()
+                });
                 await fetchStatus();
             }
         } catch (error) {
-            console.error('Error triggering check:', error);
+            console.error('[Attendance:Console:Trigger] Error triggering check:', error);
         } finally {
             setIsTriggering(false);
+        }
+    };
+
+    const toggleAutoAttendance = async () => {
+        const newState = !autoVerify;
+        setAutoVerify(newState);
+        try {
+            const sessionRef = doc(db, 'sessions', sessionId);
+            await updateDoc(sessionRef, {
+                'autoAttendanceSettings.isEnabled': newState,
+                'autoAttendanceSettings.frequencyMinutes': frequency
+            });
+        } catch (error) {
+            console.error('[Attendance:Console:ToggleAuto] Error updating auto-attendance:', error);
+        }
+    };
+
+    const updateFrequency = async (val: number) => {
+        setFrequency(val);
+        try {
+            const sessionRef = doc(db, 'sessions', sessionId);
+            await updateDoc(sessionRef, {
+                'autoAttendanceSettings.frequencyMinutes': val
+            });
+        } catch (error) {
+            console.error('[Attendance:Console:UpdateFreq] Error updating frequency:', error);
         }
     };
 
     if (!isActive) return null;
 
     return (
-        <div className="flex items-center gap-2 bg-gray-900/40 backdrop-blur-sm border border-white/5 rounded-full px-4 py-1.5 h-10 shadow-lg">
+        <div className="relative flex items-center gap-2 bg-gray-900/40 backdrop-blur-sm border border-white/5 rounded-full px-4 py-1.5 h-10 shadow-lg">
             {!stats ? (
                 <button
                     onClick={handleStartAttendance}
@@ -139,7 +208,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
 
                     <div className="flex items-center gap-1.5">
                         <button
-                            onClick={triggerManualCheck}
+                            onClick={() => triggerManualCheck('manual')}
                             disabled={isTriggering}
                             className="p-1.5 text-blue-400 hover:text-white hover:bg-blue-500/20 rounded-lg transition-all"
                             title="Trigger Manual Check"
@@ -154,6 +223,50 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                         >
                             <RefreshCw className="w-3.5 h-3.5" />
                         </button>
+
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowSettings(!showSettings)}
+                                className={`p-1.5 rounded-lg transition-all ${showSettings ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+                                title="Auto-Attendance Settings"
+                            >
+                                <Settings className="w-3.5 h-3.5" />
+                            </button>
+
+                            {showSettings && (
+                                <div className="absolute bottom-full right-0 mb-3 w-48 bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Auto-Verify</span>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" checked={!!autoVerify} onChange={toggleAutoAttendance} className="sr-only peer" />
+                                            <div className="w-8 h-4 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-[9px] font-bold text-gray-500 uppercase">
+                                            <span>Frequency</span>
+                                            <span className="text-blue-400">{frequency}m</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="5"
+                                            max="60"
+                                            step="5"
+                                            value={frequency ?? 15}
+                                            onChange={(e) => updateFrequency(parseInt(e.target.value))}
+                                            className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                        />
+                                    </div>
+
+                                    <div className="mt-4 pt-4 border-t border-white/5">
+                                        <p className="text-[8px] text-gray-500 leading-tight">
+                                            Verification will pop up for students automatically every {frequency} minutes.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </>
             )}
