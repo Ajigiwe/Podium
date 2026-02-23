@@ -38,6 +38,7 @@ export default function LecturerDashboard() {
     const [revenueData, setRevenueData] = useState<Record<string, any>>({});
     const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
     const [participantCounts, setParticipantCounts] = useState<Record<string, number>>({});
+    const [totalStudents, setTotalStudents] = useState(0);
 
     // Form state
     const [title, setTitle] = useState('');
@@ -84,6 +85,17 @@ export default function LecturerDashboard() {
             console.log('Fetched sessions:', sessionsData.map(s => ({ id: s.id, lecturerId: s.lecturerId })));
 
             setSessions(sessionsData);
+
+            // Fetch total unique students
+            try {
+                const logsRef = collection(db, 'attendance_logs');
+                const qLogs = query(logsRef, where('lecturerId', '==', user.uid));
+                const logsSnap = await getDocs(qLogs);
+                const uniqueIds = new Set(logsSnap.docs.map(d => d.data().userId));
+                setTotalStudents(uniqueIds.size);
+            } catch (err) {
+                console.error("[LecturerDashboard:Students] Error fetching student count:", err);
+            }
 
             // Fetch revenue for each session
             const revenue: Record<string, any> = {};
@@ -337,7 +349,8 @@ export default function LecturerDashboard() {
                         <Skeleton className="h-12 w-40" />
                     </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Skeleton className="h-32 w-full rounded-xl" />
                     <Skeleton className="h-32 w-full rounded-xl" />
                     <Skeleton className="h-32 w-full rounded-xl" />
                 </div>
@@ -382,11 +395,11 @@ export default function LecturerDashboard() {
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 flex items-center justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 flex items-center justify-between shadow-sm">
                     <div>
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Classes</p>
-                        <p className="text-4xl font-bold text-gray-900 dark:text-white mt-1">{sessions.length}</p>
+                        <p className="text-4xl font-bold text-gray-900 dark:text-white mt-1">{sessions.filter(s => !s.isDeleted).length}</p>
                     </div>
                     <div className="w-14 h-14 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                         <svg className="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -394,7 +407,16 @@ export default function LecturerDashboard() {
                         </svg>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 flex items-center justify-between shadow-sm">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Students</p>
+                        <p className="text-4xl font-bold text-gray-900 dark:text-white mt-1">{totalStudents}</p>
+                    </div>
+                    <div className="w-14 h-14 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <Users className="w-7 h-7 text-purple-600 dark:text-purple-400" />
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 flex items-center justify-between shadow-sm">
                     <div>
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Now</p>
                         <p className="text-4xl font-bold text-gray-900 dark:text-white mt-1">{sessions.filter(s => s.isActive).length}</p>

@@ -72,58 +72,24 @@ export default function ProfilePage() {
 
         try {
             if (profile.role === 'lecturer') {
-                // Get lecturer sessions
+                // 1. Get total sessions (filter deleted in-memory to avoid composite index)
                 const sessionsQuery = query(
                     collection(db, 'sessions'),
                     where('lecturerId', '==', user.uid)
                 );
                 const sessionsSnapshot = await getDocs(sessionsQuery);
-                const totalSessions = sessionsSnapshot.size;
+                const totalSessions = sessionsSnapshot.docs.filter(doc => doc.data().isDeleted !== true).length;
 
-                // Calculate total unique students across all sessions
-                // We need to fetch attendance logs or transactions?
-                // Previously it used transactions to count students.
-                // If we remove transactions query, we lose accurate student count if it was based on payment.
-                // But the requirement is just to remove revenue.
-                // Let's keep logic to count students if possible, or simplify.
-                // The previous logic counted students who PAID (transactions).
-                // "Remove total revenue" - typically implies hiding the Money aspect.
-                // I should probably keep counting students but maybe fetch it differently or keep fetching transactions solely for student count?
-                // Actually, counting distinct students from transactions is still valid for "Total Students" (paid students).
-                // Let's re-read the code I'm replacing:
-                // lines 71-90 fetched transactions to calculate revenue AND count students.
-                // If I remove revenue, I still need student count?
-                // "remove total revenue from lecturer profile and student profile"
-                // It likely implicitly means remove the "Financials" aspect.
-                // I will keep the transaction fetching just to count students to ensure "Total Students" doesn't break,
-                // OR I can switch to counting 'attendance_logs' for "Total Students" (students who attended).
-                // Given the variable name 'totalStudents', let's stick to the previous source (transactions) or switch to attendance.
-                // Attendance is safer for "Total Students" anyway as it reflects engagement.
-                // However, modifying the metric definition might be out of scope.
-                // The safest bet is to keep fetching transactions to count students but NOT sum up revenue.
-
-                // OPTIMIZATION: In a large system, we should add 'lecturerId' to the transaction document
-                // to avoid fetching all transactions. For now, we fetch the last 100 succeeded ones
-                // to calculate stats without crashing the client on a massive dataset.
-                const transactionsQuery = query(
-                    collection(db, 'transactions'),
-                    where('status', '==', 'succeeded'),
-                    orderBy('createdAt', 'desc'),
-                    limit(100)
+                // 2. Get total unique students from attendance_logs
+                const logsQuery = query(
+                    collection(db, 'attendance_logs'),
+                    where('lecturerId', '==', user.uid)
                 );
-                const transactionsSnapshot = await getDocs(transactionsQuery);
-
+                const logsSnapshot = await getDocs(logsQuery);
                 const studentIds = new Set<string>();
-
-                transactionsSnapshot.forEach((doc) => {
+                logsSnapshot.forEach(doc => {
                     const data = doc.data();
-                    const sessionId = data.sessionId;
-                    // Check if transaction is for lecturer's session
-                    const isLecturerSession = sessionsSnapshot.docs.some(s => s.id === sessionId);
-
-                    if (isLecturerSession) {
-                        studentIds.add(data.userId);
-                    }
+                    if (data.userId) studentIds.add(data.userId);
                 });
 
                 setStats({
@@ -132,19 +98,17 @@ export default function ProfilePage() {
                     enrolledClasses: 0,
                 });
             } else {
-                // Student statistics
-                const transactionsQuery = query(
-                    collection(db, 'transactions'),
-                    where('userId', '==', user.uid),
-                    where('status', '==', 'succeeded')
+                // Student statistics from attendance_logs
+                const logsQuery = query(
+                    collection(db, 'attendance_logs'),
+                    where('userId', '==', user.uid)
                 );
-                const transactionsSnapshot = await getDocs(transactionsQuery);
+                const logsSnapshot = await getDocs(logsQuery);
 
                 const enrolledSessionIds = new Set<string>();
-
-                transactionsSnapshot.forEach((doc) => {
+                logsSnapshot.forEach(doc => {
                     const data = doc.data();
-                    enrolledSessionIds.add(data.sessionId);
+                    if (data.sessionId) enrolledSessionIds.add(data.sessionId);
                 });
 
                 setStats({
@@ -155,67 +119,7 @@ export default function ProfilePage() {
             }
         } catch (error) {
             console.error('[Profile:Stats] Error loading statistics:', error);
-            // Attempt to handle Firestore error and retry
-            const handled = await handleFirestoreError(db, error);
-            if (handled) {
-                // Retry logic (simplified)
-                try {
-                    if (profile.role === 'lecturer') {
-                        const sessionsQuery = query(
-                            collection(db, 'sessions'),
-                            where('lecturerId', '==', user.uid)
-                        );
-                        const sessionsSnapshot = await getDocs(sessionsQuery);
-                        const totalSessions = sessionsSnapshot.size;
-
-                        const transactionsQuery = query(
-                            collection(db, 'transactions'),
-                            where('status', '==', 'succeeded'),
-                            orderBy('createdAt', 'desc'),
-                            limit(100)
-                        );
-                        const transactionsSnapshot = await getDocs(transactionsQuery);
-
-                        const studentIds = new Set<string>();
-
-                        transactionsSnapshot.forEach((doc) => {
-                            const data = doc.data();
-                            const isLecturerSession = sessionsSnapshot.docs.some(s => s.id === data.sessionId);
-                            if (isLecturerSession) {
-                                studentIds.add(data.userId);
-                            }
-                        });
-
-                        setStats({
-                            totalSessions,
-                            totalStudents: studentIds.size,
-                            enrolledClasses: 0,
-                        });
-                    } else {
-                        const transactionsQuery = query(
-                            collection(db, 'transactions'),
-                            where('userId', '==', user.uid),
-                            where('status', '==', 'succeeded')
-                        );
-                        const transactionsSnapshot = await getDocs(transactionsQuery);
-
-                        const enrolledSessionIds = new Set<string>();
-
-                        transactionsSnapshot.forEach((doc) => {
-                            const data = doc.data();
-                            enrolledSessionIds.add(data.sessionId);
-                        });
-
-                        setStats({
-                            totalSessions: 0,
-                            totalStudents: 0,
-                            enrolledClasses: enrolledSessionIds.size,
-                        });
-                    }
-                } catch (retryError) {
-                    console.error('[Profile:Stats:Retry] Retry failed to load statistics:', retryError);
-                }
-            }
+            await handleFirestoreError(db, error);
         }
     };
 
