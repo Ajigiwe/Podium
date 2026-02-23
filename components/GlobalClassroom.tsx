@@ -445,6 +445,38 @@ function InnerVideoLayout({
         }
     }, [tracks.length, totalPages, currentPage]);
 
+    // --- Automatic Lecturer Screen Share Focus ---
+    useEffect(() => {
+        const lecturerScreenShare = tracks.find(t => {
+            if (t.source !== Track.Source.ScreenShare) return false;
+            try {
+                const metadata = JSON.parse(t.participant.metadata || '{}');
+                return metadata.role === 'lecturer';
+            } catch (e) {
+                return false;
+            }
+        });
+
+        if (lecturerScreenShare) {
+            // Auto-focus the lecturer's screen share if not already focused
+            if (!focusTrack || focusTrack.participant.sid !== lecturerScreenShare.participant.sid || focusTrack.source !== Track.Source.ScreenShare) {
+                console.log('⚡ [InnerVideoLayout] Auto-focusing lecturer screen share');
+                setFocusTrack(lecturerScreenShare);
+
+                // On mobile, set sidebar height to ~30% for 70/30 split
+                if (window.innerWidth < 640) {
+                    setSidebarHeight(Math.floor(window.innerHeight * 0.3));
+                }
+            }
+        } else if (focusTrack && focusTrack.source === Track.Source.ScreenShare) {
+            // If the focused track was a screen share and it's gone, unfocus
+            const stillExists = tracks.some(t => t.participant.sid === focusTrack.participant.sid && t.source === focusTrack.source);
+            if (!stillExists) {
+                setFocusTrack(null);
+            }
+        }
+    }, [tracks]);
+
     // Get current page tracks
     const paginatedTracks = sortedTracks.slice(
         (currentPage - 1) * PAGE_SIZE,
