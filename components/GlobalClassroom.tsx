@@ -155,7 +155,7 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
 
     return (
         <div
-            className={`h-full relative group cursor-pointer aspect-[3/4] sm:aspect-video rounded-lg overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : ''} ${className || ''}`}
+            className={`h-full relative group cursor-pointer aspect-[3/4] sm:aspect-video rounded-lg overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : ''} ${className?.includes('aspect-') ? className : `aspect-[3/4] sm:aspect-video ${className || ''}`}`}
             onClick={() => onTileClick(track)}
         >
             <ParticipantTile trackRef={track} {...props} className="!w-full !h-full [&_video]:!object-cover [&_video]:!object-center" />
@@ -463,9 +463,9 @@ function InnerVideoLayout({
                 console.log('⚡ [InnerVideoLayout] Auto-focusing lecturer screen share');
                 setFocusTrack(lecturerScreenShare);
 
-                // On mobile, set sidebar height to ~30% for 70/30 split
+                // On mobile, set sidebar height to ~20% for dominance of the shared screen
                 if (window.innerWidth < 640) {
-                    setSidebarHeight(Math.floor(window.innerHeight * 0.3));
+                    setSidebarHeight(Math.floor(window.innerHeight * 0.2));
                 }
             }
         } else if (focusTrack && focusTrack.source === Track.Source.ScreenShare) {
@@ -583,13 +583,13 @@ function InnerVideoLayout({
                                             track={t}
                                             participant={t.participant}
                                             onTileClick={handleTileClick}
-                                            className="w-40 sm:w-full aspect-video flex-shrink-0"
+                                            className="w-40 sm:w-full !aspect-video flex-shrink-0"
                                         />
                                     ))}
 
                                     {/* "More" Indicator Tile */}
                                     {carouselTracks.length > 4 && (
-                                        <div className="w-40 sm:w-full aspect-video flex-shrink-0 bg-gray-800/50 rounded-lg flex flex-col items-center justify-center border border-dashed border-white/10 group hover:border-blue-500/50 transition-colors">
+                                        <div className="w-40 sm:w-full !aspect-video flex-shrink-0 bg-gray-800/50 rounded-lg flex flex-col items-center justify-center border border-dashed border-white/10 group hover:border-blue-500/50 transition-colors">
                                             <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mb-1 group-hover:bg-blue-600/20 transition-colors">
                                                 <User className="w-5 h-5 text-gray-400 group-hover:text-blue-400" />
                                             </div>
@@ -617,7 +617,7 @@ function InnerVideoLayout({
                                     <Minimize2 className="w-5 h-5" />
                                 </button>
 
-                                <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10">
+                                <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10 hidden sm:block">
                                     <p className="text-white text-xs font-medium">Focus Mode</p>
                                 </div>
                             </div>
