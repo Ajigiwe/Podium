@@ -316,8 +316,10 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 const hostLastSeen = data.hostLastSeen?.toMillis() || 0;
                 const modLastSeen = data.modLastSeen?.toMillis() || 0;
 
-                const isHostOffline = !hostLastSeen || (now - hostLastSeen > absenceLimit);
-                const isModOffline = !modLastSeen || (now - modLastSeen > absenceLimit);
+                // threshold + 60s buffer to account for heartbeat delays and clock skew
+                const buffer = 60000;
+                const isHostOffline = !hostLastSeen || (now - hostLastSeen > absenceLimit + buffer);
+                const isModOffline = !modLastSeen || (now - modLastSeen > absenceLimit + buffer);
 
                 if (isHostOffline && isModOffline && data.status !== 'paused' && !data.auto_alert_triggered) {
                     console.log('🚨 Sentinel: Triggering auto-alert due to moderator absence');

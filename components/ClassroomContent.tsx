@@ -84,30 +84,30 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     const [activePermissions, setActivePermissions] = useState<{ participantId: string; permissions: ParticipantPermissions }[]>([]);
     const [autoApproveMic, setAutoApproveMic] = useState(false);
     const [isMutedAll, setIsMutedAll] = useState(false);
-    const [isLockdown, setIsLockdown] = useState(false);
+    const [isHostOffline, setIsHostOffline] = useState(false);
 
-    // Presence Monitoring (Lockdown Logic - sentinel alignment)
+    // Presence Monitoring (Subtle Notification - sentinel alignment)
     useEffect(() => {
         if (!sessionData) return;
+        if (isModerator) {
+            setIsHostOffline(false);
+            return;
+        }
 
         const checkPresence = () => {
-            if (isModerator) {
-                setIsLockdown(false);
-                return;
-            }
-
             const now = Date.now();
-            const threshold = (sessionData.host_absence_minutes || 5) * 60 * 1000;
+            // threshold + 60s buffer to account for heartbeat delays and clock skew
+            const threshold = ((sessionData.host_absence_minutes || 5) * 60 * 1000) + 60000;
 
             const hostAbsence = sessionData.hostLastSeen?.toMillis() ? (now - sessionData.hostLastSeen.toMillis()) : Infinity;
             const modAbsence = sessionData.modLastSeen?.toMillis() ? (now - sessionData.modLastSeen.toMillis()) : Infinity;
 
-            const isHostOffline = hostAbsence > threshold;
-            const isModOffline = modAbsence > threshold;
+            const hostOffline = hostAbsence > threshold;
+            const modOffline = modAbsence > threshold;
 
-            // Trigger lockdown if session is explicitly paused OR if all moderators are stale
-            const shouldLockdown = sessionData.status === 'paused' || (isHostOffline && isModOffline);
-            setIsLockdown(shouldLockdown);
+            // Trigger notification if session is explicitly paused OR if all moderators are stale
+            const shouldNotify = sessionData.status === 'paused' || (hostOffline && modOffline);
+            setIsHostOffline(shouldNotify);
         };
 
         checkPresence();
@@ -669,62 +669,73 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                 </div>
             </header >
 
-            {/* Auto-Alert Overlay (Spec Aligned: Class Paused) */}
-            {
-                isLockdown && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 animate-in fade-in duration-500">
-                        <div className="max-w-sm w-full mx-4 bg-orange-600 rounded-3xl p-6 text-white text-center border-4 border-orange-500">
-                            {/* Icon */}
-                            <div className="mb-4 relative inline-block">
-                                <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full animate-pulse" />
-                                <ShieldAlert className="w-16 h-16 text-white relative animate-wiggle" />
-                            </div>
+            {/* Subtle Host Offline Notification */}
+            {isHostOffline && !isModerator && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top duration-500 pointer-events-none">
+                    <div className="bg-orange-600/90 backdrop-blur-md border border-orange-500 text-white px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3">
+                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                        <div className="flex flex-col">
+                            <p className="text-xs font-bold leading-none">Host Offline</p>
+                            <p className="text-[10px] text-orange-100 font-medium">Session is temporarily paused</p>
+                        </div>
+                        <ShieldAlert className="w-4 h-4 text-orange-200 ml-1" />
+                    </div>
+                </div>
+            )}
+            {false && isLockdown && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 animate-in fade-in duration-500">
+                    <div className="max-w-sm w-full mx-4 bg-orange-600 rounded-3xl p-6 text-white text-center border-4 border-orange-500">
+                        {/* Icon */}
+                        <div className="mb-4 relative inline-block">
+                            <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full animate-pulse" />
+                            <ShieldAlert className="w-16 h-16 text-white relative animate-wiggle" />
+                        </div>
 
-                            {/* Title */}
-                            <h2 className="text-2xl font-black mb-3 tracking-tight uppercase">
-                                Class Paused
-                            </h2>
+                        {/* Title */}
+                        <h2 className="text-2xl font-black mb-3 tracking-tight uppercase">
+                            Class Paused
+                        </h2>
 
-                            {/* Message */}
-                            <p className="text-base mb-6 text-yellow-50 font-medium leading-tight">
-                                The lecturer is temporarily offline. This session is paused for your safety.
-                            </p>
+                        {/* Message */}
+                        <p className="text-base mb-6 text-yellow-50 font-medium leading-tight">
+                            The lecturer is temporarily offline. This session is paused for your safety.
+                        </p>
 
-                            {/* Status Card */}
-                            <div className="bg-black/20 rounded-2xl p-4 backdrop-blur-md border border-white/10 text-left space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
-                                        <Users className="w-4 h-4 text-yellow-300" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-yellow-200 uppercase tracking-widest">Waiting For</p>
-                                        <p className="text-xs font-black">Moderator or Host</p>
-                                    </div>
+                        {/* Status Card */}
+                        <div className="bg-black/20 rounded-2xl p-4 backdrop-blur-md border border-white/10 text-left space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                                    <Users className="w-4 h-4 text-yellow-300" />
                                 </div>
-
-                                <p className="text-[10px] text-yellow-100/70 font-medium leading-normal">
-                                    All participants have been muted. The session will resume automatically when a moderator returns.
-                                </p>
+                                <div>
+                                    <p className="text-[10px] font-bold text-yellow-200 uppercase tracking-widest">Waiting For</p>
+                                    <p className="text-xs font-black">Moderator or Host</p>
+                                </div>
                             </div>
 
-                            {/* Return Button */}
-                            <button
-                                onClick={() => router.push('/dashboard')}
-                                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-white text-orange-600 text-sm font-black rounded-xl hover:bg-yellow-50 transition-all active:scale-[0.98] border border-gray-200"
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                                Return to Dashboard
-                            </button>
+                            <p className="text-[10px] text-yellow-100/70 font-medium leading-normal">
+                                All participants have been muted. The session will resume automatically when a moderator returns.
+                            </p>
+                        </div>
 
-                            {/* Loading Pips */}
-                            <div className="mt-6 flex justify-center gap-1.5">
-                                <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce"></div>
-                            </div>
+                        {/* Return Button */}
+                        <button
+                            onClick={() => router.push('/dashboard')}
+                            className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-white text-orange-600 text-sm font-black rounded-xl hover:bg-yellow-50 transition-all active:scale-[0.98] border border-gray-200"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Return to Dashboard
+                        </button>
+
+                        {/* Loading Pips */}
+                        <div className="mt-6 flex justify-center gap-1.5">
+                            <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                            <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                            <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce"></div>
                         </div>
                     </div>
-                )
+                </div>
+            )
             }
 
             <div
