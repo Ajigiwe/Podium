@@ -22,8 +22,8 @@ interface AuthContextType {
     profile: Profile | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<void>;
-    signUp: (email: string, password: string, fullName: string, role: 'student' | 'lecturer' | 'admin') => Promise<void>;
-    signInWithGoogle: (role?: 'student' | 'lecturer' | 'admin') => Promise<void>;
+    signUp: (email: string, password: string, fullName: string) => Promise<void>;
+    signInWithGoogle: () => Promise<void>;
     signOut: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     resendVerification: () => Promise<void>;
@@ -44,14 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
                 const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
                 if (profileDoc.exists()) {
-                    const data = profileDoc.data() as Profile;
-                    // Auto-promote admin (fix for existing users)
-                    if (user.email === 'minatoflash82@gmail.com' && data.role !== 'admin') {
-                        console.log('Auto-promoting user to admin:', user.email);
-                        await updateDoc(doc(db, 'profiles', user.uid), { role: 'admin' });
-                        data.role = 'admin';
-                    }
-                    return data;
+                    return profileDoc.data() as Profile;
                 }
                 return null;
             } catch (error) {
@@ -94,8 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signUp = async (
         email: string,
         password: string,
-        fullName: string,
-        role: 'student' | 'lecturer' | 'admin'
+        fullName: string
     ) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -116,8 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     id: user.uid,
                     email: user.email,
                     fullName,
-                    role: email === 'minatoflash82@gmail.com' ? 'admin' : role,
-                    createdAt: new Date(),
+                    role: 'student',
+                    createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now()
                 });
                 profileCreated = true;
             } catch (error: any) {
@@ -125,8 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.error(`Error creating profile (retries left: ${retries - 1}):`, error);
 
                 // If it's a permission sync delay, simply wait and try again
-                if (error.code === 'permission-denied') {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                if (error.code === 'permission-denied' || error.code === 'unavailable') {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                     retries--;
                 } else {
                     const handled = await handleFirestoreError(db, error, 1, '[Auth:SignUp]');
@@ -146,13 +139,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             throw lastError || new Error('Failed to fully create your account. Please try again.');
         }
 
-        // Send email verification
-        await sendEmailVerification(user);
+        // Send email verification via custom API
+        await fetch('/api/auth/send-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: user.email }),
+        });
         await firebaseSignOut(auth);
         queryClient.invalidateQueries({ queryKey: ['profile'] });
     };
 
-    const signInWithGoogle = async (role: 'student' | 'lecturer' | 'admin' = 'student') => {
+    const signInWithGoogle = async () => {
         try {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({
@@ -162,39 +159,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
 
-            // Check if profile exists, if not create one
-            try {
-                const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-                if (!profileDoc.exists()) {
-                    await setDoc(doc(db, 'profiles', user.uid), {
-                        id: user.uid,
-                        email: user.email,
-                        fullName: user.displayName || 'User',
-                        role: user.email === 'minatoflash82@gmail.com' ? 'admin' : role,
-                        createdAt: new Date(),
-                    });
-                }
-            } catch (error) {
-                console.error('[Auth:Google] Error checking/creating profile for Google sign-in:', error);
-                const handled = await handleFirestoreError(db, error, 1, '[Auth:Google]');
-                if (handled) {
-                    // Retry once more after handling the error
-                    try {
-                        const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
-                        if (!profileDoc.exists()) {
-                            await setDoc(doc(db, 'profiles', user.uid), {
-                                id: user.uid,
-                                email: user.email,
-                                fullName: user.displayName || 'User',
-                                role: user.email === 'minatoflash82@gmail.com' ? 'admin' : role,
-                                createdAt: new Date(),
-                            });
+            // Robust Profile Creation / Check
+            let profileCreated = false;
+            let retries = 3;
+            let lastError: any = null;
+
+            while (!profileCreated && retries > 0) {
+                try {
+                    const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+                    if (!profileDoc.exists()) {
+                        console.log('[Auth:Google] Creating new profile...');
+                        await setDoc(doc(db, 'profiles', user.uid), {
+                            id: user.uid,
+                            email: user.email,
+                            fullName: user.displayName || 'User',
+                            role: 'student',
+                            createdAt: Timestamp.now(),
+                            updatedAt: Timestamp.now()
+                        });
+                    } else {
+                        // Profile exists
+                    }
+                    profileCreated = true;
+                } catch (error: any) {
+                    lastError = error;
+                    console.error(`[Auth:Google] Profile error (retries left: ${retries - 1}):`, error);
+
+                    if (error.code === 'permission-denied' || error.code === 'unavailable') {
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        retries--;
+                    } else {
+                        const handled = await handleFirestoreError(db, error, 1, '[Auth:Google]');
+                        if (handled) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            retries--;
+                        } else {
+                            throw error; // Irrecoverable
                         }
-                    } catch (retryError) {
-                        console.error('[Auth:Google:Retry] Retry failed for Google sign-in profile:', retryError);
                     }
                 }
             }
+
+            if (!profileCreated) {
+                throw lastError || new Error('Failed to synchronize your profile. Please try again.');
+            }
+
         } catch (error) {
             console.error('Google Sign In Error:', error);
             throw error;
@@ -209,12 +218,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const resetPassword = async (email: string) => {
-        await sendPasswordResetEmail(auth, email);
+        const response = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to send reset email');
+        }
     };
 
     const resendVerification = async () => {
-        if (auth.currentUser) {
-            await sendEmailVerification(auth.currentUser);
+        if (auth.currentUser?.email) {
+            await fetch('/api/auth/send-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: auth.currentUser.email }),
+            });
         }
     };
 

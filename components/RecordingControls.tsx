@@ -104,8 +104,8 @@ export const RecordingControls = ({
         if (!isRecording) return null;
 
         return (
-            <div className="bg-red-600/90 backdrop-blur-sm text-white px-3 py-1 rounded-full flex items-center gap-2 shadow-lg border border-red-500/50">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+            <div className="bg-red-600 text-white px-3 py-1 rounded-full flex items-center gap-2 border border-red-500">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse border border-red-400" />
                 <span className="font-bold text-[10px] tracking-tight">REC</span>
                 <span className="font-mono text-xs opacity-90">{formatTime(recordingTime)}</span>
             </div>
@@ -125,14 +125,14 @@ export const RecordingControls = ({
                 </button>
             ) : (
                 <div className="flex items-center">
-                    <div className="bg-red-600/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-l-lg flex items-center gap-2 border border-red-500/50">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                    <div className="bg-red-600 text-white px-3 py-1.5 rounded-l-lg flex items-center gap-2 border border-red-500">
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse border border-red-400" />
                         <span className="font-bold text-xs tracking-wide">REC</span>
                         <span className="font-mono text-xs border-l border-white/20 pl-2">{formatTime(recordingTime)}</span>
                     </div>
                     <button
                         onClick={stopRecording}
-                        className="bg-gray-900/90 hover:bg-gray-800 text-white p-1.5 rounded-r-lg border border-l-0 border-white/10 transition-colors flex items-center justify-center"
+                        className="bg-gray-900 hover:bg-gray-800 text-white p-1.5 rounded-r-lg border border-l-0 border-white/10 transition-colors flex items-center justify-center"
                         title="Stop Recording"
                     >
                         <Square className="w-3 h-3 fill-white" />

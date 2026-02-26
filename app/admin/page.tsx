@@ -36,6 +36,9 @@ export default function AdminPage() {
     const [users, setUsers] = useState<(UserProfile & { classCount?: number })[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [totalUsers, setTotalUsers] = useState(0);
     const [globalStats, setGlobalStats] = useState({ total: 0, students: 0, lecturers: 0, admins: 0 });
 
@@ -44,8 +47,6 @@ export default function AdminPage() {
     const [lastDocs, setLastDocs] = useState<(any)[]>([null]); // Array of cursors
     const [page, setPage] = useState(0);
     const [isLastPage, setIsLastPage] = useState(false);
-    const [isSearching, setIsSearching] = useState(false);
-    const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
 
     // Sorting State
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -92,120 +93,121 @@ export default function AdminPage() {
         fetchSettings();
     }, []);
 
-    // Fetch Users when tab changes or page changes
+    // Fetching Functions
+    const fetchGlobalStats = async () => {
+        try {
+            const usersRef = collection(db, 'profiles');
+            const [totalSnap, studentSnap, lecturerSnap, adminSnap] = await Promise.all([
+                getCountFromServer(query(usersRef)),
+                getCountFromServer(query(usersRef, where('role', '==', 'student'))),
+                getCountFromServer(query(usersRef, where('role', '==', 'lecturer'))),
+                getCountFromServer(query(usersRef, where('role', '==', 'admin')))
+            ]);
+
+            setGlobalStats({
+                total: totalSnap.data().count,
+                students: studentSnap.data().count,
+                lecturers: lecturerSnap.data().count,
+                admins: adminSnap.data().count
+            });
+        } catch (error) {
+            console.error('Error fetching global stats:', error);
+        }
+    };
+
+    const fetchUsers = async () => {
+        setLoadingUsers(true);
+        try {
+            const usersRef = collection(db, 'profiles');
+            let constraints: any[] = [];
+
+            // Add Role Filter
+            if (roleFilter !== 'all') {
+                constraints.push(where('role', '==', roleFilter));
+            }
+
+            // Add Status Filter
+            if (statusFilter !== 'all') {
+                constraints.push(where('status', '==', statusFilter));
+            }
+
+            // Server-Side Search (Prefix matching)
+            if (debouncedSearchTerm) {
+                // For prefix search, we must order by the same field
+                constraints.push(where('fullName', '>=', debouncedSearchTerm));
+                constraints.push(where('fullName', '<=', debouncedSearchTerm + '\uf8ff'));
+                constraints.push(orderBy('fullName'));
+            } else {
+                // Default order
+                constraints.push(orderBy('createdAt', 'desc'));
+            }
+
+            constraints.push(limit(PAGE_SIZE + 1));
+
+            let q = query(usersRef, ...constraints);
+
+            if (lastDocs[page]) {
+                q = query(
+                    usersRef,
+                    ...constraints,
+                    startAfter(lastDocs[page])
+                );
+            }
+
+            const userSnapshot = await getDocs(q);
+            const docs = userSnapshot.docs;
+            const hasNext = docs.length > PAGE_SIZE;
+            setIsLastPage(!hasNext);
+
+            const batchDocs = hasNext ? docs.slice(0, PAGE_SIZE) : docs;
+            const fetchedUsers = batchDocs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                classCount: doc.data().classCount || 0
+            } as (UserProfile & { classCount: number })));
+
+            setUsers(fetchedUsers);
+
+            if (hasNext && !lastDocs[page + 1]) {
+                const newLastDocs = [...lastDocs];
+                newLastDocs[page + 1] = docs[PAGE_SIZE - 1];
+                setLastDocs(newLastDocs);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        } finally {
+            setLoadingUsers(false);
+        }
+    };
+
+    // Refetch trigger
+    const refreshData = () => {
+        fetchGlobalStats();
+        fetchUsers();
+    };
+
+    // Initial and Tab/Page change fetch
     useEffect(() => {
         if (activeTab === 'users') {
-            const fetchUsers = async () => {
-                setLoadingUsers(true);
-                try {
-                    const usersRef = collection(db, 'profiles');
-
-                    // Base query
-                    let q = query(
-                        usersRef,
-                        orderBy('createdAt', 'desc'),
-                        limit(PAGE_SIZE + 1) // Fetch one extra to check if there is a next page
-                    );
-
-                    // Apply pagination cursor
-                    if (lastDocs[page]) {
-                        q = query(
-                            usersRef,
-                            orderBy('createdAt', 'desc'),
-                            startAfter(lastDocs[page]),
-                            limit(PAGE_SIZE + 1)
-                        );
-                    }
-
-                    const userSnapshot = await getDocs(q);
-
-                    const docs = userSnapshot.docs;
-                    const hasNext = docs.length > PAGE_SIZE;
-                    setIsLastPage(!hasNext);
-
-                    // Slice to batch size
-                    const batchDocs = hasNext ? docs.slice(0, PAGE_SIZE) : docs;
-
-                    const fetchedUsers = batchDocs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data(),
-                        classCount: doc.data().classCount || 0
-                    } as (UserProfile & { classCount: number })));
-
-                    setUsers(fetchedUsers);
-
-                    // Update cursor for next page if we haven't already
-                    if (hasNext && !lastDocs[page + 1]) {
-                        const newLastDocs = [...lastDocs];
-                        newLastDocs[page + 1] = docs[PAGE_SIZE - 1];
-                        setLastDocs(newLastDocs);
-                    }
-
-                } catch (error) {
-                    console.error('Error fetching users:', error);
-                } finally {
-                    setLoadingUsers(false);
-                }
-            };
-            if (!isSearching) {
-                fetchUsers();
-            }
+            fetchGlobalStats();
+            fetchUsers();
         }
-    }, [activeTab, page, isSearching]);
+    }, [activeTab, page, roleFilter, statusFilter, debouncedSearchTerm]);
 
-    // Global Search Effect
+    // Debounce search term
     useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (searchTerm.length >= 3) {
-                setIsSearching(true);
-                setLoadingUsers(true);
-                try {
-                    const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchTerm)}`);
-                    const data = await res.json();
-                    if (data.users) {
-                        setSearchResults(data.users);
-                    }
-                } catch (error) {
-                    console.error('Global search error:', error);
-                } finally {
-                    setLoadingUsers(false);
-                }
-            } else {
-                setIsSearching(false);
-                setSearchResults([]);
-            }
-        }, 500); // 500ms debounce
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 500);
 
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Fetch Global Stats independently
+    // Reset page when filters change
     useEffect(() => {
-        if (activeTab === 'users') {
-            const fetchGlobalStats = async () => {
-                try {
-                    const usersRef = collection(db, 'profiles');
-
-                    const [totalSnap, studentSnap, lecturerSnap, adminSnap] = await Promise.all([
-                        getCountFromServer(query(usersRef)),
-                        getCountFromServer(query(usersRef, where('role', '==', 'student'))),
-                        getCountFromServer(query(usersRef, where('role', '==', 'lecturer'))),
-                        getCountFromServer(query(usersRef, where('role', '==', 'admin')))
-                    ]);
-
-                    setGlobalStats({
-                        total: totalSnap.data().count,
-                        students: studentSnap.data().count,
-                        lecturers: lecturerSnap.data().count,
-                        admins: adminSnap.data().count
-                    });
-                } catch (error) {
-                    console.error('Error fetching global stats:', error);
-                }
-            };
-            fetchGlobalStats();
-        }
-    }, [activeTab]); // Removed users.length check to allow re-fetching on page change
+        setPage(0);
+        setLastDocs([null]);
+    }, [roleFilter, statusFilter, debouncedSearchTerm]);
 
     const recalculateClassCounts = async () => {
         if (!confirm('This will scan all attendance logs to update student class counts. Continue?')) return;
@@ -282,7 +284,7 @@ export default function AdminPage() {
         }
     };
 
-    const handleUserAction = async (userId: string, action: 'role' | 'disable' | 'enable' | 'delete', data?: any) => {
+    const handleUserAction = async (userId: string, action: 'role' | 'disable' | 'enable' | 'delete', data?: string) => {
         // Immediate UI feedback
         setManagingUser(null);
         if (action !== 'delete') {
@@ -300,9 +302,9 @@ export default function AdminPage() {
             setUsers(prev => prev.map(u => {
                 if (u.id === userId) {
                     const updated = { ...u };
-                    if (action === 'role') updated.role = data;
-                    if (action === 'disable') (updated as any).status = 'disabled';
-                    if (action === 'enable') (updated as any).status = 'active';
+                    if (action === 'role' && data) updated.role = data as 'student' | 'lecturer' | 'admin';
+                    if (action === 'disable') updated.status = 'disabled';
+                    if (action === 'enable') updated.status = 'active';
                     return updated;
                 }
                 return u;
@@ -340,6 +342,8 @@ export default function AdminPage() {
                 if (action === 'delete') {
                     setMessage({ type: 'success', text: result.message });
                 }
+                // Robust refresh to ensure stats and list are in sync
+                refreshData();
             }
         } catch (error) {
             console.error('Error performing user action:', error);
@@ -360,13 +364,7 @@ export default function AdminPage() {
     };
 
     // Filter and Sort Users
-    const usersToProcess = isSearching ? searchResults : users;
-    const processedUsers = [...usersToProcess]
-        .filter(user => {
-            if (isSearching) return true; // Already filtered by server
-            return user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-        })
+    const processedUsers = [...users]
         .sort((a, b) => {
             if (!sortConfig) return 0;
 
@@ -408,8 +406,8 @@ export default function AdminPage() {
                         <Skeleton key={i} className="h-24 w-full rounded-xl" />
                     ))}
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 h-96">
-                    <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="bg-white  rounded-xl border border-gray-200  h-96">
+                    <div className="p-6 border-b border-gray-200 ">
                         <Skeleton className="h-6 w-32" />
                     </div>
                 </div>
@@ -420,15 +418,15 @@ export default function AdminPage() {
     return (
         <div className="max-w-6xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+                <h1 className="text-3xl font-bold text-gray-900 ">Admin Dashboard</h1>
 
                 {/* Tabs */}
-                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <div className="flex p-1 bg-gray-100  rounded-lg">
                     <button
                         onClick={() => setActiveTab('settings')}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'settings'
-                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                            ? 'bg-white  text-gray-900  shadow-sm'
+                            : 'text-gray-500  hover:text-gray-900 '
                             }`}
                     >
                         Settings
@@ -436,8 +434,8 @@ export default function AdminPage() {
                     <button
                         onClick={() => setActiveTab('users')}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'users'
-                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                            ? 'bg-white  text-gray-900  shadow-sm'
+                            : 'text-gray-500  hover:text-gray-900 '
                             }`}
                     >
                         User Management
@@ -446,15 +444,15 @@ export default function AdminPage() {
             </div>
 
             {activeTab === 'settings' ? (
-                <div className="max-w-2xl bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <div className="max-w-2xl bg-white  rounded-xl border border-gray-200  shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-gray-200  bg-gray-50 ">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-lg bg-blue-100  text-blue-600  flex items-center justify-center">
                                 <Settings className="w-5 h-5" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Subscription Configuration</h2>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Set the global fee for student access.</p>
+                                <h2 className="text-lg font-bold text-gray-900 ">Subscription Configuration</h2>
+                                <p className="text-sm text-gray-500 ">Set the global fee for student access.</p>
                             </div>
                         </div>
                     </div>
@@ -462,11 +460,11 @@ export default function AdminPage() {
                     <div className="p-6">
                         <form onSubmit={handleSave} className="space-y-6">
                             {/* Pay-to-Use Toggle */}
-                            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center justify-between p-4 bg-gray-50  rounded-lg border border-gray-200 ">
                                 <div>
-                                    <h3 className="font-semibold text-gray-900 dark:text-white">Enable Pay-to-Use</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        If disabled, the system is in "Testing Mode" (Free for all students).
+                                    <h3 className="font-semibold text-gray-900 ">Enable Pay-to-Use</h3>
+                                    <p className="text-sm text-gray-500 ">
+                                        If disabled, the system is in &quot;Testing Mode&quot; (Free for all students).
                                     </p>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
@@ -476,12 +474,12 @@ export default function AdminPage() {
                                         onChange={(e) => setIsPayToUse(e.target.checked)}
                                         className="sr-only peer"
                                     />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300  rounded-full peer  peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all  peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <label className="block text-sm font-medium text-gray-700  mb-2">
                                     Semester Fee (GHS)
                                 </label>
                                 <div className="relative">
@@ -490,13 +488,13 @@ export default function AdminPage() {
                                         type="number"
                                         value={fee}
                                         onChange={(e) => setFee(Number(e.target.value))}
-                                        className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                        className="w-full pl-12 pr-4 py-3 bg-white  border border-gray-300  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                         min="0"
                                         step="1"
                                         required
                                     />
                                 </div>
-                                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                <p className="mt-2 text-sm text-gray-500  flex items-center gap-2">
                                     <AlertCircle className="w-4 h-4" />
                                     Payment grants 4 months of access to all classes.
                                 </p>
@@ -504,8 +502,8 @@ export default function AdminPage() {
 
                             {message && (
                                 <div className={`p-4 rounded-lg flex items-center gap-2 text-sm font-medium ${message.type === 'success'
-                                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                                    : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                                    ? 'bg-green-50  text-green-700 '
+                                    : 'bg-red-50  text-red-700 '
                                     }`}>
                                     {message.type === 'success' ? (
                                         <Save className="w-4 h-4" />
@@ -532,50 +530,75 @@ export default function AdminPage() {
                 <div className="space-y-6">
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="bg-white  p-6 rounded-xl border border-gray-200 ">
                             <p className="text-sm font-medium text-gray-500">Total Users</p>
-                            <p className="text-3xl font-bold mt-1 text-gray-900 dark:text-white">{stats.total}</p>
+                            <p className="text-3xl font-bold mt-1 text-gray-900 ">{stats.total}</p>
                         </div>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="bg-white  p-6 rounded-xl border border-gray-200 ">
                             <p className="text-sm font-medium text-blue-600">Students</p>
-                            <p className="text-3xl font-bold mt-1 text-gray-900 dark:text-white">{stats.students}</p>
+                            <p className="text-3xl font-bold mt-1 text-gray-900 ">{stats.students}</p>
                         </div>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="bg-white  p-6 rounded-xl border border-gray-200 ">
                             <p className="text-sm font-medium text-purple-600">Lecturers</p>
-                            <p className="text-3xl font-bold mt-1 text-gray-900 dark:text-white">{stats.lecturers}</p>
+                            <p className="text-3xl font-bold mt-1 text-gray-900 ">{stats.lecturers}</p>
                         </div>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="bg-white  p-6 rounded-xl border border-gray-200 ">
                             <p className="text-sm font-medium text-red-600">Admins</p>
-                            <p className="text-3xl font-bold mt-1 text-gray-900 dark:text-white">{stats.admins}</p>
+                            <p className="text-3xl font-bold mt-1 text-gray-900 ">{stats.admins}</p>
                         </div>
                     </div>
 
                     {/* Users Table */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative">
-                        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="bg-white  rounded-xl border border-gray-200  shadow-sm relative">
+                        <div className="p-6 border-b border-gray-200  flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex flex-col sm:flex-row items-center gap-4">
-                                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <h2 className="text-lg font-bold text-gray-900  flex items-center gap-2">
                                     <Users className="w-5 h-5" />
                                     Registered Users
                                 </h2>
                                 <button
                                     onClick={recalculateClassCounts}
                                     title="Recalculate class counts from logs"
-                                    className="p-1 px-2 text-[10px] uppercase font-bold tracking-wider bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-blue-600 rounded transition-colors flex items-center gap-1 border border-gray-200 dark:border-gray-700"
+                                    className="p-1 px-2 text-[10px] uppercase font-bold tracking-wider bg-gray-100  text-gray-500 hover:text-blue-600 rounded transition-colors flex items-center gap-1 border border-gray-200 "
                                 >
                                     <RefreshCw className="w-3 h-3" />
                                     Sync Counts
                                 </button>
                             </div>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search users..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-64"
-                                />
+                            <div className="flex flex-wrap items-center gap-3">
+                                {/* Role Filter */}
+                                <select
+                                    value={roleFilter}
+                                    onChange={(e) => setRoleFilter(e.target.value)}
+                                    className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="all">All Roles</option>
+                                    <option value="student">Students</option>
+                                    <option value="lecturer">Lecturers</option>
+                                    <option value="admin">Admins</option>
+                                </select>
+
+                                {/* Status Filter */}
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="all">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="disabled">Disabled</option>
+                                </select>
+
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search name or email..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10 pr-4 py-2 bg-gray-50  border border-gray-300  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-64"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -595,10 +618,10 @@ export default function AdminPage() {
                                 </div>
                             ) : (
                                 <table className="w-full text-left border-collapse">
-                                    <thead className="bg-gray-50 dark:bg-gray-800/50">
+                                    <thead className="bg-gray-50 ">
                                         <tr>
                                             <th
-                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100  transition-colors"
                                                 onClick={() => handleSort('fullName')}
                                             >
                                                 <div className="flex items-center gap-2">
@@ -607,7 +630,7 @@ export default function AdminPage() {
                                                 </div>
                                             </th>
                                             <th
-                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100  transition-colors"
                                                 onClick={() => handleSort('role')}
                                             >
                                                 <div className="flex items-center gap-2">
@@ -616,7 +639,7 @@ export default function AdminPage() {
                                                 </div>
                                             </th>
                                             <th
-                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100  transition-colors"
                                                 onClick={() => handleSort('classCount')}
                                             >
                                                 <div className="flex items-center gap-2">
@@ -625,7 +648,7 @@ export default function AdminPage() {
                                                 </div>
                                             </th>
                                             <th
-                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100  transition-colors"
                                                 onClick={() => handleSort('createdAt')}
                                             >
                                                 <div className="flex items-center gap-2">
@@ -636,7 +659,7 @@ export default function AdminPage() {
                                             <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                    <tbody className="divide-y divide-gray-100 ">
                                         {loadingUsers ? (
                                             <tr>
                                                 <td colSpan={5} className="p-8 text-center text-gray-500">Loading users...</td>
@@ -646,16 +669,16 @@ export default function AdminPage() {
                                                 <td colSpan={5} className="p-12 text-center">
                                                     <div className="flex flex-col items-center gap-2 text-gray-400">
                                                         <Search className="w-8 h-8 opacity-20" />
-                                                        <p className="text-sm text-gray-500">No users found{isSearching ? ' for this search' : ''}.</p>
+                                                        <p className="text-sm text-gray-500">No users match your criteria.</p>
                                                     </div>
                                                 </td>
                                             </tr>
                                         ) : (
                                             processedUsers.map((user) => (
-                                                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                                <tr key={user.id} className="hover:bg-gray-50  transition-colors">
                                                     <td className="p-4">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
+                                                            <div className="w-10 h-10 rounded-full bg-gray-200  flex items-center justify-center overflow-hidden">
                                                                 {user.photoURL ? (
                                                                     <img src={user.photoURL} alt={user.fullName} className="w-full h-full object-cover" />
                                                                 ) : (
@@ -663,25 +686,25 @@ export default function AdminPage() {
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <p className="font-medium text-gray-900 dark:text-white">{user.fullName}</p>
+                                                                <p className="font-medium text-gray-900 ">{user.fullName}</p>
                                                                 <p className="text-sm text-gray-500">{user.email}</p>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="p-4">
-                                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex w-fit items-center gap-1 ${user.role === 'admin' ? 'bg-red-100 text-red-700' :
-                                                            user.role === 'lecturer' ? 'bg-purple-100 text-purple-700' :
+                                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex w-fit items-center gap-1 ${(user.role || 'student') === 'admin' ? 'bg-red-100 text-red-700' :
+                                                            (user.role || 'student') === 'lecturer' ? 'bg-purple-100 text-purple-700' :
                                                                 'bg-blue-100 text-blue-700'
                                                             }`}>
-                                                            {user.role === 'admin' && <Shield className="w-3 h-3" />}
-                                                            {user.role === 'lecturer' && <GraduationCap className="w-3 h-3" />}
-                                                            {user.role === 'student' && <User className="w-3 h-3" />}
-                                                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                                            {(user.role || 'student') === 'admin' && <Shield className="w-3 h-3" />}
+                                                            {(user.role || 'student') === 'lecturer' && <GraduationCap className="w-3 h-3" />}
+                                                            {(user.role || 'student') === 'student' && <User className="w-3 h-3" />}
+                                                            {(user.role || 'student').charAt(0).toUpperCase() + (user.role || 'student').slice(1)}
                                                         </span>
                                                     </td>
                                                     <td className="p-4">
                                                         {user.role === 'student' ? (
-                                                            <span className="font-medium text-gray-900 dark:text-white">
+                                                            <span className="font-medium text-gray-900 ">
                                                                 {user.classCount || 0}
                                                             </span>
                                                         ) : '-'}
@@ -703,38 +726,38 @@ export default function AdminPage() {
                                                             <div className="relative">
                                                                 <button
                                                                     onClick={() => setManagingUser(managingUser === user.id ? null : user.id)}
-                                                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                                                                    className="p-1 hover:bg-gray-100  rounded transition-colors"
                                                                     disabled={processingAction === user.id}
                                                                 >
                                                                     <MoreVertical className="w-4 h-4 text-gray-400" />
                                                                 </button>
 
                                                                 {managingUser === user.id && (
-                                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50">
+                                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-white  rounded-lg shadow-xl border border-gray-200  py-1 z-50">
                                                                         <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Change Role</div>
-                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'admin')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'admin')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50  flex items-center gap-2">
                                                                             <Shield className="w-4 h-4 text-red-500" /> Admin
                                                                         </button>
-                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'lecturer')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'lecturer')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50  flex items-center gap-2">
                                                                             <GraduationCap className="w-4 h-4 text-purple-500" /> Lecturer
                                                                         </button>
-                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'student')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                        <button onClick={() => handleUserAction(user.id, 'role', 'student')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50  flex items-center gap-2">
                                                                             <User className="w-4 h-4 text-blue-500" /> Student
                                                                         </button>
 
-                                                                        <div className="h-px bg-gray-100 dark:bg-gray-700 my-1" />
+                                                                        <div className="h-px bg-gray-100  my-1" />
 
-                                                                        {(user as any).status === 'disabled' ? (
-                                                                            <button onClick={() => handleUserAction(user.id, 'enable')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                        {user.status === 'disabled' ? (
+                                                                            <button onClick={() => handleUserAction(user.id, 'enable')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-gray-50  flex items-center gap-2">
                                                                                 <UserCheck className="w-4 h-4" /> Enable Account
                                                                             </button>
                                                                         ) : (
-                                                                            <button onClick={() => handleUserAction(user.id, 'disable')} className="w-full text-left px-3 py-2 text-sm text-orange-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                            <button onClick={() => handleUserAction(user.id, 'disable')} className="w-full text-left px-3 py-2 text-sm text-orange-600 hover:bg-gray-50  flex items-center gap-2">
                                                                                 <UserX className="w-4 h-4" /> Disable Account
                                                                             </button>
                                                                         )}
 
-                                                                        <button onClick={() => setConfirmDelete({ id: user.id, name: user.fullName })} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                                                                        <button onClick={() => setConfirmDelete({ id: user.id, name: user.fullName })} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50  flex items-center gap-2">
                                                                             <Trash2 className="w-4 h-4" /> Delete Permanently
                                                                         </button>
                                                                     </div>
@@ -750,30 +773,28 @@ export default function AdminPage() {
                             )}
                         </div>
 
-                        {/* Pagination Controls - Hide during search */}
-                        {!isSearching && (
-                            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
-                                <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                                    Page <span className="font-bold text-gray-900 dark:text-white">{page + 1}</span>
-                                </span>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setPage(p => Math.max(0, p - 1))}
-                                        disabled={page === 0 || loadingUsers}
-                                        className="px-4 py-2 text-sm font-semibold border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                        Previous
-                                    </button>
-                                    <button
-                                        onClick={() => setPage(p => p + 1)}
-                                        disabled={isLastPage || loadingUsers}
-                                        className="px-4 py-2 text-sm font-semibold bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                        Next
-                                    </button>
-                                </div>
+                        {/* Pagination Controls */}
+                        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100  bg-gray-50/50 ">
+                            <span className="text-sm text-gray-500  font-medium">
+                                Page <span className="font-bold text-gray-900 ">{page + 1}</span>
+                            </span>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                                    disabled={page === 0 || loadingUsers}
+                                    className="px-4 py-2 text-sm font-semibold border border-gray-300  rounded-lg disabled:opacity-50 hover:bg-gray-50  transition-colors"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() => setPage(p => p + 1)}
+                                    disabled={isLastPage || loadingUsers}
+                                    className="px-4 py-2 text-sm font-semibold bg-white  border border-gray-300  rounded-lg disabled:opacity-50 hover:bg-gray-50  transition-colors"
+                                >
+                                    Next
+                                </button>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -789,20 +810,20 @@ export default function AdminPage() {
 
             {confirmDelete && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white  rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 ">
                         <div className="flex items-center gap-3 text-red-600 mb-4">
-                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-full bg-red-100  flex items-center justify-center">
                                 <Trash2 className="w-6 h-6" />
                             </div>
                             <h3 className="text-xl font-bold">Delete Account?</h3>
                         </div>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">
-                            Are you sure you want to delete <span className="font-bold text-gray-900 dark:text-white">{confirmDelete.name}</span>? This action is irreversible and will remove their access and profile.
+                        <p className="text-gray-600  mb-6">
+                            Are you sure you want to delete <span className="font-bold text-gray-900 ">{confirmDelete.name}</span>? This action is irreversible and will remove their access and profile.
                         </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setConfirmDelete(null)}
-                                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                className="flex-1 px-4 py-2 border border-gray-300  text-gray-700  rounded-lg font-medium hover:bg-gray-50  transition-colors"
                             >
                                 Cancel
                             </button>

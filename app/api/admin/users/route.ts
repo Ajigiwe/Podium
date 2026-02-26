@@ -14,8 +14,8 @@ export async function PATCH(req: NextRequest) {
         // we'll rely on the client-side permission check for now while providing the tool.
         // In a production app, we would use adminAuth.verifyIdToken(token)
 
-        const updates: any = {};
-        const firestoreUpdates: any = { updatedAt: new Date() };
+        const updates: { disabled?: boolean } = {};
+        const firestoreUpdates: Record<string, any> = { updatedAt: new Date() };
 
         if (role) {
             firestoreUpdates.role = role;
@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest) {
         }
 
         // Update Firebase Auth and Firestore Profile in parallel
-        const promises: Promise<any>[] = [];
+        const promises: Promise<unknown>[] = [];
 
         if (Object.keys(updates).length > 0) {
             promises.push(adminAuth.updateUser(userId, updates));
@@ -41,9 +41,10 @@ export async function PATCH(req: NextRequest) {
         await Promise.all(promises);
 
         return NextResponse.json({ success: true, message: 'User updated successfully' });
-    } catch (error: any) {
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Internal server error';
         console.error('Error updating user:', error);
-        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 }
 
@@ -65,8 +66,9 @@ export async function DELETE(req: NextRequest) {
         // For this task, we'll fulfill the request of direct management.
 
         return NextResponse.json({ success: true, message: 'User deleted successfully' });
-    } catch (error: any) {
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Internal server error';
         console.error('Error deleting user:', error);
-        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 }

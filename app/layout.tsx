@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ClassroomProvider } from "@/contexts/ClassroomContext";
 import { AlertProvider } from "@/contexts/AlertContext";
 import GlobalClassroom from "@/components/GlobalClassroom";
@@ -24,23 +23,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <QueryProvider>
-            <AlertProvider>
-              <AuthProvider>
-                <ClassroomProvider>
-                  {children}
-                  <GlobalClassroom />
-                </ClassroomProvider>
-              </AuthProvider>
-            </AlertProvider>
-          </QueryProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <AlertProvider>
+            <AuthProvider>
+              <ClassroomProvider>
+                {children}
+                <GlobalClassroom />
+              </ClassroomProvider>
+            </AuthProvider>
+          </AlertProvider>
+        </QueryProvider>
       </body>
     </html>
   );

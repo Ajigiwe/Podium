@@ -12,23 +12,42 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/profiles/$(request.auth.uid));
     }
     
-    // Helper function to get user profile (only call after checking profileExists)
+    // Helper function to get the current user's profile data
     function getUserProfile() {
       return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;
     }
+
+    // Helper function to get session data
+    function getSessionData(sessionId) {
+      return get(/databases/$(database)/documents/sessions/$(sessionId)).data;
+    }
+
+    // Helper function to check if user is the HOST of a session
+    function isHost(sessionId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/sessions/$(sessionId)) && (
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('hostId', '') == request.auth.uid ||
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('lecturerId', '') == request.auth.uid
+      );
+    }
     
-    // Helper function to check if user is lecturer (safe version)
+    // Helper function to check if user is a MODERATOR of a session
+    function isMod(sessionId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/sessions/$(sessionId)) && (
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.hostId == request.auth.uid ||
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid ||
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.backupModId == request.auth.uid
+      );
+    }
+
+    // LEGACY HELPERS (Keep for global checks if needed, but phase out)
     function isLecturer() {
       return isSignedIn() && profileExists() && getUserProfile().get('role', '') == 'lecturer';
     }
-    
-    // Helper function to check if user is student (safe version)
     function isStudent() {
       return isSignedIn() && profileExists() && getUserProfile().get('role', '') == 'student';
     }
 
-    // Helper function to check if user is admin (safe version)
-    // Priorities email check to avoid rule errors if profile is partially missing
+    // Helper function to check if user is admin
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'minatoflash82@gmail.com' ||
@@ -46,9 +65,40 @@ service cloud.firestore {
     // Sessions collection
     match /sessions/{sessionId} {
       allow read: if isSignedIn();
-      allow create: if isLecturer() && request.resource.data.lecturerId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.lecturerId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.lecturerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.get('hostId', '') == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.get('hostId', '') == request.auth.uid ||
+        resource.data.get('lecturerId', '') == request.auth.uid ||
+        isAdmin() ||
+        // Allow participants to trigger auto-alert lockdown if moderator is missing
+        (
+          request.resource.data.status == 'paused' &&
+          request.resource.data.auto_alert_triggered == true &&
+          // Ensure only status and alert fields are changing
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'auto_alert_triggered', 'auto_alert_triggered_at'])
+        )
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.get('hostId', '') == request.auth.uid ||
+        resource.data.get('lecturerId', '') == request.auth.uid ||
+        isAdmin()
+      );
+
+      // Participants subcollection (Presence/Heartbeats)
+      match /participants/{participantId} {
+        allow read: if isSignedIn();
+        // A user can write their own participant doc.
+        // If a moderator is trying to write someone else's doc, they must be validated.
+        // We split the rule so the simple check doesn't fail due to an exists() error on the parent doc
+        allow write: if isSignedIn() && (
+          request.auth.uid == participantId ||
+          (exists(/databases/$(database)/documents/sessions/$(sessionId)) && (
+            get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('hostId', '') == request.auth.uid ||
+            get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('lecturerId', '') == request.auth.uid ||
+            get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('backupModId', '') == request.auth.uid
+          ))
+        );
+      }
 
       // Messages subcollection
       match /messages/{messageId} {
@@ -62,15 +112,14 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if isSignedIn() && (
           request.auth.uid == studentId ||
-          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
+          isMod(sessionId)
         );
       }
 
       // Verifications subcollection
       match /verifications/{verifId} {
         allow read: if isSignedIn();
-        allow write: if isSignedIn() && 
-          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid;
+        allow write: if isMod(sessionId);
 
         match /responses/{studentId} {
           allow read: if isSignedIn();
@@ -83,24 +132,23 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if isSignedIn() && (
           request.auth.uid == participantId ||
-          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
+          isMod(sessionId)
         );
       }
 
       // Permission Requests subcollection
       match /permission_requests/{requestId} {
         allow read: if isSignedIn();
-        allow create, delete: if isSignedIn() && (
+        allow create, update, delete: if isSignedIn() && (
           request.auth.uid == requestId ||
-          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid
+          isMod(sessionId)
         );
       }
 
       // Chat History subcollection
       match /chat_history/{docId} {
         allow read: if isSignedIn();
-        allow write: if isSignedIn() && 
-          get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid;
+        allow write: if isMod(sessionId);
       }
 
       // DIAGNOSTIC: Broad read for all subcollections
@@ -115,13 +163,11 @@ service cloud.firestore {
       // Lecturers can read all transactions (for revenue tracking)
       allow read: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
-        isLecturer()
+        isLecturer() || 
+        isMod(resource.data.sessionId)
       );
       
-      // Students can create 0-amount transactions for free class enrollments
       allow create: if isSignedIn() 
-        && profileExists()
-        && getUserProfile().role == 'student'
         && request.resource.data.userId == request.auth.uid 
         && request.resource.data.amount == 0
         && request.resource.data.status == 'succeeded';
@@ -149,9 +195,9 @@ service cloud.firestore {
       // Users can create their own attendance logs
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       
-      // Only lecturers can update; Lecturers OR Owners can delete
-      allow update: if isLecturer();
-      allow delete: if isLecturer() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      // Only moderators can update; Moderators OR Owners can delete
+      allow update: if isMod(resource.data.sessionId);
+      allow delete: if isMod(resource.data.sessionId) || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
     // Settings collection
     match /system_settings/{docId} {

@@ -41,6 +41,10 @@ export const getFriendlyAuthErrorMessage = (error: any): string => {
         return 'Please verify your email address before logging in.';
     }
 
+    if (message.includes('social login (Google)')) {
+        return 'This account uses Google login. Please sign in with Google instead of resetting your password.';
+    }
+
     // Log raw error for debugging but return a generic friendly message if unknown
     console.error('Unknown Firebase Auth Error:', error);
 

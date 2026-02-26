@@ -16,7 +16,7 @@ export const RaisedHandsBanner = ({ isLecturer, raisedHands, onClearAll, onLower
 
     return (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[9999] max-w-lg w-full px-4 pointer-events-none">
-            <div className="bg-yellow-500 text-black px-3 py-2 rounded-lg shadow-xl flex items-center justify-between animate-slide-down border border-yellow-600 pointer-events-auto">
+            <div className="bg-yellow-500 text-black px-3 py-2 rounded-lg flex items-center justify-between animate-slide-down border border-yellow-600 pointer-events-auto">
                 <div className="flex items-center gap-2">
                     <Hand className="w-4 h-4 animate-bounce" />
                     <div>

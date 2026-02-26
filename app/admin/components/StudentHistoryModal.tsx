@@ -49,21 +49,21 @@ export default function StudentHistoryModal({ isOpen, onClose, studentId, studen
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-2xl max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200">
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-2xl bg-white rounded-2xl p-6 border border-gray-200 max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200">
 
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6 flex-shrink-0">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-gray-900  flex items-center gap-2">
                             <BookOpen className="w-6 h-6 text-blue-600" />
                             Class History
                         </h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Listing all classes joined by <span className="font-medium text-gray-900 dark:text-white">{studentName}</span>
+                        <p className="text-sm text-gray-500  mt-1">
+                            Listing all classes joined by <span className="font-medium text-gray-900 ">{studentName}</span>
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100  rounded-lg transition-colors">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
@@ -77,19 +77,19 @@ export default function StudentHistoryModal({ isOpen, onClose, studentId, studen
                             ))}
                         </div>
                     ) : logs.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                        <div className="text-center py-12 text-gray-500  bg-gray-50  rounded-xl border border-dashed border-gray-200 ">
                             No classes joined yet.
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {logs.map((log) => (
-                                <div key={log.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-900 transition-colors">
+                                <div key={log.id} className="flex items-center justify-between p-4 bg-gray-50  rounded-xl border border-gray-100  hover:border-blue-200  transition-colors">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                                        <div className="w-10 h-10 rounded-full bg-blue-100  text-blue-600  flex items-center justify-center font-bold text-sm">
                                             {log.sessionTitle ? log.sessionTitle.substring(0, 2).toUpperCase() : 'CL'}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-gray-900 dark:text-white">
+                                            <p className="font-bold text-gray-900 ">
                                                 {log.sessionTitle || 'Unknown Class'}
                                             </p>
                                             <p className="text-xs text-gray-500 font-mono">
@@ -98,7 +98,7 @@ export default function StudentHistoryModal({ isOpen, onClose, studentId, studen
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
+                                        <div className="flex items-center gap-1.5 text-sm text-gray-600 ">
                                             <Calendar className="w-3.5 h-3.5" />
                                             {log.joinedAt?.toDate ? log.joinedAt.toDate().toLocaleDateString() : 'N/A'}
                                         </div>

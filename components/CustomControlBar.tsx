@@ -16,7 +16,7 @@ const HoverDeviceMenu = ({ kind }: { kind: 'audioinput' | 'videoinput' }) => {
 
     return (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 hidden group-hover:block z-50">
-            <div className="bg-gray-900 border border-gray-700/80 rounded-lg shadow-2xl p-1.5 min-w-[220px] max-w-[300px] flex flex-col gap-0.5 animate-in fade-in slide-in-from-bottom-2">
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-1.5 min-w-[220px] max-w-[300px] flex flex-col gap-0.5 animate-in fade-in slide-in-from-bottom-2">
                 <div className="px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-800/50 mb-1">
                     Select {kind === 'audioinput' ? 'Microphone' : 'Camera'}
                 </div>
@@ -262,7 +262,7 @@ export default function CustomControlBar({
     const emojis = ['👍', '👏', '❤️', '🔥', '🎉', '😂', '😮', '🤔'];
 
     return (
-        <div className="lk-control-bar !border-t-0 !bg-gray-900/90 !backdrop-blur-sm !p-1 sm:!p-1.5 rounded-xl mb-4 sm:mb-6 mx-auto max-w-[95vw] sm:max-w-fit flex items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1.5 shadow-xl border border-white/10">
+        <div className="lk-control-bar !border-t-0 !bg-gray-900 !p-1 sm:!p-1.5 rounded-xl mb-4 sm:mb-6 mx-auto max-w-[95vw] sm:max-w-fit flex items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1.5 border border-white/10">
             {/* Microphone */}
             <div className="relative group">
                 <button
@@ -279,7 +279,7 @@ export default function CustomControlBar({
                     {isMicrophoneEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4 text-red-500" />}
 
                     {!permissions.mic && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center shadow-md border border-gray-900">
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-gray-900">
                             <Lock className="w-2.5 h-2.5 text-white" />
                         </div>
                     )}
@@ -309,7 +309,7 @@ export default function CustomControlBar({
                     {isCameraEnabled ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4 text-red-500" />}
 
                     {!permissions.camera && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center shadow-md border border-gray-900">
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-gray-900">
                             <Lock className="w-2.5 h-2.5 text-white" />
                         </div>
                     )}
@@ -360,7 +360,7 @@ export default function CustomControlBar({
             {/* Raise Hand */}
             <button
                 onClick={onToggleHand}
-                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-all ${isHandRaised ? '!bg-yellow-500 !text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]' : ''}`}
+                className={`lk-button !bg-gray-800 hover:!bg-gray-700 !border-gray-700 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-all ${isHandRaised ? '!bg-yellow-500 !text-black border-2 border-yellow-400' : ''}`}
                 title={isHandRaised ? "Lower Hand" : "Raise Hand"}
             >
                 <Hand className={`w-5 h-5 sm:w-4 sm:h-4 ${isHandRaised ? 'animate-bounce' : ''}`} />

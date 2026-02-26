@@ -126,7 +126,7 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
     const nextChecks = stats?.scheduledVerifications.filter(m => m > minutesElapsed) || [];
 
     return (
-        <div className="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-3xl p-5 shadow-2xl">
+        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5">
             <div className="flex items-center justify-between mb-5 border-b border-gray-800 pb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/20">
@@ -157,7 +157,7 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
                         <button
                             onClick={handleStartAttendance}
                             disabled={isStarting}
-                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-xs font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98]"
+                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-xs font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-blue-500 active:scale-[0.98]"
                         >
                             {isStarting ? (
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

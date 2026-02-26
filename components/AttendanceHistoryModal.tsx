@@ -220,14 +220,14 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-            <div className="relative w-full max-w-4xl bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-800 shadow-xl max-h-[80vh] flex flex-col">
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-4xl bg-white rounded-2xl p-8 border border-gray-200 max-h-[80vh] flex flex-col">
                 <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-gray-900  flex items-center gap-2">
                         <History className="w-6 h-6 text-blue-600" />
                         Attendance History
                     </h2>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100  rounded-lg transition-colors">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
@@ -236,7 +236,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                     {loadingHistory ? (
                         <div className="p-6 space-y-4">
                             {[1, 2, 3, 4].map(i => (
-                                <div key={i} className="flex gap-4 p-4 border border-gray-100 dark:border-gray-800 rounded-xl">
+                                <div key={i} className="flex gap-4 p-4 border border-gray-100  rounded-xl">
                                     <div className="flex-1 space-y-2">
                                         <Skeleton className="h-5 w-1/3" />
                                         <Skeleton className="h-3 w-1/4" />
@@ -246,36 +246,36 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                             ))}
                         </div>
                     ) : historyData.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                        <div className="text-center py-12 text-gray-500 ">
                             No attendance records found.
                         </div>
                     ) : (
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                            <thead className="bg-gray-50  sticky top-0">
                                 <tr>
-                                    <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300">Class Title</th>
-                                    <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300">Unique Attendees</th>
-                                    <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300">Last Activity</th>
-                                    <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-300 text-right">Action</th>
+                                    <th className="p-4 text-sm font-semibold text-gray-600 ">Class Title</th>
+                                    <th className="p-4 text-sm font-semibold text-gray-600 ">Unique Attendees</th>
+                                    <th className="p-4 text-sm font-semibold text-gray-600 ">Last Activity</th>
+                                    <th className="p-4 text-sm font-semibold text-gray-600  text-right">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tbody className="divide-y divide-gray-100 ">
                                 {historyData.map((item) => (
-                                    <tr key={item.sessionId} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                    <tr key={item.sessionId} className="hover:bg-gray-50 ">
                                         <td className="p-4">
-                                            <div className="font-medium text-gray-900 dark:text-white">{item.title}</div>
+                                            <div className="font-medium text-gray-900 ">{item.title}</div>
                                             <div className="text-xs text-gray-500 font-mono mt-0.5">{item.sessionId}</div>
                                         </td>
-                                        <td className="p-4 text-gray-700 dark:text-gray-300">
+                                        <td className="p-4 text-gray-700 ">
                                             {item.count}
                                         </td>
-                                        <td className="p-4 text-gray-500 dark:text-gray-400 text-sm">
+                                        <td className="p-4 text-gray-500  text-sm">
                                             {item.lastJoined?.toDate ? item.lastJoined.toDate().toLocaleDateString() : 'N/A'}
                                         </td>
                                         <td className="p-4 text-right">
                                             <button
                                                 onClick={() => handleDownloadAttendance(item.sessionId, item.title)}
-                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm font-medium"
+                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50  text-blue-600  rounded-lg hover:bg-blue-100  transition-colors text-sm font-medium"
                                             >
                                                 <Download className="w-4 h-4" />
                                                 Download CSV

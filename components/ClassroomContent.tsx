@@ -2,15 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import { Session } from '@/lib/firebase/types';
-import ThemeToggle from '@/components/ThemeToggle';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
-import { Users, User, MicOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X, Mic, VideoIcon, ArrowLeft, MoreVertical, ShieldAlert } from 'lucide-react';
+import { Users, User, MicOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X, Mic, VideoIcon, ArrowLeft, MoreVertical, ShieldAlert, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { JitsiParticipant } from '@/contexts/ClassroomContext';
 import { generateMeetingCode } from '@/lib/meetingCode';
 import { db, handleFirestoreError } from '@/lib/firebase/config';
 import { doc, updateDoc } from 'firebase/firestore';
+import { deleteSession } from '@/lib/firebase/session-utils';
 import dynamic from 'next/dynamic';
 
 const RecordingControls = dynamic(() => import('./RecordingControls').then(mod => mod.RecordingControls), {
@@ -65,6 +65,10 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         muteAllParticipants,
         kickParticipant,
         askToUnmute,
+        grantModerator,
+        isModerator,
+        isHost,
+        sessionData
     } = useClassroom();
     const { showAlert, showConfirm } = useAlert();
 
@@ -80,10 +84,40 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     const [activePermissions, setActivePermissions] = useState<{ participantId: string; permissions: ParticipantPermissions }[]>([]);
     const [autoApproveMic, setAutoApproveMic] = useState(false);
     const [isMutedAll, setIsMutedAll] = useState(false);
+    const [isLockdown, setIsLockdown] = useState(false);
 
-    // Subscribe to permissions if lecturer
+    // Presence Monitoring (Lockdown Logic - sentinel alignment)
     useEffect(() => {
-        if (ctxUserRole !== 'lecturer' || !sessionId) return;
+        if (!sessionData) return;
+
+        const checkPresence = () => {
+            if (isModerator) {
+                setIsLockdown(false);
+                return;
+            }
+
+            const now = Date.now();
+            const threshold = (sessionData.host_absence_minutes || 5) * 60 * 1000;
+
+            const hostAbsence = sessionData.hostLastSeen?.toMillis() ? (now - sessionData.hostLastSeen.toMillis()) : Infinity;
+            const modAbsence = sessionData.modLastSeen?.toMillis() ? (now - sessionData.modLastSeen.toMillis()) : Infinity;
+
+            const isHostOffline = hostAbsence > threshold;
+            const isModOffline = modAbsence > threshold;
+
+            // Trigger lockdown if session is explicitly paused OR if all moderators are stale
+            const shouldLockdown = sessionData.status === 'paused' || (isHostOffline && isModOffline);
+            setIsLockdown(shouldLockdown);
+        };
+
+        checkPresence();
+        const interval = setInterval(checkPresence, 10000); // Check every 10s
+        return () => clearInterval(interval);
+    }, [sessionData, isModerator]);
+
+    // Subscribe to permissions if moderator
+    useEffect(() => {
+        if (!isModerator || !sessionId) return;
 
         const unsubscribeRequests = subscribeToPermissionRequests(sessionId, (requests) => {
             setPendingRequests(requests);
@@ -97,7 +131,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
             unsubscribeRequests();
             unsubscribeAllPerms();
         };
-    }, [sessionId, ctxUserRole]);
+    }, [sessionId, isModerator]);
 
     // Fetch initial auto-approval state from session
     useEffect(() => {
@@ -106,13 +140,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         }
     }, [session.autoApproveMic]);
 
-    // Smart Mic Logic: Auto-approve incoming requests if enabled
-    useEffect(() => {
-        if (autoApproveMic && pendingRequests.length > 0 && ctxUserRole === 'lecturer') {
-            console.log(`Smart Mic: Auto-approving ${pendingRequests.length} requests`);
-            handleGrantAll();
-        }
-    }, [pendingRequests.length, autoApproveMic, ctxUserRole]);
+
 
     const toggleAutoApproveMic = async () => {
         const newState = !autoApproveMic;
@@ -152,6 +180,14 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
             console.error('Failed to grant all permissions:', error);
         }
     };
+
+    // Smart Mic Logic: Auto-approve incoming requests if enabled
+    useEffect(() => {
+        if (autoApproveMic && pendingRequests.length > 0 && isModerator) {
+            console.log(`Smart Mic: Auto-approving ${pendingRequests.length} requests`);
+            handleGrantAll();
+        }
+    }, [pendingRequests.length, autoApproveMic, isModerator, handleGrantAll]);
 
     const handleDeny = async (identity: string) => {
         try {
@@ -221,7 +257,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     // Save meeting code to Firestore if it doesn't exist
     useEffect(() => {
         const saveMeetingCode = async () => {
-            if (!session.meetingCode && ctxUserRole === 'lecturer') {
+            if (!session.meetingCode && isHost) {
                 try {
                     const generatedCode = generateMeetingCode(sessionId);
                     await updateDoc(doc(db, 'sessions', sessionId), {
@@ -248,7 +284,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
             }
         };
         saveMeetingCode();
-    }, [session.meetingCode, sessionId, profile?.role]);
+    }, [session.meetingCode, sessionId, isHost]);
 
     const handleCopyCode = async () => {
         await navigator.clipboard.writeText(meetingCode);
@@ -264,11 +300,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
     const handleLeave = () => {
         leaveClass();
-        if (ctxUserRole === 'lecturer') {
-            router.push('/dashboard/lecturer');
-        } else {
-            router.push('/dashboard/student');
-        }
+        router.push('/dashboard');
     };
 
     return (
@@ -288,16 +320,14 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
                         {/* Desktop Controls */}
                         <div className="hidden md:flex items-center gap-2">
-                            <ThemeToggle />
-
                             <RecordingControls
                                 roomId={ctxSessionId || ''}
                                 lecturerId={ctxUserId || ''}
                                 classTitle={ctxTitle || 'Untitled Class'}
-                                isLecturer={ctxUserRole === 'lecturer' || ctxUserRole === 'admin'}
+                                isLecturer={isModerator}
                             />
 
-                            {ctxUserRole === 'lecturer' && (
+                            {isModerator && (
                                 <div className="hidden lg:block">
                                     <SimpleAttendanceConsole sessionId={sessionId} isActive={session.isActive} />
                                 </div>
@@ -325,10 +355,10 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 className="relative px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <Users className="w-4 h-4" />
-                                <span className="hidden lg:inline">{ctxUserRole === 'lecturer' ? 'Manage' : 'Participants'}</span>
+                                <span className="hidden lg:inline">{isModerator ? 'Manage' : 'Participants'}</span>
                                 <span className="bg-white/20 px-1.5 py-0.5 rounded text-xs">{participants.length}</span>
-                                {ctxUserRole === 'lecturer' && pendingRequests.length > 0 && (
-                                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-pulse">
+                                {isModerator && pendingRequests.length > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-red-600 animate-pulse">
                                         {pendingRequests.length}
                                     </span>
                                 )}
@@ -342,7 +372,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             </button>
                             <button
                                 onClick={handleLeave}
-                                className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-2"
+                                className={`px-3 py-1.5 text-sm font-medium text-white ${isHost ? 'bg-gray-700 hover:bg-gray-600' : 'bg-red-600 hover:bg-red-700'} rounded-lg transition-colors flex items-center gap-2`}
                             >
                                 <LogOut className="w-4 h-4" />
                                 <span className="hidden lg:inline">Leave</span>
@@ -351,13 +381,12 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
                         {/* Mobile Menu Button */}
                         <div className="flex md:hidden items-center gap-2">
-                            <ThemeToggle />
                             <button
                                 onClick={() => setShowMobileMenu(!showMobileMenu)}
                                 className="p-2 text-white bg-gray-800 rounded-lg"
                             >
                                 {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                                {ctxUserRole === 'lecturer' && pendingRequests.length > 0 && (
+                                {isModerator && pendingRequests.length > 0 && (
                                     <span className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full animate-pulse border-2 border-gray-900" />
                                 )}
                             </button>
@@ -377,7 +406,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             />
 
                             {/* Drawer */}
-                            <div className="absolute top-0 right-0 h-full w-[300px] bg-gray-900 border-l border-gray-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 overflow-hidden">
+                            <div className="absolute top-0 right-0 h-full w-[300px] bg-gray-900 border-l border-gray-800 flex flex-col animate-in slide-in-from-right duration-300 overflow-hidden">
                                 {/* Drawer Header */}
                                 <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/50 shrink-0">
                                     <div className="flex items-center gap-2">
@@ -409,8 +438,8 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                                     {mobileSideNavView === 'menu' ? (
                                         <div className="p-4 space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-                                            {/* Lecturer Specific Tools */}
-                                            {ctxUserRole === 'lecturer' && (
+                                            {/* Moderator Specific Tools */}
+                                            {isModerator && (
                                                 <div className="space-y-4">
                                                     <div className="space-y-2">
                                                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 block">Class Management</label>
@@ -429,7 +458,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                                                 <Users className="w-5 h-5" />
                                                                 <span className="text-[10px] font-bold uppercase">Manage</span>
                                                                 {pendingRequests.length > 0 && (
-                                                                    <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-lg animate-pulse">
+                                                                    <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-red-600 animate-pulse">
                                                                         {pendingRequests.length}
                                                                     </span>
                                                                 )}
@@ -593,7 +622,9 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                                                         </div>
                                                                         <div className="min-w-0">
                                                                             <p className="font-bold text-xs text-white truncate">{p.displayName || 'Guest'}</p>
-                                                                            <p className="text-[9px] text-gray-500 uppercase font-black tracking-tighter">{p.role === 'moderator' ? 'Lecturer' : 'Student'}</p>
+                                                                            <p className="text-[9px] text-gray-500 uppercase font-black tracking-tighter">
+                                                                                {p.metadata?.userId === sessionData?.hostId ? 'Host' : (p.metadata?.userId === sessionData?.backupModId ? 'Moderator' : 'Student')}
+                                                                            </p>
                                                                         </div>
                                                                     </div>
 
@@ -638,17 +669,74 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                 </div>
             </header >
 
-            < div
+            {/* Auto-Alert Overlay (Spec Aligned: Class Paused) */}
+            {
+                isLockdown && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 animate-in fade-in duration-500">
+                        <div className="max-w-sm w-full mx-4 bg-orange-600 rounded-3xl p-6 text-white text-center border-4 border-orange-500">
+                            {/* Icon */}
+                            <div className="mb-4 relative inline-block">
+                                <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full animate-pulse" />
+                                <ShieldAlert className="w-16 h-16 text-white relative animate-wiggle" />
+                            </div>
+
+                            {/* Title */}
+                            <h2 className="text-2xl font-black mb-3 tracking-tight uppercase">
+                                Class Paused
+                            </h2>
+
+                            {/* Message */}
+                            <p className="text-base mb-6 text-yellow-50 font-medium leading-tight">
+                                The lecturer is temporarily offline. This session is paused for your safety.
+                            </p>
+
+                            {/* Status Card */}
+                            <div className="bg-black/20 rounded-2xl p-4 backdrop-blur-md border border-white/10 text-left space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                                        <Users className="w-4 h-4 text-yellow-300" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-yellow-200 uppercase tracking-widest">Waiting For</p>
+                                        <p className="text-xs font-black">Moderator or Host</p>
+                                    </div>
+                                </div>
+
+                                <p className="text-[10px] text-yellow-100/70 font-medium leading-normal">
+                                    All participants have been muted. The session will resume automatically when a moderator returns.
+                                </p>
+                            </div>
+
+                            {/* Return Button */}
+                            <button
+                                onClick={() => router.push('/dashboard')}
+                                className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-white text-orange-600 text-sm font-black rounded-xl hover:bg-yellow-50 transition-all active:scale-[0.98] border border-gray-200"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                Return to Dashboard
+                            </button>
+
+                            {/* Loading Pips */}
+                            <div className="mt-6 flex justify-center gap-1.5">
+                                <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce"></div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            <div
                 style={{
                     position: 'fixed',
-                    top: '56px', // 44px header + 12px gap
+                    top: '56px',
                     left: 0,
                     right: 0,
                     bottom: 0,
                     backgroundColor: '#0a0a0a',
-                }
-                }
-                className="sm:!top-[72px]" // 52px header + 20px gap
+                }}
+                className="sm:!top-[72px]"
             >
                 <div
                     id="classroom-video-mount"
@@ -661,39 +749,39 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                         display: isFloating ? 'none' : 'block'
                     }}
                 />
-            </div >
+            </div>
 
-            {/* Share/Invite Modal - Lecturer Only */}
+            {/* Share/Invite Modal - Moderator Only */}
             {
-                showShareModal && ctxUserRole === 'lecturer' && (
+                showShareModal && isModerator && (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowShareModal(false)} />
-                        <div className="relative w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:fade-in sm:zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+                        <div className="absolute inset-0 bg-black/60" onClick={() => setShowShareModal(false)} />
+                        <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 border border-gray-200 animate-in slide-in-from-bottom sm:fade-in sm:zoom-in duration-200 max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4 sm:mb-6">
                                 <div>
-                                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Invite Students</h2>
-                                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Share this code with your students</p>
+                                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">Invite Students</h2>
+                                    <p className="text-xs sm:text-sm text-gray-500">Share this code with your students</p>
                                 </div>
                                 <button
                                     onClick={() => setShowShareModal(false)}
-                                    className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                                 >
-                                    <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                    <X className="w-5 h-5 text-gray-500" />
                                 </button>
                             </div>
 
                             {/* Meeting Code - Big and Bold */}
-                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 sm:p-6 mb-4 border border-blue-200 dark:border-blue-800">
-                                <p className="text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400 font-semibold mb-2">Meeting Code</p>
+                            <div className="bg-blue-50 rounded-xl p-4 sm:p-6 mb-4 border border-blue-200">
+                                <p className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-2">Meeting Code</p>
                                 <div className="flex items-center justify-between gap-2">
-                                    <p className="text-2xl sm:text-3xl font-mono font-bold text-gray-900 dark:text-white tracking-wider">
+                                    <p className="text-2xl sm:text-3xl font-mono font-bold text-gray-900 tracking-wider">
                                         {meetingCode}
                                     </p>
                                     <button
                                         onClick={handleCopyCode}
                                         className={`p-3 rounded-lg transition-all shrink-0 ${copiedCode
                                             ? 'bg-green-600 text-white'
-                                            : 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
+                                            : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                                             }`}
                                     >
                                         {copiedCode ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
@@ -702,12 +790,12 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             </div>
 
                             {/* Full Link (Alternative) */}
-                            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-4 sm:mb-6 border border-gray-200 dark:border-gray-700">
-                                <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold mb-2">Or share full link</p>
+                            <div className="bg-gray-50 rounded-xl p-4 mb-4 sm:mb-6 border border-gray-200">
+                                <p className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-2">Or share full link</p>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex-1 flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0">
+                                    <div className="flex-1 flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-gray-200 overflow-hidden min-w-0">
                                         <Link className="w-4 h-4 text-gray-400 shrink-0" />
-                                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">
+                                        <p className="text-xs sm:text-sm text-gray-600 truncate">
                                             {fullLink}
                                         </p>
                                     </div>
@@ -715,7 +803,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                         onClick={handleCopyLink}
                                         className={`p-2 rounded-lg transition-all shrink-0 ${copiedLink
                                             ? 'bg-green-500 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            : 'bg-gray-100  text-gray-600  hover:bg-gray-200 '
                                             }`}
                                     >
                                         {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -724,9 +812,9 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             </div>
 
                             {/* Instructions */}
-                            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
-                                <p className="text-sm text-amber-800 dark:text-amber-200 font-medium mb-2">How students join:</p>
-                                <ol className="text-xs sm:text-sm text-amber-700 dark:text-amber-300 space-y-1 list-decimal list-inside">
+                            <div className="bg-amber-50  rounded-lg p-4 border border-amber-200 ">
+                                <p className="text-sm text-amber-800  font-medium mb-2">How students join:</p>
+                                <ol className="text-xs sm:text-sm text-amber-700  space-y-1 list-decimal list-inside">
                                     <li>Go to their Student Dashboard</li>
                                     <li>Enter the meeting code</li>
                                     <li>Fill in name and index number</li>
@@ -734,39 +822,40 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            }
 
             {/* Participants Modal - All Users */}
             {
                 showParticipantsModal && (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowParticipantsModal(false)} />
-                        <div className="relative w-full sm:max-w-lg bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:fade-in sm:zoom-in duration-200 max-h-[85vh] flex flex-col">
+                        <div className="relative w-full sm:max-w-lg bg-white  rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:fade-in sm:zoom-in duration-200 max-h-[85vh] flex flex-col">
                             <div className="flex justify-between items-center mb-4 shrink-0">
                                 <div>
-                                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Participants ({participants.length})</h2>
-                                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Manage students in your class</p>
+                                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 ">Participants ({participants.length})</h2>
+                                    <p className="text-xs sm:text-sm text-gray-500 ">Manage students in your class</p>
                                 </div>
                                 <button
                                     onClick={() => setShowParticipantsModal(false)}
-                                    className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    className="p-2 bg-gray-100  rounded-full hover:bg-gray-200  transition-colors"
                                 >
-                                    <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                    <X className="w-5 h-5 text-gray-500 " />
                                 </button>
                             </div>
 
-                            {/* Quick Actions - Lecturer Only */}
-                            {ctxUserRole === 'lecturer' && (
+                            {/* Quick Actions - Moderator Only */}
+                            {isModerator && (
                                 <div className="space-y-3 mb-4 shrink-0">
                                     {/* Smart Mic Toggle */}
-                                    <div className="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+                                    <div className="flex items-center justify-between p-3 bg-indigo-50  rounded-xl border border-indigo-100 ">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                                                <Mic className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                            <div className="w-8 h-8 rounded-lg bg-indigo-100  flex items-center justify-center">
+                                                <Mic className="w-4 h-4 text-indigo-600 " />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white">Smart Mic</p>
-                                                <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Auto-approve all requests</p>
+                                                <p className="text-xs font-bold text-gray-900 ">Smart Mic</p>
+                                                <p className="text-[10px] text-gray-500  leading-tight">Auto-approve all requests</p>
                                             </div>
                                         </div>
                                         <label className="relative inline-flex items-center cursor-pointer">
@@ -776,7 +865,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                                 onChange={toggleAutoApproveMic}
                                                 className="sr-only peer"
                                             />
-                                            <div className="w-9 h-5 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                                            <div className="w-9 h-5 bg-gray-200  rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                                         </label>
                                     </div>
 
@@ -784,8 +873,8 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                         <button
                                             onClick={() => handleMuteAll()}
                                             className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 border ${isMutedAll
-                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50 hover:bg-green-200 dark:hover:bg-green-900/50'
-                                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50 hover:bg-red-200 dark:hover:bg-red-900/50'
+                                                ? 'bg-green-100  text-green-700  border-green-200  hover:bg-green-200 '
+                                                : 'bg-red-100  text-red-700  border-red-200  hover:bg-red-200 '
                                                 }`}
                                         >
                                             {isMutedAll ? (
@@ -808,9 +897,9 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
 
                                 {/* Pending Requests - Compact */}
-                                {ctxUserRole === 'lecturer' && pendingRequests.length > 0 && (
+                                {isModerator && pendingRequests.length > 0 && (
                                     <div className="mb-6">
-                                        <h3 className="text-[10px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <h3 className="text-[10px] font-black text-blue-500  uppercase tracking-widest mb-3 flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                                             Pending Requests ({pendingRequests.length})
                                         </h3>
@@ -823,9 +912,9 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                         </button>
                                         <div className="space-y-2">
                                             {pendingRequests.map(request => (
-                                                <div key={request.id} className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                                <div key={request.id} className="flex items-center justify-between bg-blue-50/50  p-3 rounded-2xl border border-blue-100 ">
                                                     <div className="min-w-0 pr-4">
-                                                        <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                                        <p className="font-bold text-sm text-gray-900  truncate">
                                                             {request.participantName || 'Guest'}
                                                         </p>
                                                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -856,13 +945,13 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
                                 {/* Active Participants List */}
                                 <div>
-                                    <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 px-1">
+                                    <h3 className="text-[10px] font-black text-gray-400  uppercase tracking-widest mb-3 px-1">
                                         In Classroom ({participants.length})
                                     </h3>
                                     <div className="space-y-2">
                                         {participants.length === 0 ? (
-                                            <div className="text-center py-10 bg-gray-50/50 dark:bg-gray-900/30 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
-                                                <Users className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto mb-2" />
+                                            <div className="text-center py-10 bg-gray-50/50  rounded-3xl border border-dashed border-gray-200 ">
+                                                <Users className="w-8 h-8 text-gray-300  mx-auto mb-2" />
                                                 <p className="text-xs text-gray-400">Waiting for participants...</p>
                                             </div>
                                         ) : (
@@ -875,45 +964,43 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                                     <div
                                                         key={p.participantId}
                                                         className={`group flex items-center justify-between p-3 rounded-2xl border transition-all ${p.isLocal
-                                                            ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30'
-                                                            : 'bg-white dark:bg-gray-900/40 border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 shadow-sm hover:shadow-md'
+                                                            ? 'bg-indigo-50/50  border-indigo-100 '
+                                                            : 'bg-white  border-gray-100  hover:border-gray-200  shadow-sm hover:shadow-md'
                                                             }`}
                                                     >
                                                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-inner ${p.isLocal ? 'bg-indigo-600' : 'bg-gray-400 dark:bg-gray-700'
+                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-inner ${p.isLocal ? 'bg-indigo-600' : 'bg-gray-400 '
                                                                 }`}>
                                                                 {p.displayName?.[0]?.toUpperCase() || '?'}
                                                             </div>
                                                             <div className="min-w-0">
                                                                 <div className="flex items-center gap-2">
-                                                                    <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                                                    <p className="font-bold text-sm text-gray-900  truncate">
                                                                         {p.displayName || 'Guest'}
                                                                     </p>
                                                                     {p.isLocal && (
                                                                         <span className="text-[8px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-lg uppercase tracking-tighter">YOU</span>
                                                                     )}
                                                                 </div>
-                                                                <div className="flex items-center gap-2 mt-0.5">
-                                                                    <span className={`text-[10px] font-bold uppercase tracking-tight ${p.role === 'moderator' ? 'text-blue-500' : 'text-gray-500'
-                                                                        }`}>
-                                                                        {p.role === 'moderator' ? 'Lecturer' : 'Student'}
-                                                                    </span>
-                                                                </div>
+                                                                <span className={`text-[10px] font-bold uppercase tracking-tight ${p.role === 'moderator' || (p.metadata?.userId && (p.metadata.userId === sessionData?.hostId || p.metadata.userId === sessionData?.backupModId)) ? 'text-blue-500' : 'text-gray-500'
+                                                                    }`}>
+                                                                    {p.role === 'moderator' || p.metadata?.userId === sessionData?.hostId ? 'Host' : (p.metadata?.userId === sessionData?.backupModId ? 'Moderator' : 'Student')}
+                                                                </span>
                                                             </div>
                                                         </div>
 
                                                         {/* Actions Container */}
-                                                        <div className="flex items-center gap-1.5">
-                                                            {!p.isLocal && ctxUserRole === 'lecturer' && (
+                                                        <div className="flex items-center gap-1.5 focus-within:opacity-100">
+                                                            {!p.isLocal && isModerator && (
                                                                 <>
                                                                     {/* Permission Group */}
-                                                                    <div className="flex items-center bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl gap-0.5">
+                                                                    <div className="flex items-center bg-gray-100  p-1 rounded-xl gap-0.5">
                                                                         {/* Mic Toggle */}
                                                                         <button
                                                                             onClick={() => hasMic ? handleRevoke(p.identity, 'microphone') : handleGrant(p.identity, 'microphone')}
                                                                             className={`p-2 rounded-lg transition-all ${hasMic
                                                                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                                                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                                                                : 'text-gray-400 hover:text-gray-600 '
                                                                                 }`}
                                                                             title={hasMic ? "Revoke Microphone" : "Grant Microphone"}
                                                                         >
@@ -924,7 +1011,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                                                             onClick={() => hasCam ? handleRevoke(p.identity, 'camera') : handleGrant(p.identity, 'camera')}
                                                                             className={`p-2 rounded-lg transition-all ${hasCam
                                                                                 ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
-                                                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                                                                : 'text-gray-400 hover:text-gray-600 '
                                                                                 }`}
                                                                             title={hasCam ? "Revoke Camera" : "Grant Camera"}
                                                                         >
@@ -933,27 +1020,40 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                                                     </div>
 
                                                                     {/* Separator */}
-                                                                    <div className="w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
+                                                                    <div className="w-[1px] h-6 bg-gray-200  mx-1 hidden sm:block" />
 
                                                                     {/* Quick Moderation Group */}
                                                                     <div className="flex items-center gap-1">
                                                                         <button
                                                                             onClick={() => askToUnmute(p.participantId)}
-                                                                            className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                                                            className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50  rounded-lg transition-all"
                                                                             title="Ask to Unmute"
                                                                         >
                                                                             <Volume2 className="w-4 h-4" />
                                                                         </button>
+                                                                        {/* Backup Mod Assignment - Host Only */}
+                                                                        {isHost && p.metadata?.userId !== sessionData?.hostId && (
+                                                                            <button
+                                                                                onClick={() => showConfirm(`Assign ${p.displayName} as Backup Moderator?`, () => grantModerator(p.participantId))}
+                                                                                className={`p-2 rounded-lg transition-all ${p.metadata?.userId === sessionData?.backupModId
+                                                                                    ? 'text-orange-500 bg-orange-50 '
+                                                                                    : 'text-gray-400 hover:text-orange-500 hover:bg-orange-50 '
+                                                                                    }`}
+                                                                                title="Assign Backup Moderator"
+                                                                            >
+                                                                                <ShieldAlert className="w-4 h-4" />
+                                                                            </button>
+                                                                        )}
                                                                         <button
                                                                             onClick={() => handleMuteStudent(p.participantId, p.identity)}
-                                                                            className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all"
+                                                                            className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50  rounded-lg transition-all"
                                                                             title="Force Mute"
                                                                         >
                                                                             <MicOff className="w-4 h-4" />
                                                                         </button>
                                                                         <button
                                                                             onClick={() => showConfirm(`Remove ${p.displayName}?`, () => kickParticipant(p.participantId))}
-                                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50  rounded-lg transition-all"
                                                                             title="Remove Student"
                                                                         >
                                                                             <LogOut className="w-4 h-4" />
@@ -969,12 +1069,10 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                     </div>
                                 </div>
                             </div>
-
-
                         </div>
                     </div>
                 )
             }
-        </div>
+        </div >
     );
 }

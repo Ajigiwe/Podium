@@ -14,12 +14,12 @@ export const ReactionModal = ({ isOpen, onClose, onReaction, emojis }: ReactionM
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/60"
                 onClick={onClose}
             />
 
             {/* Modal Content */}
-            <div className="relative bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl p-4 w-auto max-w-[240px] animate-in zoom-in-95 duration-200">
+            <div className="relative bg-gray-900 border border-gray-800 rounded-2xl p-4 w-auto max-w-[240px] animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-bold text-white">Reactions</h3>
                     <button

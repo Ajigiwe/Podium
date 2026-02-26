@@ -27,7 +27,7 @@ export default function RoomPage() {
 
         if (!user || !profile) {
             const currentPath = window.location.pathname + window.location.search;
-            router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
+            router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
             return;
         }
 
@@ -45,7 +45,7 @@ export default function RoomPage() {
 
                 // Join the LiveKit room via context
                 if (currentSessionId !== roomId) {
-                    joinClass(roomId, sessionData.title, profile.fullName, profile.role, user.uid, profile.photoURL);
+                    joinClass(roomId, sessionData.title, profile.fullName, (profile.role as 'lecturer' | 'student' | 'admin') || 'student', user.uid, profile.photoURL);
                 }
 
                 setLoading(false);

@@ -60,15 +60,19 @@ export default function ClassroomPage() {
         if (!user || !profile || !session) {
             if (!authLoading && !user) {
                 const currentPath = window.location.pathname + window.location.search;
-                router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
+                router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
             }
             return;
         }
 
         const verifyAccess = async () => {
             try {
+                // Removed session.status === 'deleted' check here.
+                // It is now handled by ClassroomContext's background listener
+                // to prevent redirect/alert loops between this page and the provider.
+
                 // CRITICAL: Check if user is the HOST of this session
-                const isHost = session.lecturerId === user.uid;
+                const isHost = session.hostId === user.uid || session.lecturerId === user.uid;
                 const isLecturer = profile.role === 'lecturer';
 
                 if (!isHost && !session.isActive) {
@@ -89,6 +93,21 @@ export default function ClassroomPage() {
                     return;
                 }
 
+                // Global Pay-to-Use Check
+                const settingsSnap = await getDoc(doc(db, 'system_settings', 'subscription'));
+                if (settingsSnap.exists()) {
+                    const settings = settingsSnap.data();
+                    const isPayToUse = settings.isPayToUse !== undefined ? settings.isPayToUse : true;
+                    const isAdmin = profile.role === 'admin';
+                    const isSubscribed = profile.subscriptionStatus === 'active';
+
+                    if (isPayToUse && !isAdmin && !isSubscribed) {
+                        showAlert('Active semester subscription required to access classes.', 'warning');
+                        router.push('/dashboard');
+                        return;
+                    }
+                }
+
                 // Check payment access
                 let hasPaidAccess = session.isFree || (await hasUserPaid(user.uid, sessionId));
 
@@ -96,29 +115,46 @@ export default function ClassroomPage() {
                 if (session.isFree && !hasPaidAccess && profile.role === 'student' && !isLecturer) {
                     const existingAccess = await hasUserPaid(user.uid, sessionId);
                     if (!existingAccess) {
-                        try {
-                            await addDoc(collection(db, 'transactions'), {
-                                userId: user.uid,
-                                sessionId: sessionId,
-                                amount: 0,
-                                currency: 'GHS',
-                                paystackReference: `free_${sessionId}_${user.uid}_${Date.now()}`,
-                                paymentChannel: 'mobile_money_mtn',
-                                status: 'succeeded',
-                                email: user.email || '',
-                                createdAt: Timestamp.now(),
-                                paidAt: Timestamp.now(),
-                                isHidden: false
-                            });
-                            hasPaidAccess = true;
-                        } catch (e: any) {
-                            if (e?.code === 'permission-denied') {
-                                hasPaidAccess = await hasUserPaid(user.uid, sessionId);
-                                if (!hasPaidAccess) {
-                                    showAlert('Unable to enroll. Please ensure your account is set up as a student.', 'error');
-                                    router.push('/dashboard/student');
-                                    return;
+                        let enrollmentSuccessful = false;
+                        let enrollmentRetries = 3;
+                        let enrollmentError = null;
+
+                        while (!enrollmentSuccessful && enrollmentRetries > 0) {
+                            try {
+                                await addDoc(collection(db, 'transactions'), {
+                                    userId: user.uid,
+                                    sessionId: sessionId,
+                                    amount: 0,
+                                    currency: 'GHS',
+                                    paystackReference: `free_${sessionId}_${user.uid}_${Date.now()}`,
+                                    paymentChannel: 'mobile_money_mtn',
+                                    status: 'succeeded',
+                                    email: user.email || '',
+                                    createdAt: Timestamp.now(),
+                                    paidAt: Timestamp.now(),
+                                    isHidden: false
+                                });
+                                enrollmentSuccessful = true;
+                                hasPaidAccess = true;
+                            } catch (e: any) {
+                                enrollmentError = e;
+                                if (e?.code === 'permission-denied') {
+                                    console.warn(`[Classroom:Enroll] Permission denied, retrying... (${enrollmentRetries} left)`);
+                                    await new Promise(resolve => setTimeout(resolve, 1500));
+                                    enrollmentRetries--;
+                                } else {
+                                    throw e;
                                 }
+                            }
+                        }
+
+                        if (!enrollmentSuccessful) {
+                            hasPaidAccess = await hasUserPaid(user.uid, sessionId);
+                            if (!hasPaidAccess) {
+                                console.error('[Classroom:Enroll] Final enrollment check failed:', enrollmentError);
+                                showAlert('Unable to enroll. Please ensure your account is set up as a student.', 'error');
+                                router.push('/dashboard');
+                                return;
                             }
                         }
                     } else {
@@ -128,7 +164,7 @@ export default function ClassroomPage() {
 
                 if (!isHost && !isLecturer && !hasPaidAccess) {
                     showAlert('You need to pay to access this class', 'warning');
-                    router.push('/dashboard/student');
+                    router.push('/dashboard');
                     return;
                 }
 
@@ -207,6 +243,15 @@ export default function ClassroomPage() {
                 sessionTitle: session?.title || 'Unknown Class',
             });
 
+            // Increment participant count on the session
+            try {
+                await updateDoc(doc(db, 'sessions', sessionId), {
+                    participantCount: increment(1)
+                });
+            } catch (e) {
+                console.warn('Failed to update participant count:', e);
+            }
+
             console.log('Attendance logged successfully');
 
             // Mark attendance as submitted to prevent modal from reappearing
@@ -254,7 +299,7 @@ export default function ClassroomPage() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
                 <div className="text-center max-w-md w-full">
-                    <div className="w-20 h-20 mx-auto mb-8 bg-blue-600/20 rounded-full flex items-center justify-center">
+                    <div className="w-20 h-20 mx-auto mb-8 bg-blue-600/10 rounded-full flex items-center justify-center border border-blue-500/20">
                         <Clock className="w-10 h-10 text-blue-400" />
                     </div>
                     <h1 className="text-3xl font-black text-white mb-2">Class starts in</h1>
@@ -284,7 +329,7 @@ export default function ClassroomPage() {
                     </div>
 
                     <button
-                        onClick={() => router.push('/dashboard/student')}
+                        onClick={() => router.push('/dashboard')}
                         className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 mx-auto"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -304,12 +349,12 @@ export default function ClassroomPage() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
                 <div className="text-center max-w-md">
-                    <div className="w-20 h-20 mx-auto mb-6 bg-blue-600/20 rounded-full flex items-center justify-center">
+                    <div className="w-20 h-20 mx-auto mb-6 bg-blue-600/10 rounded-full flex items-center justify-center border border-blue-500/20">
                         <Clock className="w-10 h-10 text-blue-400" />
                     </div>
                     <h1 className="text-2xl font-bold text-white mb-3">Waiting for Lecturer</h1>
                     <p className="text-gray-400 mb-6">
-                        The class hasn't started yet. Please wait for your lecturer to begin the session.
+                        The class hasn&apos;t started yet. Please wait for your lecturer to begin the session.
                     </p>
                     <div className="bg-gray-900 rounded-xl p-4 mb-6 border border-gray-800">
                         <p className="text-white font-semibold">{session?.title}</p>
@@ -324,7 +369,7 @@ export default function ClassroomPage() {
                             Refresh
                         </button>
                         <button
-                            onClick={() => router.push('/dashboard/student')}
+                            onClick={() => router.push('/dashboard')}
                             className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                         >
                             <ArrowLeft className="w-4 h-4" />
@@ -348,30 +393,30 @@ export default function ClassroomPage() {
             {showProfileModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/80" />
-                    <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-800 shadow-xl">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Student Details</h2>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    <div className="relative w-full max-w-md bg-white rounded-2xl p-8 border border-gray-200">
+                        <h2 className="text-xl font-bold text-gray-900  mb-2">Student Details</h2>
+                        <p className="text-gray-600  mb-6">
                             Please enter your details to join the class.
                         </p>
                         <form onSubmit={handleProfileSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
+                                <label className="block text-sm font-medium text-gray-700  mb-2">Full Name</label>
                                 <input
                                     type="text"
                                     required
                                     value={studentName}
                                     onChange={(e) => setStudentName(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Index Number</label>
+                                <label className="block text-sm font-medium text-gray-700  mb-2">Index Number</label>
                                 <input
                                     type="text"
                                     required
                                     value={studentIndex}
                                     onChange={(e) => setStudentIndex(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                             <button

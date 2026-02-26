@@ -23,7 +23,7 @@ export async function initializeSubscription(
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                callbackUrl: `${window.location.origin}/dashboard/student?subscription=success`
+                callbackUrl: `${window.location.origin}/dashboard?subscription=success`
             })
         });
 

@@ -65,5 +65,5 @@ location.reload();
 
 **If nothing happens:**
 1. Check if you're logged in (theme toggle only shows on dashboards)
-2. Navigate to `/dashboard/student` or `/dashboard/lecturer`
+2. Navigate to `/dashboard`
 3. Look for the icon button in the top right corner

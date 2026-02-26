@@ -53,7 +53,7 @@ export default function ProfilePage() {
 
     useEffect(() => {
         if (!user || !profile) {
-            router.push('/auth/login');
+            router.push('/login');
             return;
         }
 
@@ -320,7 +320,7 @@ export default function ProfilePage() {
     if (loading) {
         return (
             <div className="max-w-4xl mx-auto space-y-8">
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-8 border border-gray-200 dark:border-gray-800">
+                <div className="bg-white  rounded-xl p-8 border border-gray-200 ">
                     <div className="flex gap-6 items-center">
                         <Skeleton className="w-24 h-24 rounded-full" />
                         <div className="flex-1 space-y-3">
@@ -342,11 +342,11 @@ export default function ProfilePage() {
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             {/* Profile Card */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800">
+            <div className="bg-white  rounded-xl p-6 sm:p-8 border border-gray-200 ">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
                     {/* Profile Picture */}
                     <div className="flex-shrink-0 relative group">
-                        <div className="w-24 h-24 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center border-4 border-white dark:border-gray-800 shadow-lg">
+                        <div className="w-24 h-24 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center border-2 border-gray-200">
                             {photoURL ? (
                                 <img src={photoURL} alt={fullName} className="w-full h-full object-cover" />
                             ) : (
@@ -357,7 +357,7 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Upload Overlay */}
-                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-[2px]">
+                        <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
                             <Camera className="w-8 h-8 text-white" />
                             <input
                                 type="file"
@@ -369,7 +369,7 @@ export default function ProfilePage() {
                         </label>
 
                         {submitting && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full backdrop-blur-[2px]">
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
                                 <Loader2 className="w-8 h-8 text-white animate-spin" />
                             </div>
                         )}
@@ -377,16 +377,16 @@ export default function ProfilePage() {
 
                     {/* Profile Info */}
                     <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{fullName}</h2>
-                        <p className="text-gray-600 dark:text-gray-400">{profile?.email}</p>
+                        <h2 className="text-2xl font-bold text-gray-900 ">{fullName}</h2>
+                        <p className="text-gray-600 ">{profile?.email}</p>
                         <div className="mt-3 flex flex-wrap justify-center sm:justify-start items-center gap-2">
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${profile?.role === 'lecturer'
-                                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                ? 'bg-amber-100  text-amber-700 '
+                                : 'bg-blue-100  text-blue-700 '
                                 }`}>
                                 {profile?.role === 'lecturer' ? 'Lecturer' : 'Student'}
                             </span>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                            <span className="text-sm text-gray-500 ">
                                 Member since {profile?.createdAt ? new Date(profile.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
                             </span>
                         </div>
@@ -398,52 +398,52 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {profile?.role === 'lecturer' ? (
                     <>
-                        <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-800">
+                        <div className="bg-white  rounded-xl p-5 border border-gray-200 ">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                                    <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                <div className="p-3 bg-blue-100  rounded-xl">
+                                    <BookOpen className="w-5 h-5 text-blue-600 " />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Sessions</p>
-                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalSessions}</p>
+                                    <p className="text-sm text-gray-600 ">Total Sessions</p>
+                                    <p className="text-2xl font-bold text-gray-900 ">{stats.totalSessions}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-800">
+                        <div className="bg-white  rounded-xl p-5 border border-gray-200 ">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-                                    <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                <div className="p-3 bg-purple-100  rounded-xl">
+                                    <Users className="w-5 h-5 text-purple-600 " />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Students</p>
-                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalStudents}</p>
+                                    <p className="text-sm text-gray-600 ">Total Students</p>
+                                    <p className="text-2xl font-bold text-gray-900 ">{stats.totalStudents}</p>
                                 </div>
                             </div>
                         </div>
                     </>
                 ) : (
                     <>
-                        <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-800">
+                        <div className="bg-white  rounded-xl p-5 border border-gray-200 ">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                                    <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                <div className="p-3 bg-blue-100  rounded-xl">
+                                    <BookOpen className="w-5 h-5 text-blue-600 " />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Enrolled Classes</p>
-                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.enrolledClasses}</p>
+                                    <p className="text-sm text-gray-600 ">Enrolled Classes</p>
+                                    <p className="text-2xl font-bold text-gray-900 ">{stats.enrolledClasses}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-800">
+                        <div className="bg-white  rounded-xl p-5 border border-gray-200 ">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-                                    <CheckCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                <div className="p-3 bg-purple-100  rounded-xl">
+                                    <CheckCircle className="w-5 h-5 text-purple-600 " />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
-                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">Active</p>
+                                    <p className="text-sm text-gray-600 ">Status</p>
+                                    <p className="text-2xl font-bold text-gray-900 ">Active</p>
                                 </div>
                             </div>
                         </div>
@@ -456,7 +456,7 @@ export default function ProfilePage() {
                 <div className="flex justify-end">
                     <button
                         onClick={() => setShowHistoryModal(true)}
-                        className="px-5 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 font-semibold transition-colors flex items-center gap-2"
+                        className="px-5 py-2.5 bg-blue-50  text-blue-600  rounded-lg hover:bg-blue-100  font-semibold transition-colors flex items-center gap-2"
                     >
                         <History className="w-5 h-5" />
                         View Attendance History
@@ -471,24 +471,24 @@ export default function ProfilePage() {
             )}
 
             {/* Edit Profile */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Edit Profile</h3>
+            <div className="bg-white  rounded-xl p-6 sm:p-8 border border-gray-200 ">
+                <h3 className="text-lg font-bold text-gray-900  mb-6">Edit Profile</h3>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700  mb-2">
                             Full Name
                         </label>
                         <input
                             type="text"
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700  mb-2">
                             Bio
                         </label>
                         <textarea
@@ -497,9 +497,9 @@ export default function ProfilePage() {
                             maxLength={500}
                             rows={4}
                             placeholder="Tell us about yourself..."
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-sm text-gray-500  mt-1">
                             {bio.length}/500 characters
                         </p>
                     </div>
@@ -515,48 +515,48 @@ export default function ProfilePage() {
             </div>
 
             {/* Change Password */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Change Password</h3>
+            <div className="bg-white  rounded-xl p-6 sm:p-8 border border-gray-200 ">
+                <h3 className="text-lg font-bold text-gray-900  mb-6">Change Password</h3>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700  mb-2">
                             Current Password
                         </label>
                         <input
                             type="password"
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700  mb-2">
                             New Password
                         </label>
                         <input
                             type="password"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700  mb-2">
                             Confirm New Password
                         </label>
                         <input
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
 
                     {passwordError && (
-                        <p className="text-sm text-red-600 dark:text-red-400">{passwordError}</p>
+                        <p className="text-sm text-red-600 ">{passwordError}</p>
                     )}
 
                     <button
@@ -571,7 +571,7 @@ export default function ProfilePage() {
 
             {/* Recordings Section */}
             {profile?.role === 'lecturer' && (
-                <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+                <div className="pt-8 border-t border-gray-200 ">
                     <RecordingsDashboard lecturerId={user?.uid || ''} />
                 </div>
             )}

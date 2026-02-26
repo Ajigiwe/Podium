@@ -58,9 +58,9 @@ export const StudentVerificationModal = ({ sessionId }: StudentVerificationModal
 
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-500" />
+            <div className="absolute inset-0 bg-black/80 animate-in fade-in duration-500" />
 
-            <div className="relative bg-[#0F172A] border border-blue-500/20 rounded-3xl p-6 max-w-xs w-full shadow-[0_0_40px_-10px_rgba(59,130,246,0.4)] animate-in zoom-in duration-300">
+            <div className="relative bg-[#0F172A] border-2 border-blue-500/40 rounded-3xl p-6 max-w-xs w-full animate-in zoom-in duration-300">
                 {isVerified ? (
                     <div className="text-center py-4 animate-in zoom-in duration-300">
                         <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
@@ -107,9 +107,9 @@ export const StudentVerificationModal = ({ sessionId }: StudentVerificationModal
                         <button
                             onClick={handleVerify}
                             disabled={isResponding || timeLeft === 0}
-                            className={`w-full font-black py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 text-base ${timeLeft < 10
-                                ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
-                                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/40'
+                            className={`w-full font-black py-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 text-base ${timeLeft < 10
+                                ? 'bg-red-600 hover:bg-red-700 border-2 border-red-500'
+                                : 'bg-blue-600 hover:bg-blue-700 border-2 border-blue-500'
                                 } text-white`}
                         >
                             {isResponding ? (

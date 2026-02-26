@@ -64,7 +64,7 @@ export default function ClassroomChat({ sessionId, height = '100%' }: ClassroomC
                                     <span className="text-[8px] text-gray-600 font-bold uppercase tracking-tighter">LIVE</span>
                                 </div>
                                 <div
-                                    className={`px-4 py-2 rounded-2xl text-sm max-w-[85%] break-words shadow-sm ${isMe
+                                    className={`px-4 py-2 rounded-2xl text-sm max-w-[85%] break-words ${isMe
                                         ? 'bg-indigo-600 text-white rounded-br-none'
                                         : 'bg-gray-800 text-gray-200 rounded-bl-none border border-white/5'
                                         }`}

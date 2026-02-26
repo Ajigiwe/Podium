@@ -73,6 +73,8 @@ export async function POST(request: NextRequest) {
             videoGrant.canPublishSources = [
                 TrackSource.CAMERA,
                 TrackSource.MICROPHONE,
+                TrackSource.SCREEN_SHARE,
+                TrackSource.SCREEN_SHARE_AUDIO,
             ];
             videoGrant.roomAdmin = false;
             videoGrant.canUpdateOwnMetadata = false;

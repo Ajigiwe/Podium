@@ -5,7 +5,7 @@ export interface Profile {
     id: string;
     email: string;
     fullName: string;
-    role: 'student' | 'lecturer' | 'admin';
+    role?: 'student' | 'lecturer' | 'admin';
     bio?: string;
     photoURL?: string;
     indexNumber?: string; // Student Index Number
@@ -13,6 +13,8 @@ export interface Profile {
     subscriptionExpiresAt?: Timestamp; // When subscription ends
     createdAt: Timestamp;
     updatedAt?: Timestamp;
+    status?: 'active' | 'disabled';
+    university?: string;
     classCount?: number; // Total unique classes joined (aggregated)
 }
 
@@ -32,7 +34,9 @@ export interface SystemSettings {
 export interface Session {
     id: string;
     title: string;
-    lecturerId: string;
+    hostId: string;
+    lecturerId?: string; // Kept for backward compatibility during migration
+    backupModId?: string;
     meetingCode: string; // Google Meet-style code (pod-xxxx-xxxx)
     youtubeVideoId: string | null;
     isActive: boolean;
@@ -51,7 +55,14 @@ export interface Session {
         frequencyMinutes: number;
         lastTriggeredAt?: Timestamp;
     };
-    autoApproveMic?: boolean; // New field for bulk permission granting
+    autoApproveMic?: boolean;
+    status?: 'active' | 'on_hold' | 'ended' | 'paused' | 'deleted';
+    participantCount?: number;
+    hostLastSeen?: Timestamp;
+    modLastSeen?: Timestamp;
+    host_absence_minutes?: number;
+    auto_alert_triggered?: boolean;
+    auto_alert_triggered_at?: Timestamp;
     createdAt: Timestamp;
 }
 

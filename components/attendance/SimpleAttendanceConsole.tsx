@@ -180,7 +180,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
     if (!isActive) return null;
 
     return (
-        <div className="relative flex items-center gap-2 bg-gray-900/40 backdrop-blur-sm border border-white/5 rounded-full px-4 py-1.5 h-10 shadow-lg">
+        <div className="relative flex items-center gap-2 bg-gray-900 border border-white/10 rounded-full px-4 py-1.5 h-10">
             {!stats ? (
                 <button
                     onClick={handleStartAttendance}
@@ -234,7 +234,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                             </button>
 
                             {showSettings && (
-                                <div className="absolute bottom-full right-0 mb-3 w-48 bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="absolute bottom-full right-0 mb-3 w-48 bg-gray-900 border border-white/10 rounded-xl p-4 animate-in fade-in slide-in-from-bottom-2">
                                     <div className="flex items-center justify-between mb-4">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Auto-Verify</span>
                                         <label className="relative inline-flex items-center cursor-pointer">

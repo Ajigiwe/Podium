@@ -24,15 +24,23 @@ export const usePermissions = (roomId: string, isLecturer: boolean) => {
     const prevPermissionsRef = useRef<Permissions>({ mic: isLecturer, camera: isLecturer });
     const isInitialLoadRef = useRef(true); // Track if this is the first doc fetch
 
-    useEffect(() => {
-        if (!localParticipant || !localParticipant.identity || isLecturer) return;
+    // STABLE REF for localParticipant so effects don't re-run on reference changes
+    const participantRef = useRef(localParticipant);
+    participantRef.current = localParticipant;
 
-        console.log(`[usePermissions] Initializing listener for identity: ${localParticipant.identity} in room: ${roomId}`);
+    // Extract identity as a stable primitive for the dependency array
+    const identity = localParticipant?.identity;
+
+    useEffect(() => {
+        if (!identity || isLecturer) return;
+
+        console.log(`[usePermissions] Initializing listener for identity: ${identity} in room: ${roomId}`);
+        isInitialLoadRef.current = true; // Reset on new identity
 
         // Subscribe to Firestore for changes
-        const fetchPermissions = subscribeToPermissions(
+        const unsubscribe = subscribeToPermissions(
             roomId,
-            localParticipant.identity,
+            identity,
             async (participantPerms) => {
                 if (!participantPerms) return;
 
@@ -56,30 +64,35 @@ export const usePermissions = (roomId: string, isLecturer: boolean) => {
                 if (isInitial) {
                     isInitialLoadRef.current = false;
                     console.log('📡 [usePermissions] Initial load complete. Skipping auto-enables.');
+                    prevPermissionsRef.current = { mic: newMicPerm, camera: newCamPerm };
+                    return; // SKIP all auto-enable/revoke on first load
                 }
 
+                const lp = participantRef.current;
+                if (!lp) return;
+
                 // Handle granting by auto-enabling local participant media
-                if (!isInitial && !prev.mic && newMicPerm) {
+                if (!prev.mic && newMicPerm) {
                     console.log('🎙️ Mic permission granted, auto-enabling');
                     setTimeout(async () => {
-                        await localParticipant.setMicrophoneEnabled(true).catch(console.error);
+                        await participantRef.current?.setMicrophoneEnabled(true).catch(console.error);
                     }, 500);
                 }
-                if (!isInitial && !prev.camera && newCamPerm) {
+                if (!prev.camera && newCamPerm) {
                     console.log('📸 Camera permission granted, auto-enabling');
                     setTimeout(async () => {
-                        await localParticipant.setCameraEnabled(true).catch(console.error);
+                        await participantRef.current?.setCameraEnabled(true).catch(console.error);
                     }, 500);
                 }
 
                 // Handle revokes by forcing local participant mute
                 if (prev.mic && !newMicPerm) {
                     console.log('🔇 Mic permission revoked, force muting');
-                    await localParticipant.setMicrophoneEnabled(false).catch(console.error);
+                    await lp.setMicrophoneEnabled(false).catch(console.error);
                 }
                 if (prev.camera && !newCamPerm) {
                     console.log('📷 Camera permission revoked, force muting');
-                    await localParticipant.setCameraEnabled(false).catch(console.error);
+                    await lp.setCameraEnabled(false).catch(console.error);
                 }
 
                 prevPermissionsRef.current = { mic: newMicPerm, camera: newCamPerm };
@@ -87,21 +100,22 @@ export const usePermissions = (roomId: string, isLecturer: boolean) => {
         );
 
         return () => {
-            fetchPermissions();
+            unsubscribe();
         };
-    }, [localParticipant, localParticipant?.identity, roomId, isLecturer]);
+    }, [identity, roomId, isLecturer]); // STABLE deps: primitive identity, not object ref
 
     // Handle requesting permissions
     const requestPerm = useCallback(async (type: PermissionType) => {
-        if (!localParticipant || !localParticipant.identity || isLecturer) return;
+        const lp = participantRef.current;
+        if (!lp || !lp.identity || isLecturer) return;
 
         setHasPendingRequest(true);
 
         try {
             await requestPermission(
                 roomId,
-                localParticipant.identity,
-                localParticipant.name || 'Student',
+                lp.identity,
+                lp.name || 'Student',
                 type
             );
             console.log('Sent permission request for', type);
@@ -109,7 +123,7 @@ export const usePermissions = (roomId: string, isLecturer: boolean) => {
             console.error('[Permissions:Request:Failed] Failed to request permission:', error);
             setHasPendingRequest(false);
         }
-    }, [localParticipant, localParticipant?.identity, roomId, isLecturer]);
+    }, [roomId, isLecturer]); // STABLE deps: no localParticipant object
 
     return {
         permissions,

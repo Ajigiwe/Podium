@@ -28,12 +28,14 @@ export default function AlertModal({
     confirmText = 'OK',
     cancelText = 'Cancel'
 }: AlertModalProps) {
-    const [visible, setVisible] = useState(false);
+    const [visible, setVisible] = useState(isOpen);
+
+    if (isOpen && !visible) {
+        setVisible(true);
+    }
 
     useEffect(() => {
-        if (isOpen) {
-            setVisible(true);
-        } else {
+        if (!isOpen) {
             const timer = setTimeout(() => setVisible(false), 200); // Wait for animation
             return () => clearTimeout(timer);
         }
@@ -65,27 +67,27 @@ export default function AlertModal({
 
     return (
         <div
-            className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'
+            className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'
                 }`}
             onClick={(e) => {
                 if (e.target === e.currentTarget && !showCancel) onClose();
             }}
         >
             <div
-                className={`bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xs sm:max-w-sm transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
+                className={`bg-white rounded-xl border border-gray-200 w-full max-w-xs sm:max-w-sm transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
                     }`}
             >
                 <div className="p-5">
                     <div className="flex flex-col items-center text-center">
-                        <div className={`mb-3 p-2.5 rounded-full bg-gray-50 dark:bg-gray-700/50`}>
+                        <div className="mb-3 p-2.5 rounded-full bg-gray-50">
                             {getIcon()}
                         </div>
 
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5">
+                        <h3 className="text-lg font-bold text-gray-900 mb-1.5">
                             {title}
                         </h3>
 
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
+                        <p className="text-sm text-gray-600 mb-5">
                             {message}
                         </p>
 
@@ -96,7 +98,7 @@ export default function AlertModal({
                                         if (onCancel) onCancel();
                                         onClose();
                                     }}
-                                    className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors"
                                 >
                                     {cancelText}
                                 </button>
@@ -106,7 +108,7 @@ export default function AlertModal({
                                     if (onConfirm) onConfirm();
                                     onClose();
                                 }}
-                                className={`flex-1 px-3 py-2 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-500/20 transition-all active:scale-95 ${getColor()}`}
+                                className={`flex-1 px-3 py-2 text-white rounded-lg text-sm font-semibold transition-all active:scale-95 ${getColor()}`}
                             >
                                 {confirmText}
                             </button>

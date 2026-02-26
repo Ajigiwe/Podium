@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface CountdownTimerProps {
     targetDate: Date;
@@ -8,43 +8,42 @@ interface CountdownTimerProps {
 }
 
 export default function CountdownTimer({ targetDate, onComplete }: CountdownTimerProps) {
-    const [timeLeft, setTimeLeft] = useState({
-        hours: 0,
-        minutes: 0,
-        seconds: 0,
-        total: 0
-    });
+    const calculateTimeLeft = useCallback(() => {
+        const difference = targetDate.getTime() - new Date().getTime();
+
+        if (difference <= 0) {
+            return { hours: 0, minutes: 0, seconds: 0, total: 0 };
+        }
+
+        return {
+            hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+            minutes: Math.floor((difference / 1000 / 60) % 60),
+            seconds: Math.floor((difference / 1000) % 60),
+            total: difference
+        };
+    }, [targetDate]);
+
+    const [prevTargetDate, setPrevTargetDate] = useState(targetDate);
+    const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft());
+
+    if (targetDate !== prevTargetDate) {
+        setPrevTargetDate(targetDate);
+        setTimeLeft(calculateTimeLeft());
+    }
 
     useEffect(() => {
-        const calculateTimeLeft = () => {
-            const difference = targetDate.getTime() - new Date().getTime();
-
-            if (difference <= 0) {
-                if (onComplete) onComplete();
-                return { hours: 0, minutes: 0, seconds: 0, total: 0 };
-            }
-
-            return {
-                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-                minutes: Math.floor((difference / 1000 / 60) % 60),
-                seconds: Math.floor((difference / 1000) % 60),
-                total: difference
-            };
-        };
-
-        setTimeLeft(calculateTimeLeft());
-
         const timer = setInterval(() => {
             const newTimeLeft = calculateTimeLeft();
             setTimeLeft(newTimeLeft);
 
             if (newTimeLeft.total <= 0) {
+                if (onComplete) onComplete();
                 clearInterval(timer);
             }
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [targetDate, onComplete]);
+    }, [calculateTimeLeft, onComplete]);
 
     if (timeLeft.total <= 0) return null;
 

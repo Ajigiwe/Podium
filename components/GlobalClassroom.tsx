@@ -42,7 +42,7 @@ import { roomOptions } from '@/config/livekit.config';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { DeviceFailureHandler } from './media/DeviceFailureHandler';
 import { useScreenSharePersistence } from '@/hooks/useScreenSharePersistence';
-
+import { useScreenShareOrientation } from '@/hooks/useScreenShareOrientation';
 
 // Inner component that can access the room context
 function RoomConnector({ onRoomReady }: { onRoomReady: (room: Room) => void }) {
@@ -83,7 +83,7 @@ function ParticipantMenu({ participant, closeMenu }: { participant: Participant,
     return (
         <div
             ref={menuRef}
-            className="absolute top-10 right-2 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl w-48 py-1 overflow-hidden"
+            className="absolute top-10 right-2 z-50 bg-gray-900 border border-gray-700 rounded-lg w-48 py-1 overflow-hidden"
             onClick={(e) => e.stopPropagation()} // Prevent tile click
         >
             <button
@@ -155,14 +155,14 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
 
     return (
         <div
-            className={`h-full relative group cursor-pointer aspect-[3/4] sm:aspect-video rounded-lg overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : ''} ${className?.includes('aspect-') ? className : `aspect-[3/4] sm:aspect-video ${className || ''}`}`}
+            className={`h-full w-full max-w-full relative group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-4 ring-green-500' : 'ring-1 ring-white/10'} ${className || ''}`}
             onClick={() => onTileClick(track)}
         >
-            <ParticipantTile trackRef={track} {...props} className="!w-full !h-full [&_video]:!object-cover [&_video]:!object-center" />
+            <ParticipantTile trackRef={track} {...props} className={`!w-full !h-full [&_video]:!object-center ${track.source === Track.Source.ScreenShare ? '[&_video]:!object-contain' : '[&_video]:!object-cover'}`} />
 
             {/* Speaking Indicator Badge */}
             {isSpeaking && (
-                <div className="absolute top-2 right-2 z-20 bg-green-500 text-black p-1 rounded-full shadow-lg animate-pulse">
+                <div className="absolute top-2 right-2 z-20 bg-green-500 text-black p-1 rounded-full animate-pulse border border-green-400">
                     <Mic className="w-3 h-3" />
                 </div>
             )}
@@ -175,7 +175,7 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
                             e.stopPropagation();
                             setIsMenuOpen(!isMenuOpen);
                         }}
-                        className="p-1 rounded-full bg-black/40 hover:bg-black/80 text-white transition-colors backdrop-blur-sm"
+                        className="p-1 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
                     >
                         <MoreVertical className="w-4 h-4" />
                     </button>
@@ -206,7 +206,7 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
 
             {/* Click Safe Overlay */}
             <div className="absolute inset-0 z-10 opacity-0 hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto flex items-center justify-center bg-black/20">
-                <div className="bg-black/60 p-1.5 rounded-full text-white backdrop-blur-sm">
+                <div className="bg-black/80 p-1.5 rounded-full text-white">
                     <Maximize2 className="w-4 h-4" />
                 </div>
             </div>
@@ -239,10 +239,17 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
     }, [trackRef.participant]);
 
     const isSpeaking = hookIsSpeaking || manualIsSpeaking;
+    const isScreenShare = trackRef.source === Track.Source.ScreenShare;
 
     return (
-        <div className={`relative w-full h-full group transition-all duration-500 ${isSpeaking ? 'ring-4 ring-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.3)]' : ''}`}>
-            <FocusLayout trackRef={trackRef} onParticipantClick={onParticipantClick} {...props} />
+        <div className={`relative w-full h-full group transition-all duration-500 bg-black ${isSpeaking ? 'ring-4 ring-green-500/50' : ''}`}>
+            {/* Directly render ParticipantTile to ensure camera tracks display correctly full-screen, bypassing FocusLayout bugs */}
+            <ParticipantTile
+                trackRef={trackRef}
+                onParticipantClick={onParticipantClick}
+                className={`!w-full !h-full [&_video]:!object-center ${isScreenShare ? '[&_video]:!object-contain bg-black' : '[&_video]:!object-cover'}`}
+                {...props}
+            />
 
             {/* Moderator Menu Button - Top Right */}
             {showMenu && (
@@ -252,7 +259,7 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
                             e.stopPropagation();
                             setIsMenuOpen(!isMenuOpen);
                         }}
-                        className="p-2 rounded-full bg-black/40 hover:bg-black/80 text-white transition-colors backdrop-blur-sm ring-1 ring-white/10"
+                        className="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors ring-1 ring-white/10"
                     >
                         <MoreVertical className="w-5 h-5" />
                     </button>
@@ -267,8 +274,8 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
 
             {/* Explicit Placeholder for Camera Off in Focus Mode */}
             {isCameraOff && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 border-2 border-dashed border-gray-800 rounded-xl m-4">
-                    <div className="w-32 h-32 bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-2xl ring-4 ring-white/5">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 border-2 border-dashed border-gray-800 rounded-xl m-4 pointer-events-none">
+                    <div className="w-32 h-32 bg-gray-800 rounded-full flex items-center justify-center mb-6 ring-4 ring-white/5 border border-gray-700">
                         <User className="w-16 h-16 text-gray-400" />
                     </div>
                     <span className="text-gray-200 font-bold text-2xl tracking-tight">
@@ -304,7 +311,7 @@ function InnerVideoLayout({
     showAlert,
     customAlert,
     isActive,
-    isDocked
+    isDocked,
 }: {
     onReaction: (emoji: string) => void;
     onLeave: () => void;
@@ -335,8 +342,20 @@ function InnerVideoLayout({
     const { sessionId, title, userId } = useClassroom();
     console.log('DEBUG: InnerVideoLayout', { sessionId, userId, userRole });
     const [focusTrack, setFocusTrack] = useState<TrackReferenceOrPlaceholder | null>(null);
+    const [userDisabledAutoFocus, setUserDisabledAutoFocus] = useState(false);
     const room = useRoomContext();
     const [activeSpeakers, setActiveSpeakers] = useState<Participant[]>([]);
+    const [isMobileLandscape, setIsMobileLandscape] = useState(false);
+    const { isScreenSharing, isMobile } = useScreenShareOrientation();
+
+    useEffect(() => {
+        const checkOrientation = () => {
+            setIsMobileLandscape(window.innerWidth > window.innerHeight && window.innerWidth < 1024);
+        };
+        checkOrientation();
+        window.addEventListener('resize', checkOrientation);
+        return () => window.removeEventListener('resize', checkOrientation);
+    }, []);
 
     useEffect(() => {
         if (!room) return;
@@ -376,79 +395,64 @@ function InnerVideoLayout({
     // Calculate total pages
     const totalPages = Math.ceil(sortedTracks.length / PAGE_SIZE);
 
-    // Sidebar Resize State
-    const [sidebarWidth, setSidebarWidth] = useState(320); // Default desktop width
-    const [sidebarHeight, setSidebarHeight] = useState(140); // Default mobile height
-    const [isResizingSidebar, setIsResizingSidebar] = useState(false);
-    const sidebarResizeRef = useRef<{ startX: number, startY: number, startW: number, startH: number } | null>(null);
+    // PiP Drag State
+    const [pipPosition, setPipPosition] = useState({ x: 16, y: 16 }); // 16px from bottom-right initial
+    const [isDraggingPip, setIsDraggingPip] = useState(false);
+    const pipDragRef = useRef<{ startX: number, startY: number, startPipX: number, startPipY: number } | null>(null);
 
-    const startResizing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const startPipDrag = useCallback((e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault();
-        e.stopPropagation();
-        setIsResizingSidebar(true);
+        setIsDraggingPip(true);
         const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-        sidebarResizeRef.current = {
+        pipDragRef.current = {
             startX: clientX,
             startY: clientY,
-            startW: sidebarWidth,
-            startH: sidebarHeight
+            startPipX: pipPosition.x,
+            startPipY: pipPosition.y
         };
-    }, [sidebarWidth, sidebarHeight]);
+    }, [pipPosition]);
 
     useEffect(() => {
-        const handleResizeMove = (e: MouseEvent | TouchEvent) => {
-            if (!isResizingSidebar || !sidebarResizeRef.current) return;
-
+        const handlePipMove = (e: MouseEvent | TouchEvent) => {
+            if (!isDraggingPip || !pipDragRef.current) return;
             const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
             const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
 
-            if (window.innerWidth >= 640) {
-                // Desktop: Resize Width (Dragging Left increases width)
-                // Handle is on the LEFT of the sidebar (which is on the right)
-                // So deltaX < 0 means increasing width
-                const deltaX = sidebarResizeRef.current.startX - clientX;
-                setSidebarWidth(Math.max(200, Math.min(600, sidebarResizeRef.current.startW + deltaX)));
-            } else {
-                // Mobile: Resize Height (Dragging Up increases height)
-                // Sidebar is at bottom (order-3), Handle is above it (order-2)
-                // Dragging UP (negative Y) increases height
-                const deltaY = sidebarResizeRef.current.startY - clientY;
-                setSidebarHeight(Math.max(100, Math.min(400, sidebarResizeRef.current.startH + deltaY)));
-            }
+            const deltaX = pipDragRef.current.startX - clientX;
+            const deltaY = pipDragRef.current.startY - clientY;
+
+            setPipPosition({
+                x: Math.max(0, Math.min(window.innerWidth - 100, pipDragRef.current.startPipX + deltaX)),
+                y: Math.max(0, Math.min(window.innerHeight - 100, pipDragRef.current.startPipY + deltaY))
+            });
         };
 
-        const handleResizeEnd = () => {
-            setIsResizingSidebar(false);
-            sidebarResizeRef.current = null;
+        const handlePipEnd = () => {
+            setIsDraggingPip(false);
+            pipDragRef.current = null;
         };
 
-        if (isResizingSidebar) {
-            window.addEventListener('mousemove', handleResizeMove);
-            window.addEventListener('mouseup', handleResizeEnd);
-            window.addEventListener('touchmove', handleResizeMove);
-            window.addEventListener('touchend', handleResizeEnd);
+        if (isDraggingPip) {
+            window.addEventListener('mousemove', handlePipMove);
+            window.addEventListener('mouseup', handlePipEnd);
+            window.addEventListener('touchmove', handlePipMove, { passive: false });
+            window.addEventListener('touchend', handlePipEnd);
         }
 
         return () => {
-            window.removeEventListener('mousemove', handleResizeMove);
-            window.removeEventListener('mouseup', handleResizeEnd);
-            window.removeEventListener('touchmove', handleResizeMove);
-            window.removeEventListener('touchend', handleResizeEnd);
+            window.removeEventListener('mousemove', handlePipMove);
+            window.removeEventListener('mouseup', handlePipEnd);
+            window.removeEventListener('touchmove', handlePipMove);
+            window.removeEventListener('touchend', handlePipEnd);
         };
-    }, [isResizingSidebar]);
+    }, [isDraggingPip]);
 
-    // Reset to page 1 if tracks change significantly (optional, but good for UX)
-    useEffect(() => {
-        if (currentPage > totalPages && totalPages > 0) {
-            setCurrentPage(totalPages);
-        }
-    }, [tracks.length, totalPages, currentPage]);
 
-    // --- Automatic Lecturer Screen Share Focus ---
+    // --- Automatic Host Focus ---
     useEffect(() => {
-        const lecturerScreenShare = tracks.find(t => {
-            if (t.source !== Track.Source.ScreenShare) return false;
+        // Find lecturer tracks
+        const lecturerTracks = tracks.filter(t => {
             try {
                 const metadata = JSON.parse(t.participant.metadata || '{}');
                 return metadata.role === 'lecturer';
@@ -457,25 +461,25 @@ function InnerVideoLayout({
             }
         });
 
-        if (lecturerScreenShare) {
-            // Auto-focus the lecturer's screen share if not already focused
-            if (!focusTrack || focusTrack.participant.sid !== lecturerScreenShare.participant.sid || focusTrack.source !== Track.Source.ScreenShare) {
-                console.log('⚡ [InnerVideoLayout] Auto-focusing lecturer screen share');
-                setFocusTrack(lecturerScreenShare);
+        // Prefer screen share over camera
+        const hostScreenShare = lecturerTracks.find(t => t.source === Track.Source.ScreenShare);
+        const hostCamera = lecturerTracks.find(t => t.source === Track.Source.Camera || t.source === Track.Source.Unknown);
+        const autoFocusTarget = hostScreenShare || hostCamera;
 
-                // On mobile, set sidebar height to ~20% for dominance of the shared screen
-                if (window.innerWidth < 640) {
-                    setSidebarHeight(Math.floor(window.innerHeight * 0.2));
-                }
+        if (autoFocusTarget && !userDisabledAutoFocus) {
+            // Auto-focus the host if not already focused
+            if (!focusTrack || focusTrack.participant.sid !== autoFocusTarget.participant.sid || focusTrack.source !== autoFocusTarget.source) {
+                console.log('⚡ [InnerVideoLayout] Auto-focusing Host (Lecturer)');
+                setTimeout(() => setFocusTrack(autoFocusTarget), 0);
             }
-        } else if (focusTrack && focusTrack.source === Track.Source.ScreenShare) {
-            // If the focused track was a screen share and it's gone, unfocus
+        } else if (focusTrack && !userDisabledAutoFocus) {
+            // If the focused track no longer exists, unfocus to revert to grid
             const stillExists = tracks.some(t => t.participant.sid === focusTrack.participant.sid && t.source === focusTrack.source);
             if (!stillExists) {
-                setFocusTrack(null);
+                setTimeout(() => setFocusTrack(null), 0);
             }
         }
-    }, [tracks]);
+    }, [tracks, userDisabledAutoFocus]);
 
     // Get current page tracks
     const paginatedTracks = sortedTracks.slice(
@@ -503,8 +507,10 @@ function InnerVideoLayout({
 
         if (focusTrack && focusTrack.participant?.sid === track.participant.sid && focusTrack.source === track.source) {
             setFocusTrack(null); // Unfocus
+            setUserDisabledAutoFocus(true);
         } else {
             setFocusTrack(track); // Focus
+            setUserDisabledAutoFocus(false); // Re-enable auto focus since the user explicitly focused someone
         }
     };
 
@@ -513,17 +519,22 @@ function InnerVideoLayout({
 
     return (
         <div className="flex flex-col h-full bg-[#0a0a0a] relative">
-            {/* CSS to hide default LiveKit control bar so we can use our custom one */}
+            {/* CSS for immersive view and vertical video filling */}
             <style jsx global>{`
                 .lk-video-conference .lk-control-bar { display: none !important; }
-                @media (max-width: 640px) {
+                @media (max-width: 1024px) {
                     .mobile-hide-force { display: none !important; }
+                    /* Let Tailwind classes handle object-fit (cover vs contain) */
+                    .immersive-video-container video {
+                        height: 100% !important;
+                        width: 100% !important;
+                    }
                 }
             `}</style>
 
-            {/* Top Navbar - Hide if docked in main classroom page */}
-            {!isDocked && (
-                <div className="h-12 bg-black/60 backdrop-blur-md border-b border-white/5 px-4 flex items-center justify-between z-[100]">
+            {/* Top Navbar - Hide if docked OR on mobile focus for immersive feel */}
+            {(!isDocked && !(isMobile && focusTrack)) && (
+                <div className="h-12 bg-black/80 border-b border-white/5 px-4 flex items-center justify-between z-[100]">
                     <div className="flex items-center gap-3">
                         <div className="bg-blue-600/20 p-1.5 rounded-lg border border-blue-500/20">
                             <Video className="w-4 h-4 text-blue-500" />
@@ -552,81 +563,56 @@ function InnerVideoLayout({
                         onLowerHand={lowerHand}
                     />
                     {focusTrack ? (
-                        <div className="absolute inset-0 flex flex-col sm:flex-row bg-black z-50">
-                            {/* Resize Handle - Desktop (Vertical) / Mobile (Horizontal) */}
-                            <div
-                                onMouseDown={startResizing}
-                                onTouchStart={startResizing}
-                                className={`
-                                    z-[150] bg-gray-800 hover:bg-blue-500 transition-colors active:bg-blue-600
-                                    flex items-center justify-center
-                                    ${isResizingSidebar ? 'bg-blue-600' : ''}
-                                    order-2 sm:order-2
-                                    h-2 w-full cursor-row-resize sm:h-full sm:w-2 sm:cursor-col-resize
-                                `}
-                            >
-                                <div className="bg-gray-600 rounded-full w-12 h-1 sm:w-1 sm:h-8" />
-                            </div>
-
-                            {/* Mobile: Horizontal scroll on top (actually bottom order-3), Desktop: Vertical on right */}
-                            <div
-                                className="bg-gray-900/50 border-t sm:border-t-0 sm:border-l border-white/5 order-3 sm:order-3 overflow-x-auto sm:overflow-y-auto p-1 sm:p-2 transition-[height,width] duration-75 ease-out"
-                                style={{
-                                    width: typeof window !== 'undefined' && window.innerWidth >= 640 ? `${sidebarWidth}px` : '100%',
-                                    height: typeof window !== 'undefined' && window.innerWidth < 640 ? `${sidebarHeight}px` : '100%',
-                                }}
-                            >
-                                <div className="flex sm:flex-col gap-1 sm:gap-2 h-full">
-                                    {carouselTracks.slice(0, 4).map((t) => (
-                                        <TileWrapper
-                                            key={`${t.participant.sid}-${t.source}`}
-                                            track={t}
-                                            participant={t.participant}
-                                            onTileClick={handleTileClick}
-                                            className="w-40 sm:w-full !aspect-video flex-shrink-0"
-                                        />
-                                    ))}
-
-                                    {/* "More" Indicator Tile */}
-                                    {carouselTracks.length > 4 && (
-                                        <div className="w-40 sm:w-full !aspect-video flex-shrink-0 bg-gray-800/50 rounded-lg flex flex-col items-center justify-center border border-dashed border-white/10 group hover:border-blue-500/50 transition-colors">
-                                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mb-1 group-hover:bg-blue-600/20 transition-colors">
-                                                <User className="w-5 h-5 text-gray-400 group-hover:text-blue-400" />
-                                            </div>
-                                            <span className="text-white font-bold text-lg">+{carouselTracks.length - 4}</span>
-                                            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-tighter">Others</span>
-                                        </div>
-                                    )}
-
-                                    {carouselTracks.length === 0 && (
-                                        <div className="flex-1 flex items-center justify-center text-gray-500 text-xs italic p-4 text-center">
-                                            No other participants
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex-1 relative order-1 sm:order-1 h-full min-h-0">
+                        <div className="absolute inset-0 flex bg-black z-50">
+                            {/* Focused Track (Host / Screen Share) */}
+                            <div className={`flex-1 relative h-full min-h-0 min-w-0 ${focusTrack.source === Track.Source.ScreenShare ? '[&_video]:!object-contain [&_video]:!w-full [&_video]:!h-full' : 'immersive-video-container [&_video]:!h-full'}`}>
                                 <FocusWrapper trackRef={focusTrack} onParticipantClick={() => setFocusTrack(null)} />
-                                {/* Unfocus Button Overlay */}
+
+                                {/* Always show Minimize button so students can return to grid manually */}
                                 <button
-                                    onClick={() => setFocusTrack(null)}
-                                    className="absolute top-4 left-4 z-[60] bg-black/60 text-white p-2.5 rounded-xl hover:bg-black/80 ring-1 ring-white/20 shadow-2xl backdrop-blur-md"
-                                    title="Exit Focus Mode"
+                                    onClick={() => {
+                                        setFocusTrack(null);
+                                        setUserDisabledAutoFocus(true);
+                                    }}
+                                    className="absolute top-4 left-4 z-[60] bg-black/80 text-white px-3 py-2 rounded-xl hover:bg-black ring-1 ring-white/20 flex items-center gap-2"
+                                    title="Switch to Grid View"
                                 >
                                     <Minimize2 className="w-5 h-5" />
+                                    <span className="hidden sm:inline text-sm font-semibold">Grid View</span>
                                 </button>
-
-                                <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10 hidden sm:block">
-                                    <p className="text-white text-xs font-medium">Focus Mode</p>
-                                </div>
                             </div>
+
+                            {/* Floating Joiner PiP - hidden during screen share to avoid blocking content */}
+                            {focusTrack.source !== Track.Source.ScreenShare && (
+                                <div
+                                    className={`absolute z-[70] flex flex-col gap-2 pointer-events-auto cursor-grab active:cursor-grabbing ${isDraggingPip ? 'transition-none' : 'transition-all duration-300'}`}
+                                    style={{ right: `${pipPosition.x}px`, bottom: `${pipPosition.y}px` }}
+                                    onMouseDown={startPipDrag}
+                                    onTouchStart={startPipDrag}
+                                >
+                                    {carouselTracks.filter(t => {
+                                        if (userRole === 'lecturer') {
+                                            return !t.participant.isLocal;
+                                        }
+                                        return t.participant.isLocal || activeSpeakers.some(s => s.sid === t.participant.sid);
+                                    }).slice(0, userRole === 'lecturer' ? 4 : 3).map((t) => (
+                                        <div key={`${t.participant.sid}-${t.source}`} className="w-28 sm:w-48 aspect-[3/4] sm:aspect-video rounded-xl overflow-hidden ring-2 ring-white/20 bg-gray-900 pointer-events-none border border-gray-800">
+                                            <TileWrapper
+                                                track={t}
+                                                participant={t.participant}
+                                                onTileClick={handleTileClick}
+                                                className="w-full h-full"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="absolute inset-0 grid-layout-wrapper">
                             {/* Pagination Controls Overlay */}
                             {totalPages > 1 && (
-                                <div className="absolute z-50 bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 backdrop-blur px-4 py-2 rounded-full border border-white/10">
+                                <div className="absolute z-50 bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/80 px-4 py-2 rounded-full border border-white/10">
                                     <button
                                         onClick={handlePrevPage}
                                         disabled={currentPage === 1}
@@ -647,25 +633,75 @@ function InnerVideoLayout({
                                 </div>
                             )}
 
-                            <div className={`grid gap-2 w-full h-full p-2 content-start overflow-y-auto pb-28 sm:pb-0`}
-                                style={{
-                                    gridTemplateColumns: typeof window !== 'undefined' && window.innerWidth < 768
-                                        ? `repeat(${paginatedTracks.length > 1 ? 2 : 1}, 1fr)`
-                                        : `repeat(${config.columns}, minmax(0, 1fr))`,
-                                    gridAutoRows: typeof window !== 'undefined' && window.innerWidth < 768 ? 'auto' : '1fr',
-                                    gridTemplateRows: typeof window !== 'undefined' && window.innerWidth < 768 ? 'none' : `repeat(${config.rows}, minmax(0, 1fr))`,
-                                }}
-                            >
-                                {paginatedTracks.map((trackRef) => (
-                                    <TileWrapper
-                                        key={trackRef.participant.sid + '_' + trackRef.source}
-                                        track={trackRef}
-                                        participant={trackRef.participant}
-                                        onTileClick={handleTileClick}
-                                        className="w-full bg-gray-900 rounded-lg overflow-hidden border border-gray-800/50 shadow-md"
-                                    />
-                                ))}
-                            </div>
+                            {/* SCENARIO A: Screen Share Active - CSS Landscape Rotation (mobile only) */}
+                            {paginatedTracks.some(t => t.source === Track.Source.ScreenShare) ? (
+                                <div className="absolute inset-0 overflow-hidden bg-black">
+                                    {paginatedTracks.filter(t => t.source === Track.Source.ScreenShare).map(trackRef => (
+                                        <div key={trackRef.participant.sid + '_lsscreen'}>
+                                            {/* Mobile: fixed overlay rotated 90deg to fake landscape */}
+                                            <div className="block sm:hidden" style={{
+                                                position: 'fixed',
+                                                top: 0, left: 0, right: 0, bottom: 0,
+                                                zIndex: 200,
+                                                background: 'black',
+                                                overflow: 'hidden',
+                                            }}>
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: '50%',
+                                                    left: '50%',
+                                                    width: '100vh',
+                                                    height: '100vw',
+                                                    transform: 'translate(-50%, -50%) rotate(90deg)',
+                                                    transformOrigin: 'center center',
+                                                    overflow: 'hidden',
+                                                }}>
+                                                    <TileWrapper
+                                                        track={trackRef}
+                                                        participant={trackRef.participant}
+                                                        onTileClick={handleTileClick}
+                                                        className="w-full h-full !rounded-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                            {/* Desktop: normal view */}
+                                            <div className="hidden sm:block absolute inset-0">
+                                                <TileWrapper
+                                                    track={trackRef}
+                                                    participant={trackRef.participant}
+                                                    onTileClick={handleTileClick}
+                                                    className="w-full h-full !rounded-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                /* SCENARIO B: Standard Camera Grid (No Screen Share) */
+                                <div className="flex flex-wrap items-center justify-center content-center gap-2 sm:gap-4 w-full h-full p-2 sm:p-4 overflow-y-auto pb-28 sm:pb-4">
+                                    {paginatedTracks.map((trackRef, index, arr) => {
+                                        const count = arr.length;
+                                        let containerClass = 'w-[calc(50%-0.5rem)] sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(25%-1rem)] aspect-[3/4] sm:aspect-video shrink-0';
+                                        if (count === 1) {
+                                            containerClass = 'w-full max-w-5xl aspect-[3/4] sm:aspect-video shrink-0';
+                                        } else if (count === 2) {
+                                            containerClass = 'w-[calc(50%-0.5rem)] sm:w-[calc(50%-1rem)] max-w-4xl aspect-[3/4] sm:aspect-video shrink-0';
+                                        } else if (count <= 4) {
+                                            containerClass = 'w-[calc(50%-0.5rem)] sm:w-[calc(50%-1rem)] lg:w-[calc(50%-1rem)] max-w-3xl aspect-[3/4] sm:aspect-video shrink-0';
+                                        }
+                                        return (
+                                            <div key={trackRef.participant.sid + '_' + trackRef.source} className={`${containerClass} transition-all duration-300 flex justify-center`}>
+                                                <TileWrapper
+                                                    track={trackRef}
+                                                    participant={trackRef.participant}
+                                                    onTileClick={handleTileClick}
+                                                    className="w-full h-full bg-gray-900 rounded-xl overflow-hidden border border-gray-800"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -690,7 +726,7 @@ function InnerVideoLayout({
 
             {/* Chat Sidebar - Persistent */}
             <div
-                className={`absolute left-4 right-4 sm:left-auto sm:right-4 top-20 bottom-24 sm:w-80 z-[100] rounded-xl overflow-hidden border border-gray-800 shadow-2xl bg-gray-900/95 backdrop-blur flex flex-col transition-all duration-300 ease-in-out ${isChatOpen
+                className={`absolute left-4 right-4 sm:left-auto sm:right-4 top-20 bottom-24 sm:w-80 z-[100] rounded-xl overflow-hidden border border-gray-800 bg-gray-900 flex flex-col transition-all duration-300 ease-in-out ${isChatOpen
                     ? 'opacity-100 translate-x-0 pointer-events-auto'
                     : 'opacity-0 translate-x-[120%] pointer-events-none'
                     }`}
@@ -738,8 +774,8 @@ function VideoLayout({
     onToggleChat,
     isChatOpen,
     unreadChatCount,
-    userRole,
     userId,
+    userRole,
     userName,
     isActive,
     showAlert,
@@ -752,9 +788,9 @@ function VideoLayout({
     onToggleChat: () => void;
     isChatOpen: boolean;
     userRole: string;
-    userId: string;
     userName: string;
     unreadChatCount: number;
+    userId: string;
     isActive: boolean;
     showAlert: (message: string, type: any) => void;
     customAlert: (options: any) => void;
@@ -794,7 +830,7 @@ function VideoLayout({
     // Sync hand status if cleared by lecturer
     useEffect(() => {
         if (raisedHands.length === 0 && isHandRaised) {
-            setIsHandRaised(false);
+            setTimeout(() => setIsHandRaised(false), 0);
         }
     }, [raisedHands, isHandRaised]);
 
@@ -838,6 +874,7 @@ export default function GlobalClassroom() {
         userRole,
         userId,
         isActive,
+        isHost,
         isMini,
         isFloating,
         toggleMinimize,
@@ -849,12 +886,25 @@ export default function GlobalClassroom() {
         token,
         setToken,
     } = useClassroom();
-    const { showAlert, customAlert } = useAlert();
+    const { showAlert, customAlert, showConfirm } = useAlert();
 
     const [mounted, setMounted] = useState(false);
     const [tokenError, setTokenError] = useState<string | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
     const roomRef = useRef<Room | null>(null);
+
+    // Suppress LiveKit's internal releasePointerCapture error (draggable.tsx)
+    // This is a harmless browser race condition on mobile touch events
+    useEffect(() => {
+        const handler = (e: ErrorEvent) => {
+            if (e.message?.includes('releasePointerCapture')) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        };
+        window.addEventListener('error', handler);
+        return () => window.removeEventListener('error', handler);
+    }, []);
 
     // PERSISTENT GESTURE MONITOR
     // This ensures that every click "re-primes" the browser interaction status
@@ -923,6 +973,36 @@ export default function GlobalClassroom() {
     const connectOptions = useMemo(() => ({
         autoSubscribe: true,
     }), []);
+
+    // PERMISSIONS API SAFETY GUARD
+    // Some browsers (like Edge or Chrome in mobile emulation) throw a TypeError
+    // if navigator.permissions.query is called with a name they don't recognize
+    // or if called in a specific context. We wrap it to be more resilient.
+    useEffect(() => {
+        if (typeof navigator === 'undefined' || !navigator.permissions || !(navigator.permissions as any).query) return;
+
+        const originalQuery = navigator.permissions.query.bind(navigator.permissions);
+
+        (navigator.permissions as any).query = async (descriptor: any) => {
+            try {
+                return await originalQuery(descriptor);
+            } catch (error: any) {
+                if (error instanceof TypeError && error.message.includes('Permissions check failed')) {
+                    console.warn('🛡️ [PermissionsGuard] Suppressed TypeError for descriptor:', descriptor.name);
+                    // Return a mock permission state to avoid breaking the caller
+                    return {
+                        state: 'denied',
+                        name: descriptor.name,
+                        onchange: null,
+                        addEventListener: () => { },
+                        removeEventListener: () => { },
+                        dispatchEvent: () => false,
+                    } as any;
+                }
+                throw error;
+            }
+        };
+    }, []);
 
     // Reaction Overlay Ref
     // Reaction Overlay Ref
@@ -1099,11 +1179,7 @@ export default function GlobalClassroom() {
         leaveClass();
 
         // Navigate to dashboard to ensure full exit
-        if (userRole === 'lecturer') {
-            router.push('/dashboard/lecturer');
-        } else {
-            router.push('/dashboard/student');
-        }
+        router.push('/dashboard');
     }, [leaveClass, userRole, router]);
 
     const handleDisconnected = useCallback(() => {
@@ -1118,6 +1194,8 @@ export default function GlobalClassroom() {
             e.message.includes('Negotiation') ||
             e.message.includes('Received leave request') ||
             e.message.includes('Signal connection closed') ||
+            e.message.toLowerCase().includes('could not establish pc connection') ||
+            e.message.toLowerCase().includes('could not connect after') ||
             e.message.includes("participant, that's not present");
 
         if (e.message.toLowerCase().includes('expired') || e.message.toLowerCase().includes('validation failed')) {
@@ -1368,8 +1446,7 @@ export default function GlobalClassroom() {
                 top: position.y,
                 width: size.width,
                 height: size.height,
-                zIndex: 9999,
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                zIndex: 9999
             }}>
                 <div style={{
                     backgroundColor: '#1f2937',
