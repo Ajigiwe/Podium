@@ -602,11 +602,11 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 }
 
                 if (data.type === 'chat') {
-                    const message = {
-                        ...data,
-                        isRemote: true
-                    };
-                    setLiveMessages(prev => [...prev, message]);
+                    setLiveMessages(prev => {
+                        // Strict check to prevent duplication from multiple paths (WebRTC vs Firestore)
+                        if (prev.some(m => m.id === data.id)) return prev;
+                        return [...prev, { ...data, isRemote: true }];
+                    });
                     if (!isChatOpen) {
                         setUnreadChatCount(prev => prev + 1);
                     }
@@ -709,11 +709,28 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 console.log('📖 [ClassroomContext] Checking for chat history snapshot...');
                 const historyRef = doc(db, `sessions/${sessionId}/chat_history`, 'transcript');
                 onSnapshot(historyRef, (docSnap) => {
-                    if (docSnap.exists() && liveMessages.length === 0) {
+                    if (docSnap.exists()) {
                         const data = docSnap.data();
                         if (data.messages && data.messages.length > 0) {
-                            console.log('✅ [ClassroomContext] Restored chat history from snapshot');
-                            setLiveMessages(data.messages.map((m: any) => ({ ...m, isRemote: true })));
+                            console.log('✅ [ClassroomContext] Syncing chat history from snapshot...');
+
+                            setLiveMessages(prev => {
+                                const historyMessages = data.messages.map((m: any) => ({ ...m, isRemote: true }));
+                                // Create a Map by ID to ensure uniqueness and fast lookup
+                                const messageMap = new Map();
+
+                                // Add history first
+                                historyMessages.forEach((m: any) => messageMap.set(m.id, m));
+                                // Add current live messages (allowing them to overwrite history if same ID, as they might be fresher)
+                                prev.forEach(m => messageMap.set(m.id, m));
+
+                                // Convert back to array and sort by createdAt
+                                return Array.from(messageMap.values()).sort((a, b) => {
+                                    const timeA = a.createdAt?.toMillis?.() || a.createdAt || 0;
+                                    const timeB = b.createdAt?.toMillis?.() || b.createdAt || 0;
+                                    return timeA - timeB;
+                                });
+                            });
                         }
                     }
                 }, (error) => {
