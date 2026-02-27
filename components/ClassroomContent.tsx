@@ -682,61 +682,6 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                     </div>
                 </div>
             )}
-            {false && isLockdown && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 animate-in fade-in duration-500">
-                    <div className="max-w-sm w-full mx-4 bg-orange-600 rounded-3xl p-6 text-white text-center border-4 border-orange-500">
-                        {/* Icon */}
-                        <div className="mb-4 relative inline-block">
-                            <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full animate-pulse" />
-                            <ShieldAlert className="w-16 h-16 text-white relative animate-wiggle" />
-                        </div>
-
-                        {/* Title */}
-                        <h2 className="text-2xl font-black mb-3 tracking-tight uppercase">
-                            Class Paused
-                        </h2>
-
-                        {/* Message */}
-                        <p className="text-base mb-6 text-yellow-50 font-medium leading-tight">
-                            The lecturer is temporarily offline. This session is paused for your safety.
-                        </p>
-
-                        {/* Status Card */}
-                        <div className="bg-black/20 rounded-2xl p-4 backdrop-blur-md border border-white/10 text-left space-y-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
-                                    <Users className="w-4 h-4 text-yellow-300" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-yellow-200 uppercase tracking-widest">Waiting For</p>
-                                    <p className="text-xs font-black">Moderator or Host</p>
-                                </div>
-                            </div>
-
-                            <p className="text-[10px] text-yellow-100/70 font-medium leading-normal">
-                                All participants have been muted. The session will resume automatically when a moderator returns.
-                            </p>
-                        </div>
-
-                        {/* Return Button */}
-                        <button
-                            onClick={() => router.push('/dashboard')}
-                            className="w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 bg-white text-orange-600 text-sm font-black rounded-xl hover:bg-yellow-50 transition-all active:scale-[0.98] border border-gray-200"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            Return to Dashboard
-                        </button>
-
-                        {/* Loading Pips */}
-                        <div className="mt-6 flex justify-center gap-1.5">
-                            <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                            <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                            <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce"></div>
-                        </div>
-                    </div>
-                </div>
-            )
-            }
 
             <div
                 style={{
