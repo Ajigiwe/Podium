@@ -262,12 +262,6 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                         [updateField]: now
                     };
 
-                    if (sessionData?.status === 'paused') {
-                        updates.status = 'active';
-                        updates.auto_alert_triggered = false;
-                        updates.auto_alert_triggered_at = null;
-                    }
-
                     await updateDoc(sessionRef, updates);
                 } catch (err) {
                     console.error('[Classroom:Heartbeat:Session] Failed:', err);
@@ -308,35 +302,6 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     return;
                 }
 
-                // Auto-Alert Logic (Triggered by Host/Mod absence > host_absence_minutes)
-                if (isHost || isModerator) return; // Moderators don't trigger alerts on themselves
-
-                const absenceLimit = (data.host_absence_minutes || 5) * 60 * 1000;
-                const now = Date.now();
-                const hostLastSeen = data.hostLastSeen?.toMillis() || 0;
-                const modLastSeen = data.modLastSeen?.toMillis() || 0;
-
-                // threshold + 60s buffer to account for heartbeat delays and clock skew
-                const buffer = 60000;
-                const isHostOffline = !hostLastSeen || (now - hostLastSeen > absenceLimit + buffer);
-                const isModOffline = !modLastSeen || (now - modLastSeen > absenceLimit + buffer);
-
-                if (isHostOffline && isModOffline && data.status !== 'paused' && !data.auto_alert_triggered) {
-                    console.log('🚨 Sentinel: Triggering auto-alert due to moderator absence');
-                    try {
-                        await updateDoc(doc(db, 'sessions', sessionId), {
-                            status: 'paused',
-                            auto_alert_triggered: true,
-                            auto_alert_triggered_at: serverTimestamp()
-                        });
-                    } catch (e: any) {
-                        if (e?.code === 'permission-denied') {
-                            console.warn('[Classroom:Sentinel] Permission denied for pause update - likely already handled or restricted.');
-                        } else {
-                            console.error('[Classroom:Sentinel] Error triggering alert:', e);
-                        }
-                    }
-                }
             }
         });
 

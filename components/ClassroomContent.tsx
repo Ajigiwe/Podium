@@ -84,36 +84,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     const [activePermissions, setActivePermissions] = useState<{ participantId: string; permissions: ParticipantPermissions }[]>([]);
     const [autoApproveMic, setAutoApproveMic] = useState(false);
     const [isMutedAll, setIsMutedAll] = useState(false);
-    const [isHostOffline, setIsHostOffline] = useState(false);
 
-    // Presence Monitoring (Subtle Notification - sentinel alignment)
-    useEffect(() => {
-        if (!sessionData) return;
-        if (isModerator) {
-            setIsHostOffline(false);
-            return;
-        }
-
-        const checkPresence = () => {
-            const now = Date.now();
-            // threshold + 60s buffer to account for heartbeat delays and clock skew
-            const threshold = ((sessionData.host_absence_minutes || 5) * 60 * 1000) + 60000;
-
-            const hostAbsence = sessionData.hostLastSeen?.toMillis() ? (now - sessionData.hostLastSeen.toMillis()) : Infinity;
-            const modAbsence = sessionData.modLastSeen?.toMillis() ? (now - sessionData.modLastSeen.toMillis()) : Infinity;
-
-            const hostOffline = hostAbsence > threshold;
-            const modOffline = modAbsence > threshold;
-
-            // Trigger notification if session is explicitly paused OR if all moderators are stale
-            const shouldNotify = sessionData.status === 'paused' || (hostOffline && modOffline);
-            setIsHostOffline(shouldNotify);
-        };
-
-        checkPresence();
-        const interval = setInterval(checkPresence, 10000); // Check every 10s
-        return () => clearInterval(interval);
-    }, [sessionData, isModerator]);
 
     // Subscribe to permissions if moderator
     useEffect(() => {
@@ -669,19 +640,6 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                 </div>
             </header >
 
-            {/* Subtle Host Offline Notification */}
-            {isHostOffline && !isModerator && (
-                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top duration-500 pointer-events-none">
-                    <div className="bg-orange-600/90 backdrop-blur-md border border-orange-500 text-white px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-                        <div className="flex flex-col">
-                            <p className="text-xs font-bold leading-none">Host Offline</p>
-                            <p className="text-[10px] text-orange-100 font-medium">Session is temporarily paused</p>
-                        </div>
-                        <ShieldAlert className="w-4 h-4 text-orange-200 ml-1" />
-                    </div>
-                </div>
-            )}
 
             <div
                 style={{
