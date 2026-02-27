@@ -423,7 +423,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
         const messageData = {
             type: 'chat',
-            id: Date.now().toString(),
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // More unique ID
             content,
             senderId: userId,
             senderName: userName,
@@ -637,13 +637,10 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        // We only want to listen for NEW messages
-        // Since we don't have a reliable "last read" timestamp easily available here
-        // without more complex sync, we'll listen for additions to the collection.
+        // Listen for RECENT messages to keep sync while live
         const q = query(
             collection(db, `sessions/${sessionId}/messages`),
-            orderBy('createdAt', 'desc'),
-            limit(1)
+            orderBy('createdAt', 'asc') // Use ASC to get latest ones in order
         );
 
         let initialLoad = true;
@@ -660,11 +657,17 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     // Ensure message is added to UI if WebRTC UDP packet dropped
                     setLiveMessages(prev => {
                         if (prev.some(m => m.id === data.id)) return prev;
-                        return [...prev, data];
+                        // Always keep the list sorted when merging from Firestore
+                        const newList = [...prev, data];
+                        return newList.sort((a, b) => {
+                            const timeA = a.createdAt?.toMillis?.() || a.createdAt || 0;
+                            const timeB = b.createdAt?.toMillis?.() || b.createdAt || 0;
+                            return timeA - timeB;
+                        });
                     });
 
                     // Update notification badge
-                    if (data.senderId !== userId && !isChatOpen) {
+                    if (data.senderId !== userId && !isChatOpen && !initialLoad) {
                         setUnreadChatCount(prev => prev + 1);
                     }
                 }
