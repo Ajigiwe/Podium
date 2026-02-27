@@ -60,7 +60,7 @@ export default function SimplePiPButton({ videoElementRef, className, onPiPChang
     return (
         <button
             onClick={togglePiP}
-            className={`p-2 rounded-lg transition-colors ${isPiPActive ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            className={`p-2 rounded-lg transition-colors border-white/20 ${isPiPActive ? 'bg-blue-600 text-white' : 'bg-gray-700/80 text-white hover:bg-gray-600'
                 } ${className}`}
             title={isPiPActive ? "Exit Picture-in-Picture" : "Picture-in-Picture"}
         >
