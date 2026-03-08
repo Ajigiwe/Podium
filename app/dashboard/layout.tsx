@@ -16,7 +16,7 @@ import {
     X,
     GraduationCap,
     UserCircle,
-    History as HistoryIcon
+    History as HistoryIcon,
 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -89,10 +89,26 @@ export default function DashboardLayout({
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login');
+        }
+    }, [user, loading, router]);
+
+    if (loading || !user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-xs">Loading Podium...</p>
+                </div>
+            </div>
+        );
+    }
+
     const navigation = [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
         { name: 'History', href: '/dashboard/history', icon: HistoryIcon },
-        { name: 'Profile', href: '/dashboard/profile', icon: UserCircle },
     ];
 
     const handleSignOut = async () => {
@@ -101,105 +117,140 @@ export default function DashboardLayout({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 transition-colors duration-200">
-            {/* Mobile Header */}
-            <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 sticky top-0 z-20">
-                <Link href="/" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                        <GraduationCap className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-lg text-gray-900">Podium</span>
-                </Link>
-                <button
-                    onClick={() => setIsSidebarOpen(true)}
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-                >
-                    <Menu className="w-6 h-6" />
-                </button>
-            </div>
-
-            {/* Sidebar Backdrop (Mobile) */}
-            {isSidebarOpen && (
-                <div
-                    onClick={() => setIsSidebarOpen(false)}
-                    className="lg:hidden fixed inset-0 bg-black/50 z-30"
-                />
-            )}
-
-            {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
-                {/* Sidebar Header */}
-                <div className="p-6 flex items-center justify-between border-b border-gray-200">
-                    <Link href="/" className="flex items-center gap-3">
+        <div className="min-h-screen bg-slate-50 flex">
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:flex w-72 flex-col fixed inset-y-0 bg-white border-r border-slate-200 z-30">
+                <div className="p-8">
+                    <Link href="/" className="flex items-center gap-3 group">
                         <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
                             <GraduationCap className="w-6 h-6 text-white" />
                         </div>
-                        <span className="font-bold text-xl text-gray-900">Podium</span>
+                        <span className="text-2xl font-black text-slate-900 tracking-tight">
+                            Podium
+                        </span>
                     </Link>
-                    <button
-                        onClick={() => setIsSidebarOpen(false)}
-                        className="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-500"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
                 </div>
 
-                {/* User Info */}
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <div className="flex items-center gap-3">
-                        {profile?.photoURL ? (
-                            <img src={profile.photoURL} alt={profile.fullName} className="w-10 h-10 rounded-full object-cover" />
-                        ) : (
-                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                                {profile?.fullName?.charAt(0)}
-                            </div>
-                        )}
-                        <div>
-                            <p className="font-semibold text-gray-900 text-sm truncate max-w-[140px]">
-                                {profile?.fullName}
-                            </p>
-                            <p className="text-xs text-gray-500 capitalize">
-                                {profile?.role}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Navigation */}
-                <nav className="flex-1 px-4 py-4 space-y-1">
+                <nav className="flex-1 px-4 space-y-1.5 mt-4">
                     {navigation.map((item) => {
                         const isActive = pathname === item.href;
                         return (
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                onClick={() => setIsSidebarOpen(false)}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
-                                    ? 'bg-blue-50 text-blue-600'
-                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-colors ${isActive
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600'
                                     }`}
                             >
-                                <item.icon className="w-5 h-5" />
-                                {item.name}
+                                <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                                <span className="tracking-tight">{item.name}</span>
                             </Link>
                         );
                     })}
                 </nav>
 
-                {/* Footer / Actions */}
-                <div className="p-4 border-t border-gray-200 space-y-2">
+                {/* Profile Section */}
+                <div className="p-4 border-t border-slate-100">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
+                            {profile?.fullName?.[0] || user.email?.[0]?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-900 truncate">
+                                {profile?.fullName || 'User'}
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                                {profile?.role || 'STUDENT'}
+                            </p>
+                        </div>
+                    </div>
                     <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                        className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest"
                     >
-                        <LogOut className="w-5 h-5" />
+                        <LogOut className="w-4 h-4" />
                         Sign Out
                     </button>
                 </div>
+            </aside>
+
+            {/* Mobile Top Bar */}
+            <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-40">
+                <Link href="/" className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                        <GraduationCap className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-lg font-black text-slate-900 tracking-tight">Podium</span>
+                </Link>
+                <button
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                    <Menu className="w-6 h-6" />
+                </button>
             </div>
 
-            <div className="flex-1 lg:pl-72 flex flex-col min-h-screen transition-all duration-200">
-                <main className="flex-1 p-4 sm:p-6 lg:p-8">
+            {/* Mobile Sidebar Overlay */}
+            {isSidebarOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden">
+                    <div
+                        className="fixed inset-0 bg-black/40 transition-opacity"
+                        onClick={() => setIsSidebarOpen(false)}
+                    />
+                    <div className="fixed inset-y-0 left-0 w-72 bg-white shadow-lg flex flex-col">
+                        <div className="p-6 flex items-center justify-between border-b border-slate-100">
+                            <span className="text-xl font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                                    <GraduationCap className="w-5 h-5 text-white" />
+                                </div>
+                                Menu
+                            </span>
+                            <button
+                                onClick={() => setIsSidebarOpen(false)}
+                                className="p-2 text-slate-400 hover:text-slate-900 transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <nav className="flex-1 px-4 py-6 space-y-2">
+                            {navigation.map((item) => {
+                                const isActive = pathname === item.href;
+                                return (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        className={`flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-bold transition-colors ${isActive
+                                            ? 'bg-blue-600 text-white'
+                                            : 'text-slate-500 hover:bg-slate-50'
+                                            }`}
+                                    >
+                                        <item.icon className="w-5 h-5" />
+                                        <span className="tracking-tight">{item.name}</span>
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+                        <div className="p-6 border-t border-slate-100 bg-slate-50/50">
+                            <button
+                                onClick={() => {
+                                    setIsSidebarOpen(false);
+                                    signOut();
+                                }}
+                                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 bg-red-50 transition-colors"
+                            >
+                                <LogOut className="w-5 h-5" />
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col min-w-0 lg:pl-72 pt-16 lg:pt-0">
+                <div className="flex-1 px-6 py-8 lg:px-10 lg:py-12 max-w-7xl mx-auto w-full">
                     {(loadingSettings || loading) ? (
                         <div className="flex items-center justify-center min-h-[60vh]">
                             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -255,8 +306,8 @@ export default function DashboardLayout({
                         }
                         return children;
                     })()}
-                </main>
-            </div>
+                </div>
+            </main>
         </div>
     );
 }

@@ -8,17 +8,89 @@ import {
     useLayoutContext,
     useRoomContext,
 } from '@livekit/components-react';
+import { Track, ConnectionState } from 'livekit-client';
+import { Smile, PictureInPicture2, MoreVertical, Mic, VideoIcon, MicOff, VideoOff, MonitorUp, PhoneOff, MessageSquare, Hand, Lock, Volume2, ChevronUp } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { ReactionModal } from './ReactionModal';
+import UnifiedMediaButton from './media/UnifiedMediaButton';
+import { usePermissions } from '@/hooks/usePermissions';
 
-const HoverDeviceMenu = ({ kind }: { kind: 'audioinput' | 'videoinput' }) => {
+const DeviceMenu = ({
+    kind,
+    isOpen,
+    onClose,
+    triggerRef
+}: {
+    kind: 'audioinput' | 'videoinput' | 'audiooutput',
+    isOpen: boolean,
+    onClose: () => void,
+    triggerRef: React.RefObject<HTMLDivElement | null>
+}) => {
     const { devices, activeDeviceId, setActiveMediaDevice } = useMediaDeviceSelect({ kind });
+    const menuRef = useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = useState({ bottom: 0, left: 0 });
 
-    if (!devices || devices.length <= 1) return null; // Only show if there are options
+    // Update position when menu opens
+    useEffect(() => {
+        if (isOpen && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            const menuWidth = Math.min(window.innerWidth - 32, 280); // Max 280px or screen width - 32px
 
-    return (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 hidden group-hover:block z-50">
-            <div className="bg-gray-900 border border-gray-700 rounded-lg p-1.5 min-w-[220px] max-w-[300px] flex flex-col gap-0.5 animate-in fade-in slide-in-from-bottom-2">
-                <div className="px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-800/50 mb-1">
-                    Select {kind === 'audioinput' ? 'Microphone' : 'Camera'}
+            // Center calculation with clamping
+            let left = rect.left + rect.width / 2;
+            const halfWidth = menuWidth / 2;
+
+            // Clamp to screen edges (16px margin)
+            if (left - halfWidth < 16) left = halfWidth + 16;
+            if (left + halfWidth > window.innerWidth - 16) left = window.innerWidth - 16 - halfWidth;
+
+            setCoords({
+                bottom: window.innerHeight - rect.top + 8,
+                left: left
+            });
+        }
+    }, [isOpen, triggerRef]);
+
+    // Close on click outside
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            // Check if clicking inside menu
+            if (menuRef.current && menuRef.current.contains(event.target as Node)) {
+                return;
+            }
+            // Check if clicking the toggle button/chevron (they handle their own state)
+            const target = event.target as HTMLElement;
+            if (target.closest('.device-menu-toggle')) {
+                return;
+            }
+            onClose();
+        };
+        // Use capture phase for the global listener to ensure it fires correctly
+        document.addEventListener('mousedown', handleClickOutside, true);
+        return () => document.removeEventListener('mousedown', handleClickOutside, true);
+    }, [isOpen, onClose]);
+
+    if (!devices || devices.length === 0 || !isOpen) return null;
+
+    const content = (
+        <div
+            ref={menuRef}
+            style={{
+                position: 'fixed',
+                bottom: `${coords.bottom}px`,
+                left: `${coords.left}px`,
+                transform: 'translateX(-50%)'
+            }}
+            className="z-[9999] transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
+        >
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-1.5 w-[280px] max-w-[calc(100vw-32px)] flex flex-col gap-1 shadow-2xl ring-1 ring-white/10">
+                <div className="px-2 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-800/50 mb-1 flex items-center justify-between">
+                    <span>
+                        {kind === 'audioinput' ? 'Microphone' : kind === 'videoinput' ? 'Camera' : 'Speakers'}
+                    </span>
+                    <span className="text-blue-500/50 text-[9px]">{devices.length} Found</span>
                 </div>
                 <div className="max-h-48 overflow-y-auto scrollbar-thin">
                     {devices.map((device) => (
@@ -27,14 +99,15 @@ const HoverDeviceMenu = ({ kind }: { kind: 'audioinput' | 'videoinput' }) => {
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveMediaDevice(device.deviceId);
+                                onClose();
                             }}
-                            className={`text-left px-2.5 py-2 text-xs rounded-md transition-colors truncate w-full flex items-center gap-2 ${activeDeviceId === device.deviceId
-                                ? 'bg-blue-600/20 text-blue-400 font-medium'
+                            className={`text-left px-2.5 py-2 text-xs rounded-md transition-all truncate w-full flex items-center gap-2 group/item ${activeDeviceId === device.deviceId
+                                ? 'bg-blue-600 text-white font-semibold'
                                 : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                                 }`}
                             title={device.label || 'Unknown Device'}
                         >
-                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeDeviceId === device.deviceId ? 'bg-blue-500' : 'bg-transparent'}`} />
+                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeDeviceId === device.deviceId ? 'bg-white' : 'bg-gray-600 group-hover/item:bg-gray-400'}`} />
                             <span className="truncate">{device.label || `Device ${device.deviceId.slice(0, 5)}`}</span>
                         </button>
                     ))}
@@ -42,14 +115,10 @@ const HoverDeviceMenu = ({ kind }: { kind: 'audioinput' | 'videoinput' }) => {
             </div>
         </div>
     );
+
+    return typeof window !== 'undefined' ? createPortal(content, document.body) : null;
 };
-import { Track, ConnectionState } from 'livekit-client';
-import { Smile, PictureInPicture2, MoreVertical, Mic, VideoIcon, MicOff, VideoOff, MonitorUp, PhoneOff, MessageSquare, Hand, Lock } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { ReactionModal } from './ReactionModal';
-import UnifiedMediaButton from './media/UnifiedMediaButton';
-import { usePermissions } from '@/hooks/usePermissions';
+
 
 interface CustomControlBarProps {
     roomId: string; // Added roomId for permissions
@@ -95,14 +164,28 @@ export default function CustomControlBar({
     const isConnected = room?.state === ConnectionState.Connected;
     const isConnectingOrReconnecting = room?.state === ConnectionState.Connecting || room?.state === ConnectionState.Reconnecting;
 
+    const [activeMenu, setActiveMenu] = useState<'mic' | 'camera' | null>(null);
     const [showReactions, setShowReactions] = useState(false);
+    const emojis = ['👍', '👏', '❤️', '🔥', '🎉', '😂', '😮', '🤔'];
+
+    const micRef = useRef<HTMLDivElement>(null);
+    const cameraRef = useRef<HTMLDivElement>(null);
+
+    const toggleMenu = (menu: 'mic' | 'camera', e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setActiveMenu(prev => prev === menu ? null : menu);
+    };
+
     const reactionBtnRef = useRef<HTMLButtonElement>(null);
 
-    // Close reactions menu when clicking outside
+    // Close menus on click outside handled in DeviceMenu component
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
+            if (activeMenu) {
+                // If the click is not on a button with a menu, the DeviceMenu's own clickOutside will handle it
+                // but we also need a global fallback if needed.
+            }
             if (reactionBtnRef.current && !reactionBtnRef.current.contains(event.target as Node)) {
-                // Check if clicking inside the popover (which might be rendered elsewhere or just next to it)
                 const popover = document.getElementById('reaction-popover');
                 if (popover && !popover.contains(event.target as Node)) {
                     setShowReactions(false);
@@ -111,7 +194,7 @@ export default function CustomControlBar({
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [activeMenu, showReactions]);
 
     // Layout context for chat - NO LONGER USED
     // const layoutContext = useLayoutContext();
@@ -259,68 +342,93 @@ export default function CustomControlBar({
         setIsTogglingScreen(false);
     };
 
-    const emojis = ['👍', '👏', '❤️', '🔥', '🎉', '😂', '😮', '🤔'];
 
     return (
-        <div className="lk-control-bar !border-t-0 !bg-gray-900 !p-1 sm:!p-1.5 rounded-xl mb-4 sm:mb-6 mx-auto max-w-[95vw] sm:max-w-fit flex items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1.5 border border-white/10">
+        <div className="lk-control-bar !border-t-0 !bg-gray-900 !p-1 sm:!p-1.5 rounded-xl mb-4 sm:mb-6 mx-auto max-w-[95vw] sm:max-w-fit flex items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1.5 border border-white/10 z-[200]">
             {/* Microphone */}
-            <div className="relative group">
-                <button
-                    onClick={toggleMic}
-                    disabled={isTogglingMic || !isConnected}
-                    className={`lk-button !bg-gray-700/80 hover:!bg-gray-600 !border-white/20 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-all relative ${(isTogglingMic || !isConnected) ? 'opacity-50 cursor-wait' :
-                        !permissions.mic ? 'opacity-80' : ''
-                        }`}
-                    title={
-                        !permissions.mic ? 'Request mic permission' :
-                            isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone'
-                    }
-                >
-                    {isMicrophoneEnabled ? <Mic className="w-4 h-4 text-white" /> : <MicOff className="w-4 h-4 text-red-500" />}
+            <div className="relative group" ref={micRef}>
+                <div className="flex">
+                    <button
+                        onClick={toggleMic}
+                        disabled={isTogglingMic || !isConnected}
+                        className={`lk-button !bg-gray-700/80 hover:!bg-gray-600 !border-white/20 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-l-xl transition-all relative ${(isTogglingMic || !isConnected) ? 'opacity-50 cursor-wait' :
+                            !permissions.mic ? 'opacity-80' : ''
+                            }`}
+                        title={
+                            !permissions.mic ? 'Request mic permission' :
+                                isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone'
+                        }
+                    >
+                        {isMicrophoneEnabled ? <Mic className="w-4 h-4 text-white" /> : <MicOff className="w-4 h-4 text-red-500" />}
 
-                    {!permissions.mic && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-gray-900">
-                            <Lock className="w-2.5 h-2.5 text-white" />
-                        </div>
-                    )}
+                        {!permissions.mic && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-gray-900">
+                                <Lock className="w-2.5 h-2.5 text-white" />
+                            </div>
+                        )}
 
-                    {isTogglingMic && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        </div>
-                    )}
-                </button>
-                <HoverDeviceMenu kind="audioinput" />
+                        {isTogglingMic && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            </div>
+                        )}
+                    </button>
+                    <button
+                        onClick={(e) => toggleMenu('mic', e)}
+                        className={`lk-button device-menu-toggle !bg-gray-700/80 hover:!bg-gray-600 !border-l-white/10 !border-white/20 !p-1 !h-10 !w-5 sm:!h-11 sm:!w-6 rounded-r-xl transition-all flex items-center justify-center ${activeMenu === 'mic' ? '!bg-blue-600/30' : ''}`}
+                    >
+                        <ChevronUp className={`w-3 h-3 text-gray-400 transition-transform ${activeMenu === 'mic' ? 'rotate-180 text-blue-400' : ''}`} />
+                    </button>
+                </div>
+                <DeviceMenu
+                    kind="audioinput"
+                    isOpen={activeMenu === 'mic'}
+                    onClose={() => setActiveMenu(null)}
+                    triggerRef={micRef}
+                />
             </div>
 
             {/* Camera */}
-            <div className="relative group">
-                <button
-                    onClick={toggleVideo}
-                    disabled={isTogglingVideo || !isConnected}
-                    className={`lk-button !bg-gray-700/80 hover:!bg-gray-600 !border-white/20 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-xl transition-all relative ${(isTogglingVideo || !isConnected) ? 'opacity-50 cursor-wait' :
-                        !permissions.camera ? 'opacity-80' : ''
-                        }`}
-                    title={
-                        !permissions.camera ? 'Request camera permission' :
-                            isCameraEnabled ? 'Turn off camera' : 'Turn on camera'
-                    }
-                >
-                    {isCameraEnabled ? <VideoIcon className="w-4 h-4 text-white" /> : <VideoOff className="w-4 h-4 text-red-500" />}
+            <div className="relative group" ref={cameraRef}>
+                <div className="flex">
+                    <button
+                        onClick={toggleVideo}
+                        disabled={isTogglingVideo || !isConnected}
+                        className={`lk-button !bg-gray-700/80 hover:!bg-gray-600 !border-white/20 !p-2 sm:!p-2.5 !h-10 !w-10 sm:!h-11 sm:!w-11 rounded-l-xl transition-all relative ${(isTogglingVideo || !isConnected) ? 'opacity-50 cursor-wait' :
+                            !permissions.camera ? 'opacity-80' : ''
+                            }`}
+                        title={
+                            !permissions.camera ? 'Request camera permission' :
+                                isCameraEnabled ? 'Turn off camera' : 'Turn on camera'
+                        }
+                    >
+                        {isCameraEnabled ? <VideoIcon className="w-4 h-4 text-white" /> : <VideoOff className="w-4 h-4 text-red-500" />}
 
-                    {!permissions.camera && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-gray-900">
-                            <Lock className="w-2.5 h-2.5 text-white" />
-                        </div>
-                    )}
+                        {!permissions.camera && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-gray-900">
+                                <Lock className="w-2.5 h-2.5 text-white" />
+                            </div>
+                        )}
 
-                    {isTogglingVideo && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        </div>
-                    )}
-                </button>
-                <HoverDeviceMenu kind="videoinput" />
+                        {isTogglingVideo && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            </div>
+                        )}
+                    </button>
+                    <button
+                        onClick={(e) => toggleMenu('camera', e)}
+                        className={`lk-button device-menu-toggle !bg-gray-700/80 hover:!bg-gray-600 !border-l-white/10 !border-white/20 !p-1 !h-10 !w-5 sm:!h-11 sm:!w-6 rounded-r-xl transition-all flex items-center justify-center ${activeMenu === 'camera' ? '!bg-blue-600/30' : ''}`}
+                    >
+                        <ChevronUp className={`w-3 h-3 text-gray-400 transition-transform ${activeMenu === 'camera' ? 'rotate-180 text-blue-400' : ''}`} />
+                    </button>
+                </div>
+                <DeviceMenu
+                    kind="videoinput"
+                    isOpen={activeMenu === 'camera'}
+                    onClose={() => setActiveMenu(null)}
+                    triggerRef={cameraRef}
+                />
             </div>
 
             {/* Screen Share */}

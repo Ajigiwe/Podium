@@ -1,0 +1,92 @@
+# LiveKit Optimized Configuration for 350+ Users
+# Optimized for Contabo VPS (8 Cores, 24GB RAM)
+
+port: 7880
+bind_addresses:
+  - ""
+
+rtc:
+  # Network configuration
+  port_range_start: 50000
+  port_range_end: 60000
+  use_external_ip: true
+  tcp_port: 7881
+  
+  # Performance tuning
+  num_workers: 8  # Matched to 8 CPU cores
+  packet_buffer_size: 1500
+  
+  # STUN servers
+  stun_servers:
+    - stun:stun.l.google.com:19302
+    - stun:stun1.l.google.com:19302
+
+# Redis for high-concurrency state management (REQUIRED for 350+ users)
+redis:
+  address: localhost:6379
+  db: 0
+  use_for_state: true
+
+# Room settings
+room:
+  auto_create: true
+  max_participants: 500
+  empty_timeout: 600
+  
+  # Performance features
+  adaptive_stream: true
+  enable_resume: true
+  
+  # Preferred codecs (H.264 is more efficient for hardware decoding)
+  enabled_codecs:
+    - h264
+    - vp8
+  
+  # Timeout settings
+  participant_timeout: 30
+  track_publish_timeout: 10
+
+# Video optimization (CRITICAL)
+video:
+  # Enable dynamic quality adjustment (Dynacast)
+  dynacast: true
+  
+  # Simulcast configuration (Sends 3 qualities)
+  simulcast:
+    enabled: true
+    layers:
+      - quality: high
+        width: 1280
+        height: 720
+        bitrate: 2000
+      - quality: medium
+        width: 640
+        height: 360
+        bitrate: 500
+      - quality: low
+        width: 320
+        height: 180
+        bitrate: 150
+
+# Audio optimization
+audio:
+  active_speaker_update_interval: 1s
+  codecs:
+    - opus
+
+# TURN server 
+turn:
+  enabled: true
+  tls_port: 5349
+  udp_port: 3478
+  relay_range_start: 40000
+  relay_range_end: 40100
+
+# Logging
+logging:
+  level: info
+  sample: false
+
+# Note: Ensure keys are set in your environment or added below
+# keys:
+#   your_api_key: your_api_secret

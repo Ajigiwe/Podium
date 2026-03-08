@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Room, RemoteParticipant, LocalParticipant, Participant, RoomEvent, Track } from 'livekit-client';
+import { useHostChime } from '@/hooks/useHostChime';
 import { useAlert } from '@/contexts/AlertContext';
 import { GridLayout } from '@/types/layout';
 import { db } from '@/lib/firebase/config';
@@ -100,6 +101,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const [layout, setLayout] = useState<GridLayout>('4x4');
     const isFetchingToken = useRef(false);
     const { showAlert, showConfirm } = useAlert();
+    const { playJoinChime, playMediaChime } = useHostChime();
 
     const router = useRouter();
     const pathname = usePathname();
@@ -531,10 +533,16 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         // Initial load
         updateParticipants();
 
+        // --- Host-only notification chimes ---
+        const handleParticipantJoinedChime = (participant: RemoteParticipant) => {
+            playJoinChime();
+            updateParticipants();
+        };
+
         // Listen for participant changes
         liveKitRoom.on(RoomEvent.Connected, updateParticipants);
         liveKitRoom.on(RoomEvent.Reconnected, updateParticipants);
-        liveKitRoom.on(RoomEvent.ParticipantConnected, updateParticipants);
+        liveKitRoom.on(RoomEvent.ParticipantConnected, handleParticipantJoinedChime);
         liveKitRoom.on(RoomEvent.ParticipantDisconnected, updateParticipants);
         liveKitRoom.on(RoomEvent.TrackMuted, updateParticipants);
         liveKitRoom.on(RoomEvent.TrackUnmuted, updateParticipants);
@@ -620,7 +628,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         liveKitRoom.on(RoomEvent.DataReceived, handleDataReceived);
 
         return () => {
-            liveKitRoom.off(RoomEvent.ParticipantConnected, updateParticipants);
+            liveKitRoom.off(RoomEvent.ParticipantConnected, handleParticipantJoinedChime);
             liveKitRoom.off(RoomEvent.ParticipantDisconnected, updateParticipants);
             liveKitRoom.off(RoomEvent.TrackMuted, updateParticipants);
             liveKitRoom.off(RoomEvent.TrackUnmuted, updateParticipants);
@@ -628,7 +636,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             liveKitRoom.off(RoomEvent.ActiveSpeakersChanged, updateParticipants);
             liveKitRoom.off(RoomEvent.DataReceived, handleDataReceived);
         };
-    }, [liveKitRoom, userRole, leaveClass]);
+    }, [liveKitRoom, userRole, leaveClass, playJoinChime, playMediaChime]);
 
     // Global Message Listener for Notifications
     useEffect(() => {

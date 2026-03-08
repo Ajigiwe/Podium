@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
@@ -21,7 +21,8 @@ import {
     useIsSpeaking,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
-import { Room, Track, Participant, RoomEvent, ParticipantEvent, ConnectionState } from 'livekit-client';
+import { useInView } from 'react-intersection-observer';
+import { Room, Track, Participant, RoomEvent, ParticipantEvent, ConnectionState, VideoQuality } from 'livekit-client';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
 import { Maximize2, X, Minimize2, Pin, PinOff, Video, User, Mic, MoreVertical, MicOff, VideoOff, UserX } from 'lucide-react';
@@ -116,9 +117,28 @@ function ParticipantMenu({ participant, closeMenu }: { participant: Participant,
 }
 
 // Wrapper for Tile to handle clicks while receiving props from GridLayout
-function TileWrapper({ track, participant, onTileClick, className, ...props }: any) {
+const TileWrapper = memo(({ track, participant, onTileClick, className, ...props }: any) => {
+    const { ref, inView } = useInView({
+        threshold: 0,
+    });
+
+    // Use adaptive stream quality based on visibility
+    useEffect(() => {
+        if (track.publication) {
+            if (inView) {
+                // When in view, let dynacast handle it (usually high or medium)
+                track.publication.setVideoQuality(VideoQuality.HIGH);
+                track.publication.setSubscribed(true);
+            } else {
+                // When off-screen, request low quality or unsubscribe to save bandwidth
+                track.publication.setVideoQuality(VideoQuality.LOW);
+                // For very large sessions, we might even unsubscribe off-screen tracks
+                // but for 350 users, LOW quality is usually a good middle ground
+            }
+        }
+    }, [inView, track.publication]);
+
     // Check if camera is off/muted to show placeholder
-    // We check both the track mute status and the participant-level flag for robustness
     const isCameraOff = track.source === Track.Source.Camera &&
         (track.publication?.isMuted || !participant.isCameraEnabled);
 
@@ -155,10 +175,19 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
 
     return (
         <div
+            ref={ref}
             className={`h-full w-full max-w-full relative group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-4 ring-green-500' : 'ring-1 ring-white/10'} ${className || ''}`}
             onClick={() => onTileClick(track)}
         >
-            <ParticipantTile trackRef={track} {...props} className={`!w-full !h-full [&_video]:!object-center ${track.source === Track.Source.ScreenShare ? '[&_video]:!object-contain' : '[&_video]:!object-cover'}`} />
+            {inView ? (
+                <ParticipantTile trackRef={track} {...props} className={`!w-full !h-full [&_video]:!object-center ${track.source === Track.Source.ScreenShare ? '[&_video]:!object-contain' : '[&_video]:!object-cover'}`} />
+            ) : (
+                <div className="absolute inset-0 bg-gray-900 border border-gray-800 rounded-lg flex items-center justify-center">
+                    <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-gray-600" />
+                    </div>
+                </div>
+            )}
 
             {/* Speaking Indicator Badge */}
             {isSpeaking && (
@@ -189,7 +218,7 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
             )}
 
             {/* Explicit Placeholder for Camera Off */}
-            {isCameraOff && (
+            {isCameraOff && inView && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 border border-gray-700 rounded-lg">
                     <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-2 overflow-hidden">
                         {photoURL ? (
@@ -212,7 +241,7 @@ function TileWrapper({ track, participant, onTileClick, className, ...props }: a
             </div>
         </div>
     );
-}
+});
 
 // Wrapper for Focus Layout to handle placeholders
 function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {

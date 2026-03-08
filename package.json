@@ -32,6 +32,7 @@
     "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.3",
     "react-easy-crop": "5.5.6",
+    "react-intersection-observer": "^10.0.3",
     "react-player": "^3.4.0",
     "resend": "^6.9.2",
     "xlsx": "^0.18.5",

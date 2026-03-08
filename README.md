@@ -4,7 +4,8 @@ A scalable, zero-ops virtual classroom platform for Ghanaian students supporting
 
 ## 🚀 Features
 
-- **Live Video Streaming**: YouTube Live integration for scalable video delivery
+- **Live Video Streaming**: LiveKit WebRTC & YouTube Live integration for low-latency and scalable video delivery
+- **Adaptive Quality Control**: Automatic bandwidth management based on participant visibility
 - **Mobile Money Payments**: Paystack integration for MTN Mobile Money & Vodafone Cash
 - **Real-time Chat**: Firebase Realtime Database for instant messaging
 - **Attendance Tracking**: Automatic attendance logging and reporting
@@ -15,16 +16,28 @@ A scalable, zero-ops virtual classroom platform for Ghanaian students supporting
 
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS, ShadcnUI
 - **Backend**: Firebase (Firestore, Auth, Realtime Database)
+- **Real-time Media**: LiveKit WebRTC
+- **State Management**: Redis (Optimized for high-concurrency)
 - **Payment**: Paystack (1.95% fee for mobile money)
 - **Video**: YouTube Live (unlisted streams)
-- **Hosting**: Vercel
+- **Hosting**: Vercel & Contabo VPS
 
-## 📋 Prerequisites
+## � Performance Optimization (350+ Users)
 
-- Node.js 18+ and npm
-- Firebase project
-- Paystack account (Ghana)
-- YouTube account with live streaming enabled
+The platform is specifically tuned to handle high-concurrency classroom environments on a standard VPS:
+
+### Server-Level (Linux/VPS)
+- **TCP BBR**: Enabled Google's BBR congestion control for maximum throughput and low latency.
+- **System Limits**: `ulimits` increased to 65k to handle thousands of simultaneous media tracks.
+- **Multi-threading**: Optimized to scale across 8+ CPU cores.
+
+### Infrastructure
+- **Redis State Management**: All session state is offloaded to Redis for sub-millisecond tracking.
+- **Bare-Metal Networking**: Docker Host networking bypasses the NAT layer for peak performance.
+
+### Frontend (Client-Side)
+- **Adaptive Quality**: Utilizing `IntersectionObserver` to automatically pause or downscale off-screen video tiles, saving up to 80% bandwidth for students.
+- **Component Memoization**: Preventing expensive re-renders in large grids using `React.memo`.
 
 ## 🔧 Installation
 
@@ -42,6 +55,7 @@ cp .env.local.example .env.local
 4. Configure your `.env.local` file with:
    - Firebase credentials
    - Paystack API keys
+   - LiveKit keys & URL
    - Application URL
 
 5. Run the development server:
@@ -66,7 +80,7 @@ Students can pay using:
 ### Lecturer
 - Create and manage class sessions
 - Set pricing (in Ghana Cedis)
-- Start/stop live streams
+- Start/stop live streams and WebRTC sessions
 - Moderate chat
 - View revenue and attendance reports
 
@@ -88,29 +102,22 @@ podium-lms/
 │   └── classroom/         # Classroom interface
 ├── components/            # React components
 ├── lib/                   # Utility functions
-│   ├── firebase/         # Firebase configuration
-│   ├── paystack/         # Paystack integration
-│   └── utils/            # Helper functions
 ├── contexts/             # React contexts
+├── server-optimization/   # VPS tuning & LiveKit config scripts
 └── public/               # Static assets
 ```
 
 ## 🚀 Deployment
 
-Deploy to Vercel:
-
-```bash
-vercel --prod
-```
-
-Configure environment variables in Vercel dashboard.
+Deploy the frontend to Vercel and the LiveKit server to a Contabo VPS using the provided scripts in `server-optimization/`.
 
 ## 📊 Cost Analysis
 
 For 300 students paying GH₵20 per class:
 - **Revenue**: GH₵6,000
 - **Paystack Fee (1.95%)**: GH₵117
-- **Net Revenue**: GH₵5,883
+- **VPS Cost (Monthly)**: ~$15
+- **Net Revenue**: GH₵5,868
 
 ## 🔒 Security
 

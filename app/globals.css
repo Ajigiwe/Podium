@@ -7,12 +7,12 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #111827;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
-  --surface: #f9fafb;
-  --border: #e5e7eb;
+  --surface: #ffffff;
+  --border: #e2e8f0;
 }
 
 body {

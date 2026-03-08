@@ -5,7 +5,8 @@ import { Session } from '@/lib/firebase/types';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
 import { Users, User, MicOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X, Mic, VideoIcon, ArrowLeft, MoreVertical, ShieldAlert, Trash2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useHostChime } from '@/hooks/useHostChime';
 import { JitsiParticipant } from '@/contexts/ClassroomContext';
 import { generateMeetingCode } from '@/lib/meetingCode';
 import { db, handleFirestoreError } from '@/lib/firebase/config';
@@ -84,6 +85,8 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     const [activePermissions, setActivePermissions] = useState<{ participantId: string; permissions: ParticipantPermissions }[]>([]);
     const [autoApproveMic, setAutoApproveMic] = useState(false);
     const [isMutedAll, setIsMutedAll] = useState(false);
+    const { playMediaChime } = useHostChime();
+    const prevRequestCountRef = useRef(0);
 
 
     // Subscribe to permissions if moderator
@@ -103,6 +106,14 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
             unsubscribeAllPerms();
         };
     }, [sessionId, isModerator]);
+
+    // Play chime when new permission requests arrive
+    useEffect(() => {
+        if (isModerator && pendingRequests.length > prevRequestCountRef.current) {
+            playMediaChime();
+        }
+        prevRequestCountRef.current = pendingRequests.length;
+    }, [pendingRequests.length, isModerator, playMediaChime]);
 
     // Fetch initial auto-approval state from session
     useEffect(() => {
