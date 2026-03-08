@@ -145,7 +145,7 @@ function HistoryContent() {
                 </button>
             </div>
 
-            <div className="bg-white  border border-gray-200  rounded-2xl overflow-hidden">
+            <div className="bg-white  border border-gray-200  rounded-2xl overflow-x-auto">
                 {activeTab === 'joined' ? (
                     joinHistoryData.length === 0 ? (
                         <div className="py-20 text-center flex flex-col items-center justify-center bg-gray-50 ">
@@ -157,7 +157,7 @@ function HistoryContent() {
                             </Link>
                         </div>
                     ) : (
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse min-w-[500px]">
                             <thead>
                                 <tr className="border-b border-gray-200  bg-gray-50/50 ">
                                     <th className="py-4 px-6 text-xs font-black uppercase tracking-widest text-gray-500 ">Class Information</th>
@@ -203,7 +203,7 @@ function HistoryContent() {
                             </Link>
                         </div>
                     ) : (
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse min-w-[600px]">
                             <thead>
                                 <tr className="border-b border-gray-200  bg-gray-50/50 ">
                                     <th className="py-4 px-6 text-xs font-black uppercase tracking-widest text-gray-500 ">Class Title</th>

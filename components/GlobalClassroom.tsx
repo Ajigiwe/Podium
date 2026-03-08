@@ -124,16 +124,17 @@ const TileWrapper = memo(({ track, participant, onTileClick, className, ...props
 
     // Use adaptive stream quality based on visibility
     useEffect(() => {
-        if (track.publication) {
+        // Only remote tracks (publications) have these methods
+        if (track.publication && typeof (track.publication as any).setVideoQuality === 'function') {
+            const pub = track.publication as any;
             if (inView) {
                 // When in view, let dynacast handle it (usually high or medium)
-                track.publication.setVideoQuality(VideoQuality.HIGH);
-                track.publication.setSubscribed(true);
+                pub.setVideoQuality(VideoQuality.HIGH);
+                if (typeof pub.setSubscribed === 'function') pub.setSubscribed(true);
             } else {
                 // When off-screen, request low quality or unsubscribe to save bandwidth
-                track.publication.setVideoQuality(VideoQuality.LOW);
-                // For very large sessions, we might even unsubscribe off-screen tracks
-                // but for 350 users, LOW quality is usually a good middle ground
+                pub.setVideoQuality(VideoQuality.LOW);
+                if (typeof pub.setSubscribed === 'function') pub.setSubscribed(false); // Explicitly unsubscribe
             }
         }
     }, [inView, track.publication]);
@@ -219,17 +220,24 @@ const TileWrapper = memo(({ track, participant, onTileClick, className, ...props
 
             {/* Explicit Placeholder for Camera Off */}
             {isCameraOff && inView && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 border border-gray-700 rounded-lg">
-                    <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-2 overflow-hidden">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                    {/* Large circular avatar */}
+                    <div className="rounded-full flex items-center justify-center overflow-hidden bg-gray-600" style={{ width: 'clamp(48px, 40%, 120px)', height: 'clamp(48px, 40%, 120px)' }}>
                         {photoURL ? (
                             <img src={photoURL} alt={participant.name || 'User'} className="w-full h-full object-cover" />
                         ) : (
-                            <User className="w-10 h-10 text-gray-400" />
+                            <span className="text-white font-bold" style={{ fontSize: 'clamp(20px, 16%, 48px)' }}>
+                                {(participant.name || participant.identity || 'P')[0].toUpperCase()}
+                            </span>
                         )}
                     </div>
-                    <span className="text-gray-300 font-medium text-sm">
-                        {participant.name || participant.identity || 'Participant'}
-                    </span>
+                    {/* Name + mic status */}
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-black/60 rounded-lg px-2 py-1">
+                        {!participant.isMicrophoneEnabled && <MicOff className="w-3 h-3 text-red-400" />}
+                        <span className="text-white text-xs font-medium truncate max-w-[120px]">
+                            {participant.name || participant.identity || 'Participant'}
+                        </span>
+                    </div>
                 </div>
             )}
 
@@ -302,17 +310,34 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
             )}
 
             {/* Explicit Placeholder for Camera Off in Focus Mode */}
-            {isCameraOff && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 border-2 border-dashed border-gray-800 rounded-xl m-4 pointer-events-none">
-                    <div className="w-32 h-32 bg-gray-800 rounded-full flex items-center justify-center mb-6 ring-4 ring-white/5 border border-gray-700">
-                        <User className="w-16 h-16 text-gray-400" />
+            {isCameraOff && (() => {
+                let focusPhotoURL = null;
+                try {
+                    if (trackRef.participant.metadata) {
+                        const meta = JSON.parse(trackRef.participant.metadata);
+                        focusPhotoURL = meta.photoURL;
+                    }
+                } catch (_) { }
+                return (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                        <div className="w-40 h-40 rounded-full flex items-center justify-center overflow-hidden bg-gray-600">
+                            {focusPhotoURL ? (
+                                <img src={focusPhotoURL} alt={trackRef.participant.name || 'User'} className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-white font-bold text-6xl">
+                                    {(trackRef.participant.name || trackRef.participant.identity || 'P')[0].toUpperCase()}
+                                </span>
+                            )}
+                        </div>
+                        <div className="absolute bottom-6 left-6 flex items-center gap-2 bg-black/60 rounded-lg px-3 py-1.5">
+                            {!trackRef.participant.isMicrophoneEnabled && <MicOff className="w-4 h-4 text-red-400" />}
+                            <span className="text-white text-base font-semibold">
+                                {trackRef.participant.name || trackRef.participant.identity || 'Participant'}
+                            </span>
+                        </div>
                     </div>
-                    <span className="text-gray-200 font-bold text-2xl tracking-tight">
-                        {trackRef.participant.name || trackRef.participant.identity || 'Participant'}
-                    </span>
-                    <span className="text-gray-500 mt-2 text-sm uppercase tracking-widest font-semibold">Camera Off</span>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 }
