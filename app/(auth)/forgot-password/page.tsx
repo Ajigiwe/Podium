@@ -48,10 +48,10 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 {/* Reset Card */}
-                <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
                     <form className="space-y-5" onSubmit={handleSubmit}>
                         {error && (
-                            <div className="rounded-2xl bg-red-50 border border-red-100 p-3 animate-in fade-in slide-in-from-top-1">
+                            <div className="rounded-md bg-red-50 border border-red-100 p-3 animate-in fade-in slide-in-from-top-1">
                                 <p className="text-[11px] text-red-600 font-bold leading-tight">{error}</p>
                             </div>
                         )}
@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="block w-full px-4 py-3 bg-gray-50 border border-gray-100 focus:border-blue-600 text-gray-900 rounded-xl focus:outline-none transition-all text-sm placeholder:text-gray-300"
+                                className="block w-full px-4 py-3 bg-gray-50 border border-gray-100 focus:border-blue-600 text-gray-900 rounded-md focus:outline-none transition-all text-sm placeholder:text-gray-300"
                                 placeholder="name@example.com"
                             />
                         </div>
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full flex justify-center py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-sm shadow-md shadow-blue-100 transition-all active:scale-[0.98] disabled:opacity-50"
+                            className="w-full flex justify-center py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-black text-sm shadow-md shadow-blue-100 transition-all active:scale-[0.98] disabled:opacity-50"
                         >
                             {loading ? (
                                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

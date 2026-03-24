@@ -81,10 +81,10 @@ export const PiPPermissionPrompt = () => {
 
     return (
         <div className="fixed bottom-24 right-6 z-[200] max-w-sm animate-in fade-in slide-in-from-right-4 duration-500">
-            <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 backdrop-blur-sm">
+            <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-5 rounded-md shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 backdrop-blur-sm">
                 <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                        <div className="w-10 h-10 bg-white/20 rounded-md flex items-center justify-center">
                             <Sparkles className="w-6 h-6 text-yellow-300" />
                         </div>
                         <p className="font-black text-lg tracking-tight">Instant PiP</p>
@@ -100,7 +100,7 @@ export const PiPPermissionPrompt = () => {
 
                 <button
                     onClick={requestPermission}
-                    className="w-full bg-white text-indigo-600 font-bold py-3 px-4 rounded-xl hover:bg-indigo-50 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full bg-white text-indigo-600 font-bold py-3 px-4 rounded-md hover:bg-indigo-50 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
                 >
                     <Maximize2 className="w-4 h-4" />
                     Enable Now

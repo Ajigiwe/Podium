@@ -19,7 +19,7 @@ export const ReactionModal = ({ isOpen, onClose, onReaction, emojis }: ReactionM
             />
 
             {/* Modal Content */}
-            <div className="relative bg-gray-900 border border-gray-800 rounded-2xl p-4 w-auto max-w-[240px] animate-in zoom-in-95 duration-200">
+            <div className="relative bg-gray-900 border border-gray-800 rounded-lg p-4 w-auto max-w-[240px] animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-bold text-white">Reactions</h3>
                     <button
@@ -38,7 +38,7 @@ export const ReactionModal = ({ isOpen, onClose, onReaction, emojis }: ReactionM
                                 onReaction(emoji);
                                 onClose();
                             }}
-                            className="aspect-square flex items-center justify-center text-2xl hover:bg-gray-800 rounded-xl transition-all hover:scale-110 active:scale-95"
+                            className="aspect-square flex items-center justify-center text-2xl hover:bg-gray-800 rounded-md transition-all hover:scale-110 active:scale-95"
                         >
                             {emoji}
                         </button>

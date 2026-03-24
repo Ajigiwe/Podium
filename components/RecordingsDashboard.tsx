@@ -77,7 +77,7 @@ export const RecordingsDashboard = ({ lecturerId }: RecordingsDashboardProps) =>
                 </div>
                 <div className="grid gap-4">
                     {[1, 2, 3].map(i => (
-                        <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+                        <Skeleton key={i} className="h-24 w-full rounded-lg" />
                     ))}
                 </div>
             </div>
@@ -86,8 +86,8 @@ export const RecordingsDashboard = ({ lecturerId }: RecordingsDashboardProps) =>
 
     if (recordings.length === 0) {
         return (
-            <div className="text-center p-12 bg-white rounded-2xl border border-gray-100 min-h-[300px] flex flex-col items-center justify-center">
-                <div className="bg-gray-50  p-5 rounded-3xl mb-4 border border-gray-100 ">
+            <div className="text-center p-12 bg-white rounded-lg border border-gray-100 min-h-[300px] flex flex-col items-center justify-center">
+                <div className="bg-gray-50  p-5 rounded-xl mb-4 border border-gray-100 ">
                     <Video className="w-8 h-8 text-gray-400 " />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900  mb-2">No Recordings Yet</h3>
@@ -125,7 +125,7 @@ export const RecordingsDashboard = ({ lecturerId }: RecordingsDashboardProps) =>
                 </div>
                 <button
                     onClick={fetchRecordings}
-                    className="p-2 text-gray-500 hover:text-blue-600  hover:bg-gray-100  rounded-xl transition-all"
+                    className="p-2 text-gray-500 hover:text-blue-600  hover:bg-gray-100  rounded-md transition-all"
                     title="Refresh List"
                 >
                     <RefreshCw className="w-5 h-5" />
@@ -136,12 +136,12 @@ export const RecordingsDashboard = ({ lecturerId }: RecordingsDashboardProps) =>
                 {recordings.map((recording) => (
                     <div
                         key={recording.id}
-                        className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-blue-300 transition-all group"
+                        className="bg-white rounded-lg border border-gray-200 p-5 hover:border-blue-300 transition-all group"
                     >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="w-10 h-10 bg-blue-100  rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <div className="w-10 h-10 bg-blue-100  rounded-md flex items-center justify-center flex-shrink-0">
                                         <Video className="w-5 h-5 text-blue-600 " />
                                     </div>
                                     <h3 className="text-lg font-bold text-gray-900  truncate">
@@ -192,7 +192,7 @@ export const RecordingsDashboard = ({ lecturerId }: RecordingsDashboardProps) =>
                                 {recording.status === 'finished' && (
                                     <button
                                         onClick={() => downloadRecording(recording.id, recording.classTitle, recording.startedAt)}
-                                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all text-sm font-bold border border-blue-500 active:scale-[0.98]"
+                                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-md flex items-center justify-center gap-2 transition-all text-sm font-bold border border-blue-500 active:scale-[0.98]"
                                     >
                                         <Download className="w-4 h-4" />
                                         Download

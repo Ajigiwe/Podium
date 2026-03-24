@@ -55,7 +55,7 @@ export default function CountdownTimer({ targetDate, onComplete }: CountdownTime
                 { label: 'Seconds', value: timeLeft.seconds }
             ].map((unit, i) => (
                 <div key={i} className="flex flex-col items-center">
-                    <div className="w-16 h-16 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-center mb-1">
+                    <div className="w-16 h-16 bg-gray-900 border border-gray-800 rounded-md flex items-center justify-center mb-1">
                         <span className="text-2xl font-black text-blue-400">
                             {unit.value.toString().padStart(2, '0')}
                         </span>

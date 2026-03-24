@@ -35,7 +35,10 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/sessions/$(sessionId)) && (
         get(/databases/$(database)/documents/sessions/$(sessionId)).data.hostId == request.auth.uid ||
         get(/databases/$(database)/documents/sessions/$(sessionId)).data.lecturerId == request.auth.uid ||
-        get(/databases/$(database)/documents/sessions/$(sessionId)).data.backupModId == request.auth.uid
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.backupModId == request.auth.uid ||
+        // Co-hosts stored in subcollection
+        (exists(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)).data.isActive == true)
       );
     }
 
@@ -143,6 +146,13 @@ service cloud.firestore {
           request.auth.uid == requestId ||
           isMod(sessionId)
         );
+      }
+
+      // Co-Hosts subcollection
+      match /co_hosts/{coHostUserId} {
+        allow read: if isSignedIn();
+        // Only the session host may write co-host documents
+        allow write: if isHost(sessionId);
       }
 
       // Chat History subcollection

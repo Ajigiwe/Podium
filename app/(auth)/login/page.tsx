@@ -89,10 +89,10 @@ export default function LoginPage() {
                 </div>
 
                 {/* Main Login Card */}
-                <div className="bg-white rounded-xl border border-slate-200 p-8">
+                <div className="bg-white rounded-lg border border-slate-200 p-8">
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         {error && (
-                            <div className="rounded-xl bg-red-50 border border-red-100 p-4">
+                            <div className="rounded-md bg-red-50 border border-red-100 p-4">
                                 <p className="text-xs text-red-600 font-bold leading-tight">{error}</p>
                                 {resendMessage.includes('verify your email') && (
                                     <button
@@ -106,7 +106,7 @@ export default function LoginPage() {
                             </div>
                         )}
                         {resendMessage && !error && (
-                            <div className="rounded-xl bg-green-50 border border-green-100 p-4">
+                            <div className="rounded-md bg-green-50 border border-green-100 p-4">
                                 <p className="text-xs text-green-600 font-bold leading-tight">{resendMessage}</p>
                             </div>
                         )}
@@ -122,7 +122,7 @@ export default function LoginPage() {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-blue-600 text-slate-900 rounded-xl focus:outline-none transition-colors text-sm font-medium"
+                                    className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-blue-600 text-slate-900 rounded-md focus:outline-none transition-colors text-sm font-medium"
                                     placeholder="e.g. kwame@tetteh.com"
                                 />
                             </div>
@@ -160,7 +160,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full flex justify-center py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-colors disabled:opacity-50"
+                            className="w-full flex justify-center py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-sm transition-colors disabled:opacity-50"
                         >
                             {loading ? (
                                 <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
@@ -177,7 +177,7 @@ export default function LoginPage() {
                             type="button"
                             onClick={handleGoogleSignIn}
                             disabled={loading}
-                            className="bg-white border border-slate-200 hover:border-blue-500 text-slate-900 flex items-center justify-center gap-3 py-3 rounded-xl font-bold text-sm transition-colors disabled:opacity-50"
+                            className="bg-white border border-slate-200 hover:border-blue-500 text-slate-900 flex items-center justify-center gap-3 py-3 rounded-md font-bold text-sm transition-colors disabled:opacity-50"
                         >
                             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

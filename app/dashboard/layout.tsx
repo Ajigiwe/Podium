@@ -17,6 +17,7 @@ import {
     GraduationCap,
     UserCircle,
     History as HistoryIcon,
+    User, Book, Laptop, Star, Heart, Smile, Shield, Zap, Music, Palette
 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -109,6 +110,7 @@ export default function DashboardLayout({
     const navigation = [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
         { name: 'History', href: '/dashboard/history', icon: HistoryIcon },
+        { name: 'Profile', href: '/dashboard/profile', icon: UserCircle },
     ];
 
     const handleSignOut = async () => {
@@ -138,7 +140,7 @@ export default function DashboardLayout({
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-colors ${isActive
+                                className={`flex items-center gap-3 px-4 py-3 rounded-md text-sm font-bold transition-colors ${isActive
                                     ? 'bg-blue-600 text-white'
                                     : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600'
                                     }`}
@@ -152,22 +154,33 @@ export default function DashboardLayout({
 
                 {/* Profile Section */}
                 <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                            {profile?.fullName?.[0] || user.email?.[0]?.toUpperCase()}
+                    <Link
+                        href="/dashboard/profile"
+                        className="flex items-center gap-3 p-3 rounded-md bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:border-slate-200 transition-all group"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm group-hover:bg-blue-200 transition-colors overflow-hidden">
+                            {profile?.photoURL ? (
+                                <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                                (() => {
+                                    const iconMap: Record<string, any> = { User, GraduationCap, Book, Laptop, Star, Heart, Smile, Shield, Zap, Music, Palette };
+                                    const IconComponent = iconMap[profile?.displayIcon || 'User'] || User;
+                                    return <IconComponent className="w-5 h-5" />;
+                                })()
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-900 truncate">
                                 {profile?.fullName || 'User'}
                             </p>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
-                                {profile?.role || 'STUDENT'}
+                                {profile?.role || 'student'}
                             </p>
                         </div>
-                    </div>
+                    </Link>
                     <button
                         onClick={handleSignOut}
-                        className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest"
+                        className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 rounded-md text-xs font-bold text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest"
                     >
                         <LogOut className="w-4 h-4" />
                         Sign Out
@@ -185,7 +198,7 @@ export default function DashboardLayout({
                 </Link>
                 <button
                     onClick={() => setIsSidebarOpen(true)}
-                    className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
+                    className="p-2 text-slate-500 hover:bg-slate-100 rounded-md transition-colors"
                 >
                     <Menu className="w-6 h-6" />
                 </button>
@@ -221,7 +234,7 @@ export default function DashboardLayout({
                                         key={item.name}
                                         href={item.href}
                                         onClick={() => setIsSidebarOpen(false)}
-                                        className={`flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-bold transition-colors ${isActive
+                                        className={`flex items-center gap-4 px-4 py-3 rounded-md text-sm font-bold transition-colors ${isActive
                                             ? 'bg-blue-600 text-white'
                                             : 'text-slate-500 hover:bg-slate-50'
                                             }`}
@@ -238,7 +251,7 @@ export default function DashboardLayout({
                                     setIsSidebarOpen(false);
                                     signOut();
                                 }}
-                                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 bg-red-50 transition-colors"
+                                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-md text-sm font-bold text-red-500 bg-red-50 transition-colors"
                             >
                                 <LogOut className="w-5 h-5" />
                                 Sign Out
@@ -263,7 +276,7 @@ export default function DashboardLayout({
                         if (!hasAccess) {
                             return (
                                 <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
-                                    <div className="max-w-md w-full bg-white border border-gray-200 rounded-3xl p-8 text-center space-y-6 shadow-sm">
+                                    <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg p-8 text-center space-y-6 shadow-sm">
                                         <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
                                             <LayoutDashboard className="w-10 h-10 text-blue-600" />
                                         </div>
@@ -275,7 +288,7 @@ export default function DashboardLayout({
                                             </p>
                                         </div>
 
-                                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 flex items-center justify-between">
+                                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-100 flex items-center justify-between">
                                             <div className="text-left">
                                                 <p className="text-xs font-black uppercase tracking-widest text-gray-400">Semester Fee</p>
                                                 <p className="text-2xl font-black text-gray-900">{currency} {semesterFee}</p>
@@ -286,7 +299,7 @@ export default function DashboardLayout({
                                         <button
                                             onClick={handlePaySubscription}
                                             disabled={initializingSub}
-                                            className="w-full py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl shadow-blue-500/20 disabled:opacity-50"
+                                            className="w-full py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black text-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl shadow-blue-500/20 disabled:opacity-50"
                                         >
                                             {initializingSub ? (
                                                 <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />

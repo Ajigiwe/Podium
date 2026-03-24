@@ -50,7 +50,7 @@ export default function StudentHistoryModal({ isOpen, onClose, studentId, studen
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-            <div className="relative w-full max-w-2xl bg-white rounded-2xl p-6 border border-gray-200 max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200">
+            <div className="relative w-full max-w-2xl bg-white rounded-lg p-6 border border-gray-200 max-h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200">
 
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6 flex-shrink-0">
@@ -63,7 +63,7 @@ export default function StudentHistoryModal({ isOpen, onClose, studentId, studen
                             Listing all classes joined by <span className="font-medium text-gray-900 ">{studentName}</span>
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100  rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100  rounded-md transition-colors">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
@@ -73,17 +73,17 @@ export default function StudentHistoryModal({ isOpen, onClose, studentId, studen
                     {loading ? (
                         <div className="space-y-3">
                             {[1, 2, 3, 4].map(i => (
-                                <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                                <Skeleton key={i} className="h-20 w-full rounded-md" />
                             ))}
                         </div>
                     ) : logs.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500  bg-gray-50  rounded-xl border border-dashed border-gray-200 ">
+                        <div className="text-center py-12 text-gray-500  bg-gray-50  rounded-md border border-dashed border-gray-200 ">
                             No classes joined yet.
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {logs.map((log) => (
-                                <div key={log.id} className="flex items-center justify-between p-4 bg-gray-50  rounded-xl border border-gray-100  hover:border-blue-200  transition-colors">
+                                <div key={log.id} className="flex items-center justify-between p-4 bg-gray-50  rounded-md border border-gray-100  hover:border-blue-200  transition-colors">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-full bg-blue-100  text-blue-600  flex items-center justify-center font-bold text-sm">
                                             {log.sessionTitle ? log.sessionTitle.substring(0, 2).toUpperCase() : 'CL'}

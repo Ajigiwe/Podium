@@ -25,7 +25,7 @@ export default function UnifiedMediaButton({ onLeave }: { onLeave?: () => void }
             <div className="sm:hidden">
                 <button
                     onClick={onLeave}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-lg shadow-red-600/20 active:scale-95 transition-all"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-black shadow-lg shadow-red-600/20 active:scale-95 transition-all"
                 >
                     <PhoneOff className="w-3.5 h-3.5" />
                     <span className="hidden min-[360px]:inline">LEAVE</span>

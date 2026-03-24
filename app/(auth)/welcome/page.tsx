@@ -27,7 +27,7 @@ export default function AuthSelectionPage() {
                     {/* New User Option */}
                     <Link
                         href="/register"
-                        className="group relative flex flex-col p-6 bg-white  rounded-3xl border-2 border-gray-100 hover:border-blue-600 transition-all duration-300 overflow-hidden"
+                        className="group relative flex flex-col p-6 bg-white  rounded-lg border-2 border-gray-100 hover:border-blue-600 transition-all duration-300 overflow-hidden"
                     >
                         <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                             <Sparkles className="w-24 h-24 text-blue-500" />

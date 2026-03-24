@@ -164,12 +164,13 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
             csvRows.push([]); // Empty line
 
             // Table Header
-            const headers = ['Student Name', 'Index Number', 'Joined At', 'Presence Checks'];
+            const headers = ['Student Name', 'Student Email', 'Index Number', 'Joined At', 'Presence Checks'];
             csvRows.push([headers.join(',')]);
 
             // Table Data (Group by student to avoid duplicates if they joined multiple times)
             const uniqueStudents: Record<string, {
                 name: string;
+                email: string;
                 index: string;
                 joinedAt: string;
                 checks: number;
@@ -179,6 +180,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                 if (!uniqueStudents[log.userId]) {
                     uniqueStudents[log.userId] = {
                         name: log.userName || 'Unknown',
+                        email: log.userEmail || 'N/A',
                         index: log.userIndexNumber || 'N/A',
                         joinedAt: log.joinedAt?.toDate ? log.joinedAt.toDate().toLocaleString() : 'N/A',
                         checks: verifData[log.userId] || 0
@@ -188,8 +190,9 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
 
             Object.values(uniqueStudents).forEach(student => {
                 const name = `"${student.name.replace(/"/g, '""')}"`;
+                const email = `"${student.email.replace(/"/g, '""')}"`;
                 const index = `"${student.index.replace(/"/g, '""')}"`;
-                csvRows.push([name, index, `"${student.joinedAt}"`, student.checks].join(','));
+                csvRows.push([name, email, index, `"${student.joinedAt}"`, student.checks].join(','));
             });
 
             const csvContent = csvRows.join('\n');
@@ -221,13 +224,13 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-            <div className="relative w-full max-w-4xl bg-white rounded-2xl p-8 border border-gray-200 max-h-[80vh] flex flex-col">
+            <div className="relative w-full max-w-4xl bg-white rounded-lg p-8 border border-gray-200 max-h-[80vh] flex flex-col">
                 <div className="flex justify-between items-center mb-6 flex-shrink-0">
                     <h2 className="text-xl font-bold text-gray-900  flex items-center gap-2">
                         <History className="w-6 h-6 text-blue-600" />
                         Attendance History
                     </h2>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100  rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100  rounded-md transition-colors">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
@@ -236,7 +239,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                     {loadingHistory ? (
                         <div className="p-6 space-y-4">
                             {[1, 2, 3, 4].map(i => (
-                                <div key={i} className="flex gap-4 p-4 border border-gray-100  rounded-xl">
+                                <div key={i} className="flex gap-4 p-4 border border-gray-100  rounded-md">
                                     <div className="flex-1 space-y-2">
                                         <Skeleton className="h-5 w-1/3" />
                                         <Skeleton className="h-3 w-1/4" />
@@ -275,7 +278,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                                         <td className="p-4 text-right">
                                             <button
                                                 onClick={() => handleDownloadAttendance(item.sessionId, item.title)}
-                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50  text-blue-600  rounded-lg hover:bg-blue-100  transition-colors text-sm font-medium"
+                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50  text-blue-600  rounded-md hover:bg-blue-100  transition-colors text-sm font-medium"
                                             >
                                                 <Download className="w-4 h-4" />
                                                 Download CSV

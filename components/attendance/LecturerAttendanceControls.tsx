@@ -126,10 +126,10 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
     const nextChecks = stats?.scheduledVerifications.filter(m => m > minutesElapsed) || [];
 
     return (
-        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
             <div className="flex items-center justify-between mb-5 border-b border-gray-800 pb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/20">
+                    <div className="w-10 h-10 bg-blue-600/20 rounded-md flex items-center justify-center border border-blue-500/20">
                         <CheckCircle2 className="w-5 h-5 text-blue-500" />
                     </div>
                     <div>
@@ -140,7 +140,7 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
                 {stats && (
                     <button
                         onClick={fetchStatus}
-                        className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-all"
+                        className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-md transition-all"
                         title="Refresh Status"
                     >
                         <RefreshCw className="w-4 h-4" />
@@ -150,14 +150,14 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
 
             {!stats ? (
                 <div className="space-y-4">
-                    <div className="bg-blue-600/5 border border-blue-500/10 rounded-2xl p-4 text-center">
+                    <div className="bg-blue-600/5 border border-blue-500/10 rounded-lg p-4 text-center">
                         <p className="text-xs text-gray-400 leading-relaxed mb-4">
                             Activate the attendance monitoring using the settings pre-configured during class creation.
                         </p>
                         <button
                             onClick={handleStartAttendance}
                             disabled={isStarting}
-                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-xs font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-blue-500 active:scale-[0.98]"
+                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-xs font-black py-3 rounded-md flex items-center justify-center gap-2 transition-all border border-blue-500 active:scale-[0.98]"
                         >
                             {isStarting ? (
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -171,14 +171,14 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
             ) : (
                 <div className="space-y-5">
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gray-800/40 rounded-2xl p-3 border border-gray-700/30">
+                        <div className="bg-gray-800/40 rounded-lg p-3 border border-gray-700/30">
                             <div className="flex items-center gap-1.5 mb-1">
                                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                                 <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Status</span>
                             </div>
                             <p className="text-sm text-white font-bold tabular-nums">ACTIVE</p>
                         </div>
-                        <div className="bg-gray-800/40 rounded-2xl p-3 border border-gray-700/30">
+                        <div className="bg-gray-800/40 rounded-lg p-3 border border-gray-700/30">
                             <div className="flex items-center gap-1.5 mb-1">
                                 <Zap className="w-2.5 h-2.5 text-blue-400" />
                                 <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Triggers</span>
@@ -193,7 +193,7 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
                         <button
                             onClick={triggerManualCheck}
                             disabled={isTriggering}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 text-white text-[11px] font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all border border-indigo-500/30 active:scale-[0.98]"
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 text-white text-[11px] font-black py-3 rounded-md flex items-center justify-center gap-2 transition-all border border-indigo-500/30 active:scale-[0.98]"
                         >
                             {isTriggering ? (
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -214,7 +214,7 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
                                 {nextChecks.map((m, i) => (
                                     <div
                                         key={i}
-                                        className="px-3 py-1.5 bg-gray-800/60 border border-gray-700/50 rounded-lg text-[10px] text-gray-300 font-mono whitespace-nowrap"
+                                        className="px-3 py-1.5 bg-gray-800/60 border border-gray-700/50 rounded text-[10px] text-gray-300 font-mono whitespace-nowrap"
                                     >
                                         ~{m}m
                                     </div>

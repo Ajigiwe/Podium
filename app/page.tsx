@@ -59,10 +59,10 @@ export default function LandingPage() {
             <div className="flex items-center gap-6">
               {!loading && (
                 <>
-                  {user ? (
+                    {user ? (
                     <button
                       onClick={() => router.push('/dashboard')}
-                      className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors active:scale-95"
+                      className="px-6 py-2.5 rounded-md bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors active:scale-95"
                     >
                       Dashboard
                     </button>
@@ -76,7 +76,7 @@ export default function LandingPage() {
                       </Link>
                       <Link
                         href="/login"
-                        className="px-6 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-black transition-colors active:scale-95"
+                        className="px-6 py-2.5 rounded-md bg-slate-900 text-white text-sm font-bold hover:bg-black transition-colors active:scale-95"
                       >
                         Get Started
                       </Link>
@@ -121,14 +121,14 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row gap-5 pt-4">
                 <Link
                   href="/login"
-                  className="inline-flex items-center justify-center gap-3 px-10 py-5 rounded-xl bg-blue-600 text-white font-black text-xl hover:bg-blue-700 transition-colors group"
+                  className="inline-flex items-center justify-center gap-3 px-10 py-5 rounded-md bg-blue-600 text-white font-black text-xl hover:bg-blue-700 transition-colors group"
                 >
                   Start Teaching Now
                   <ArrowRight className="w-6 h-6 group-hover:translate-x-1.5 transition-transform" />
                 </Link>
                 <Link
                   href="/about"
-                  className="inline-flex items-center justify-center gap-3 px-10 py-5 rounded-xl bg-white text-slate-900 font-black text-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center justify-center gap-3 px-10 py-5 rounded-md bg-white text-slate-900 font-black text-xl border border-slate-200 hover:bg-slate-50 transition-colors"
                 >
                   See Demo
                 </Link>
@@ -155,15 +155,15 @@ export default function LandingPage() {
 
             {/* Hero Visual Block */}
             <div className="relative lg:mt-0 animate-in fade-in slide-in-from-right-8 duration-1000">
-              <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-slate-200 relative overflow-hidden group">
+              <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md border border-slate-200 relative overflow-hidden group">
                 {/* Classroom Mockup */}
-                <div className="aspect-[4/3] bg-slate-950 rounded-xl relative overflow-hidden">
+                <div className="aspect-[4/3] bg-slate-950 rounded-lg relative overflow-hidden">
                   {/* Grid overlay */}
                   <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-3 p-3 opacity-40">
-                    <div className="bg-slate-800 rounded-2xl" />
-                    <div className="bg-slate-900 rounded-2xl" />
-                    <div className="bg-slate-900 rounded-2xl" />
-                    <div className="bg-slate-800 rounded-2xl" />
+                    <div className="bg-slate-800 rounded-lg" />
+                    <div className="bg-slate-900 rounded-lg" />
+                    <div className="bg-slate-900 rounded-lg" />
+                    <div className="bg-slate-800 rounded-lg" />
                   </div>
 
                   {/* Floating Elements */}
@@ -207,7 +207,7 @@ export default function LandingPage() {
                       <h3 className="text-2xl font-black text-slate-900 leading-none">Advanced Mathematics</h3>
                       <p className="text-sm font-bold text-slate-400 mt-2 uppercase tracking-widest">Professor Samuel Mensah</p>
                     </div>
-                    <div className="px-4 py-2 bg-blue-50 rounded-xl border border-blue-100">
+                    <div className="px-4 py-2 bg-blue-50 rounded-md border border-blue-100">
                       <span className="text-blue-600 font-bold text-sm">Session #104</span>
                     </div>
                   </div>
@@ -223,9 +223,9 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-20 lg:py-32 bg-slate-950">
+      <footer className="py-12 lg:py-16 bg-slate-950">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
+          <div className="grid md:grid-cols-2 gap-12 items-center mb-10">
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center">
@@ -255,7 +255,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="pt-10 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="pt-6 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">
               &copy; 2026 Podium Technologies. All rights reserved.
             </p>
@@ -274,10 +274,10 @@ export default function LandingPage() {
           href="https://wa.me/233550599755"
           target="_blank"
           rel="noopener noreferrer"
-          className="w-14 h-14 rounded-xl bg-white shadow-md border border-slate-200 flex items-center justify-center text-[#25D366] hover:scale-110 active:scale-95 transition-all group"
+          className="w-14 h-14 rounded-lg bg-white shadow-md border border-slate-200 flex items-center justify-center text-[#25D366] hover:scale-110 active:scale-95 transition-all group"
         >
           <MessageCircle className="w-7 h-7 fill-current" />
-          <span className="absolute right-full mr-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 tracking-widest uppercase">
+          <span className="absolute right-full mr-4 px-4 py-2 rounded-md bg-slate-900 text-white text-xs font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 tracking-widest uppercase">
             WhatsApp Support
           </span>
         </a>
@@ -285,10 +285,10 @@ export default function LandingPage() {
         {/* Support Portal */}
         <a
           href="mailto:minatoflash82@gmail.com"
-          className="w-14 h-14 rounded-xl bg-blue-600 shadow-md flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all group"
+          className="w-14 h-14 rounded-lg bg-blue-600 shadow-md flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all group"
         >
           <Mail className="w-7 h-7" />
-          <span className="absolute right-full mr-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 tracking-widest uppercase">
+          <span className="absolute right-full mr-4 px-4 py-2 rounded-md bg-slate-900 text-white text-xs font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 tracking-widest uppercase">
             Email Center
           </span>
         </a>

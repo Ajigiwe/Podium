@@ -116,7 +116,7 @@ export const ScreenShareFullscreen = () => {
                 ref={containerRef}
                 className={`${isFullscreen
                     ? 'fixed inset-0 z-[200] bg-black'
-                    : 'fixed inset-4 z-[190] bg-black rounded-xl overflow-hidden border border-white/10'
+                    : 'fixed inset-4 z-[190] bg-black rounded-lg overflow-hidden border border-white/10'
                     }`}
             >
                 {/* Screen Share Video */}
@@ -132,7 +132,7 @@ export const ScreenShareFullscreen = () => {
                 {/* Controls Overlay */}
                 <div className="absolute top-4 right-4 left-4 flex items-center justify-between pointer-events-none">
                     {/* Participant Name */}
-                    <div className="bg-black/90 text-white px-4 py-2 rounded-lg text-sm font-medium pointer-events-auto flex items-center gap-2 border border-white/10">
+                    <div className="bg-black/90 text-white px-4 py-2 rounded-md text-sm font-medium pointer-events-auto flex items-center gap-2 border border-white/10">
                         <Monitor className="w-4 h-4 text-blue-400" />
                         <span>{screenShareTrack.participant.name || 'Presenter'} is sharing</span>
                     </div>
@@ -141,7 +141,7 @@ export const ScreenShareFullscreen = () => {
                         {/* Fullscreen Toggle (Available on all devices) */}
                         <button
                             onClick={isFullscreen ? exitFullscreen : enterFullscreen}
-                            className="bg-black/90 hover:bg-black text-white p-2.5 rounded-lg transition-colors border border-white/10"
+                            className="bg-black/90 hover:bg-black text-white p-2.5 rounded-md transition-colors border border-white/10"
                             title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen (Landscape)'}
                         >
                             {isFullscreen ? (
@@ -154,7 +154,7 @@ export const ScreenShareFullscreen = () => {
                         {/* Close */}
                         <button
                             onClick={exitFullscreen}
-                            className="bg-red-600/80 hover:bg-red-600 text-white p-2.5 rounded-lg transition-colors border border-red-500/20"
+                            className="bg-red-600/80 hover:bg-red-600 text-white p-2.5 rounded-md transition-colors border border-red-500/20"
                             title="Close viewer"
                         >
                             <X className="w-5 h-5" />

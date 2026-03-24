@@ -48,11 +48,11 @@ export default function LecturerClassesModal({ isOpen, onClose, lecturerId, lect
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-            <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-lg border border-gray-200 w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
                 {/* Header */}
-                <div className="p-6 border-b border-gray-200  flex items-center justify-between bg-gray-50 ">
-                    <div>
+            <div className="bg-white px-4 py-3 border-b flex items-center justify-between rounded-t-lg">
+                <div className="flex items-center gap-3">
                         <h2 className="text-xl font-bold text-gray-900 ">Class History</h2>
                         <p className="text-sm text-gray-500 ">
                             Classes created by <span className="font-semibold text-purple-600">{lecturerName}</span>

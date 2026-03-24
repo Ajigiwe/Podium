@@ -9,7 +9,7 @@ import { doc, updateDoc, collection, query, where, getDocs, Timestamp, orderBy, 
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase/config';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
-import { BookOpen, Users, CreditCard, CheckCircle, History, Camera, Upload, X, Loader2 } from 'lucide-react';
+import { BookOpen, Users, CreditCard, CheckCircle, History, Camera, Upload, X, Loader2, Star, Heart, Smile, Shield, Zap, User, GraduationCap, Laptop, Book, Music, Palette } from 'lucide-react';
 import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
 import ImageCropperModal from '@/components/ImageCropperModal';
 import { RecordingsDashboard } from '@/components/RecordingsDashboard';
@@ -34,6 +34,23 @@ export default function ProfilePage() {
     const [fullName, setFullName] = useState('');
     const [bio, setBio] = useState('');
     const [photoURL, setPhotoURL] = useState('');
+    const [role, setRole] = useState<'student' | 'lecturer' | 'admin'>('student');
+    const [indexNumber, setIndexNumber] = useState('');
+    const [displayIcon, setDisplayIcon] = useState('User');
+
+    const profileIcons = [
+        { name: 'User', icon: User },
+        { name: 'GraduationCap', icon: GraduationCap },
+        { name: 'Book', icon: Book },
+        { name: 'Laptop', icon: Laptop },
+        { name: 'Star', icon: Star },
+        { name: 'Heart', icon: Heart },
+        { name: 'Smile', icon: Smile },
+        { name: 'Shield', icon: Shield },
+        { name: 'Zap', icon: Zap },
+        { name: 'Music', icon: Music },
+        { name: 'Palette', icon: Palette },
+    ];
 
     // Password change
     const [currentPassword, setCurrentPassword] = useState('');
@@ -61,6 +78,9 @@ export default function ProfilePage() {
         setFullName(profile.fullName || '');
         setBio(profile.bio || '');
         setPhotoURL(profile.photoURL || '');
+        setRole(profile.role || 'student');
+        setIndexNumber(profile.indexNumber || '');
+        setDisplayIcon(profile.displayIcon || 'User');
 
         // Load statistics
         loadStatistics();
@@ -240,6 +260,9 @@ export default function ProfilePage() {
             await updateDoc(doc(db, 'profiles', user.uid), {
                 fullName,
                 bio,
+                role,
+                indexNumber: role === 'student' ? indexNumber : '',
+                displayIcon,
                 updatedAt: Timestamp.now(),
             });
 
@@ -256,6 +279,9 @@ export default function ProfilePage() {
                     await updateDoc(doc(db, 'profiles', user.uid), {
                         fullName,
                         bio,
+                        role,
+                        indexNumber: role === 'student' ? indexNumber : '',
+                        displayIcon,
                         updatedAt: Timestamp.now(),
                     });
                     showAlert('Profile updated successfully!', 'success');
@@ -320,7 +346,7 @@ export default function ProfilePage() {
     if (loading) {
         return (
             <div className="max-w-4xl mx-auto space-y-8">
-                <div className="bg-white  rounded-xl p-8 border border-gray-200 ">
+                <div className="bg-white  rounded-lg p-8 border border-gray-200 ">
                     <div className="flex gap-6 items-center">
                         <Skeleton className="w-24 h-24 rounded-full" />
                         <div className="flex-1 space-y-3">
@@ -330,11 +356,11 @@ export default function ProfilePage() {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
+                    <Skeleton className="h-24 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
                 </div>
-                <Skeleton className="h-[400px] w-full rounded-xl" />
+                <Skeleton className="h-[400px] w-full rounded-lg" />
             </div>
         );
     }
@@ -342,7 +368,7 @@ export default function ProfilePage() {
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             {/* Profile Card */}
-            <div className="bg-white  rounded-xl p-6 sm:p-8 border border-gray-200 ">
+            <div className="bg-white  rounded-lg p-6 sm:p-8 border border-gray-200 ">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
                     {/* Profile Picture */}
                     <div className="flex-shrink-0 relative group">
@@ -350,9 +376,10 @@ export default function ProfilePage() {
                             {photoURL ? (
                                 <img src={photoURL} alt={fullName} className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-3xl font-bold text-white">
-                                    {fullName.charAt(0).toUpperCase()}
-                                </span>
+                                (() => {
+                                    const SelectedIcon = profileIcons.find(i => i.name === displayIcon)?.icon || User;
+                                    return <SelectedIcon className="w-12 h-12 text-white" />;
+                                })()
                             )}
                         </div>
 
@@ -384,7 +411,7 @@ export default function ProfilePage() {
                                 ? 'bg-amber-100  text-amber-700 '
                                 : 'bg-blue-100  text-blue-700 '
                                 }`}>
-                                {profile?.role === 'lecturer' ? 'Lecturer' : 'Student'}
+                                {role === 'lecturer' ? 'Lecturer' : role === 'admin' ? 'Admin' : 'Student'}
                             </span>
                             <span className="text-sm text-gray-500 ">
                                 Member since {profile?.createdAt ? new Date(profile.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
@@ -398,9 +425,9 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {profile?.role === 'lecturer' ? (
                     <>
-                        <div className="bg-white  rounded-xl p-5 border border-gray-200 ">
+                        <div className="bg-white  rounded-md p-5 border border-gray-200 ">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-100  rounded-xl">
+                                <div className="p-3 bg-blue-100  rounded-md">
                                     <BookOpen className="w-5 h-5 text-blue-600 " />
                                 </div>
                                 <div>
@@ -410,12 +437,12 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        <div className="bg-white  rounded-xl p-5 border border-gray-200 ">
+                        <div className="bg-white  rounded-md p-5 border border-gray-200 ">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-purple-100  rounded-xl">
+                                <div className="p-3 bg-purple-100  rounded-md">
                                     <Users className="w-5 h-5 text-purple-600 " />
                                 </div>
-                                <div>
+                                <div division-id="1">
                                     <p className="text-sm text-gray-600 ">Total Students</p>
                                     <p className="text-2xl font-bold text-gray-900 ">{stats.totalStudents}</p>
                                 </div>
@@ -424,9 +451,9 @@ export default function ProfilePage() {
                     </>
                 ) : (
                     <>
-                        <div className="bg-white  rounded-xl p-5 border border-gray-200 ">
+                        <div className="bg-white  rounded-md p-5 border border-gray-200 ">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-100  rounded-xl">
+                                <div className="p-3 bg-blue-100  rounded-md">
                                     <BookOpen className="w-5 h-5 text-blue-600 " />
                                 </div>
                                 <div>
@@ -436,9 +463,9 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        <div className="bg-white  rounded-xl p-5 border border-gray-200 ">
+                        <div className="bg-white  rounded-md p-5 border border-gray-200 ">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-purple-100  rounded-xl">
+                                <div className="p-3 bg-purple-100  rounded-md">
                                     <CheckCircle className="w-5 h-5 text-purple-600 " />
                                 </div>
                                 <div>
@@ -456,7 +483,7 @@ export default function ProfilePage() {
                 <div className="flex justify-end">
                     <button
                         onClick={() => setShowHistoryModal(true)}
-                        className="px-5 py-2.5 bg-blue-50  text-blue-600  rounded-lg hover:bg-blue-100  font-semibold transition-colors flex items-center gap-2"
+                        className="px-5 py-2.5 bg-blue-50  text-blue-600  rounded-md hover:bg-blue-100  font-semibold transition-colors flex items-center gap-2"
                     >
                         <History className="w-5 h-5" />
                         View Attendance History
@@ -471,20 +498,79 @@ export default function ProfilePage() {
             )}
 
             {/* Edit Profile */}
-            <div className="bg-white  rounded-xl p-6 sm:p-8 border border-gray-200 ">
+            <div className="bg-white  rounded-lg p-6 sm:p-8 border border-gray-200 ">
                 <h3 className="text-lg font-bold text-gray-900  mb-6">Edit Profile</h3>
 
                 <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Full Name
+                            </label>
+                            <input
+                                type="text"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Role
+                            </label>
+                            <div className="flex gap-2 p-1 bg-gray-100 rounded-md">
+                                <button
+                                    onClick={() => setRole('student')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${role === 'student' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Student
+                                </button>
+                                <button
+                                    onClick={() => setRole('lecturer')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${role === 'lecturer' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Lecturer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {role === 'student' && (
+                        <div className="animate-in slide-in-from-top duration-300">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Student Index Number <span className="text-xs text-blue-500 font-bold ml-2">(Stored Permanently)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={indexNumber}
+                                onChange={(e) => setIndexNumber(e.target.value)}
+                                placeholder="e.g. 10293847"
+                                className="w-full px-4 py-3 bg-blue-50/30 border border-blue-100 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                    )}
+
                     <div>
-                        <label className="block text-sm font-medium text-gray-700  mb-2">
-                            Full Name
+                        <label className="block text-sm font-medium text-gray-700 mb-6 font-bold">
+                            Choose Your Display Icon
+                            {photoURL ? (
+                                <p className="text-xs font-normal text-blue-500 mt-1">Note: Your profile picture takes precedence over this icon.</p>
+                            ) : (
+                                <p className="text-xs font-normal text-gray-400 mt-1">Used if you don't have a profile picture.</p>
+                            )}
                         </label>
-                        <input
-                            type="text"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-11 gap-3">
+                            {profileIcons.map((item) => (
+                                <button
+                                    key={item.name}
+                                    onClick={() => setDisplayIcon(item.name)}
+                                    className={`p-3 rounded-md flex items-center justify-center transition-all ${displayIcon === item.name ? 'bg-blue-600 text-white shadow-lg scale-110' : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                                >
+                                    <item.icon className="w-6 h-6" />
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div>
@@ -497,7 +583,7 @@ export default function ProfilePage() {
                             maxLength={500}
                             rows={4}
                             placeholder="Tell us about yourself..."
-                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-md text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-sm text-gray-500  mt-1">
                             {bio.length}/500 characters
@@ -507,67 +593,69 @@ export default function ProfilePage() {
                     <button
                         onClick={handleSaveProfile}
                         disabled={submitting}
-                        className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
+                        className="px-6 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
                     >
                         {submitting ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>
             </div>
 
-            {/* Change Password */}
-            <div className="bg-white  rounded-xl p-6 sm:p-8 border border-gray-200 ">
-                <h3 className="text-lg font-bold text-gray-900  mb-6">Change Password</h3>
+            {/* Change Password - Only for Email/Password users */}
+            {user?.providerData.some(p => p.providerId === 'password') && (
+                <div className="bg-white  rounded-lg p-6 sm:p-8 border border-gray-200 ">
+                    <h3 className="text-lg font-bold text-gray-900  mb-6">Change Password</h3>
 
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700  mb-2">
-                            Current Password
-                        </label>
-                        <input
-                            type="password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700  mb-2">
+                                Current Password
+                            </label>
+                            <input
+                                type="password"
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-md text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700  mb-2">
+                                New Password
+                            </label>
+                            <input
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-md text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700  mb-2">
+                                Confirm New Password
+                            </label>
+                            <input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-md text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+
+                        {passwordError && (
+                            <p className="text-sm text-red-600 ">{passwordError}</p>
+                        )}
+
+                        <button
+                            onClick={handleChangePassword}
+                            disabled={submitting}
+                            className="px-6 py-2.5 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
+                        >
+                            {submitting ? 'Updating...' : 'Update Password'}
+                        </button>
                     </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700  mb-2">
-                            New Password
-                        </label>
-                        <input
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700  mb-2">
-                            Confirm New Password
-                        </label>
-                        <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg text-gray-900  focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    {passwordError && (
-                        <p className="text-sm text-red-600 ">{passwordError}</p>
-                    )}
-
-                    <button
-                        onClick={handleChangePassword}
-                        disabled={submitting}
-                        className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
-                    >
-                        {submitting ? 'Updating...' : 'Update Password'}
-                    </button>
                 </div>
-            </div>
+            )}
 
             {/* Recordings Section */}
             {profile?.role === 'lecturer' && (

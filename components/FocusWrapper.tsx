@@ -13,7 +13,7 @@ export function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
 
             {/* Explicit Placeholder for Camera Off in Focus Mode */}
             {isCameraOff && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 border-2 border-dashed border-gray-800 rounded-xl m-4">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 border-2 border-dashed border-gray-800 rounded-lg m-4">
                     <div className="w-32 h-32 bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-2xl ring-4 ring-white/5">
                         <User className="w-16 h-16 text-gray-400" />
                     </div>

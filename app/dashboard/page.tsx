@@ -74,7 +74,6 @@ function UniversalDashboardContent() {
     const [hostedSessions, setHostedSessions] = useState<Session[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [revenueData, setRevenueData] = useState<Record<string, any>>({});
-    const [totalStudents, setTotalStudents] = useState(0);
     const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
     // Create Form State
@@ -85,38 +84,36 @@ function UniversalDashboardContent() {
     const [scheduledStartTime, setScheduledStartTime] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('60');
     const [verificationCount, setVerificationCount] = useState('2');
+    const [requireGuestDetails, setRequireGuestDetails] = useState(true);
 
     // --- JOINING STATE ---
     const [enrolledSessions, setEnrolledSessions] = useState<Session[]>([]);
     const [joining, setJoining] = useState(false);
     const [joinLink, setJoinLink] = useState('');
+    
+    // --- PREVIEW STATE ---
+    const [showJoinPreview, setShowJoinPreview] = useState(false);
+    const [selectedSessionForJoin, setSelectedSessionForJoin] = useState<Session | null>(null);
+    const [enrolling, setEnrolling] = useState(false);
 
 
     // 2. Fetch Hosted Sessions
     useEffect(() => {
         if (!user) return;
         const q = query(collection(db, 'sessions'), where('lecturerId', '==', user.uid));
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const sessionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
             setHostedSessions(sessionsData.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)));
 
-            // Unique student count (async)
-            try {
-                const logsSnap = await getDocs(query(collection(db, 'attendance_logs'), where('lecturerId', '==', user.uid)));
-                setTotalStudents(new Set(logsSnap.docs.map(d => d.data().userId)).size);
-            } catch (err) {
-                console.warn(err);
-            }
-
             // Revenue data (async)
             for (const s of sessionsData) {
-                if (!revenueData[s.id]) {
+                if (s.id && !revenueData[s.id]) {
                     getSessionRevenue(s.id).then(data => {
                         setRevenueData(prev => ({ ...prev, [s.id]: data }));
                     });
                 }
             }
-        });
+        }, (err: any) => console.error('[Dashboard:Hosted] Error:', err));
         return () => unsubscribe();
     }, [user, revenueData]);
 
@@ -126,8 +123,7 @@ function UniversalDashboardContent() {
         const qTransactions = query(
             collection(db, 'transactions'),
             where('userId', '==', user.uid),
-            where('isHidden', '==', false),
-            orderBy('createdAt', 'desc')
+            where('isHidden', '==', false)
         );
 
         const unsubscribeTx = onSnapshot(qTransactions, async (snapshot) => {
@@ -142,8 +138,13 @@ function UniversalDashboardContent() {
             const validSessions = sessionSnaps
                 .filter(s => s.exists())
                 .map(s => ({ id: s.id, ...s.data() } as Session));
+            
+            const sorted = validSessions.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
-            setEnrolledSessions(validSessions);
+            setEnrolledSessions(sorted);
+            setLoading(false);
+        }, (err: any) => {
+            console.error('[Dashboard:Enrolled] Error:', err);
             setLoading(false);
         });
 
@@ -195,6 +196,7 @@ function UniversalDashboardContent() {
                 scheduledStartTime: scheduledStartTime ? Timestamp.fromDate(new Date(scheduledStartTime)) : null,
                 durationMinutes: parseInt(durationMinutes) || 60,
                 verificationCount: parseInt(verificationCount) || 2,
+                requireGuestDetails: requireGuestDetails,
                 isDeleted: false,
                 createdAt: serverTimestamp(),
             };
@@ -221,8 +223,6 @@ function UniversalDashboardContent() {
         e.preventDefault();
         if (!joinLink.trim() || !user) return;
 
-        // Subscription check is now handled at Layout level
-
         setJoining(true);
         try {
             let sId = joinLink.trim();
@@ -230,37 +230,72 @@ function UniversalDashboardContent() {
                 const normalized = normalizeCode(sId);
                 const snap = await getDocs(query(collection(db, 'sessions'), where('meetingCode', '==', `pod-${normalized.slice(0, 4)}-${normalized.slice(4, 8)}`)));
                 if (snap.empty) {
-                    showAlert('Class not found.', 'error'); setJoining(false); return;
+                    showAlert('Class not found.', 'error');
+                    setJoining(false);
+                    return;
                 }
                 sId = snap.docs[0].id;
             } else if (sId.includes('/classroom/')) {
                 sId = sId.split('/classroom/')[1].split('?')[0];
             }
 
-            // Simple Enrollment check
-            const alreadyEnrolled = enrolledSessions.some(s => s.id === sId);
-            if (!alreadyEnrolled) {
-                await addDoc(collection(db, 'transactions'), {
-                    userId: user.uid,
-                    sessionId: sId,
-                    amount: 0,
-                    currency: 'GHS',
-                    paystackReference: `sub_access_${sId}_${user.uid}_${Date.now()}`,
-                    paymentChannel: 'subscription_access',
-                    status: 'succeeded',
-                    email: user.email || '',
-                    isHidden: false,
-                    createdAt: serverTimestamp(),
-                    paidAt: serverTimestamp()
-                });
+            // Fetch session details to show preview
+            const sessionSnap = await getDoc(doc(db, 'sessions', sId));
+            if (!sessionSnap.exists()) {
+                showAlert('Class session no longer exists.', 'error');
+                setJoining(false);
+                return;
             }
 
-            router.push(`/classroom/${sId}`);
+            const sData = { id: sessionSnap.id, ...sessionSnap.data() } as Session;
+            setSelectedSessionForJoin(sData);
+            setShowJoinPreview(true);
         } catch (err) {
             console.error(err);
             showAlert("Error joining class", "error");
         } finally {
             setJoining(false);
+        }
+    };
+
+    const enrollInClass = async (sId: string) => {
+        if (!user) return false;
+        try {
+            // Check if already enrolled in memory
+            const alreadyEnrolled = enrolledSessions.some(s => s.id === sId);
+            if (alreadyEnrolled) return true;
+
+            // Check in Firestore for ANY transaction (even hidden ones)
+            const q = query(collection(db, 'transactions'), where('userId', '==', user.uid), where('sessionId', '==', sId));
+            const snap = await getDocs(q);
+            
+            if (!snap.empty) {
+                // If it exists but is hidden, unhide it
+                const tx = snap.docs[0];
+                if (tx.data().isHidden !== false) {
+                    await updateDoc(tx.ref, { isHidden: false });
+                }
+                return true;
+            }
+
+            await addDoc(collection(db, 'transactions'), {
+                userId: user.uid,
+                sessionId: sId,
+                amount: 0,
+                currency: 'GHS',
+                paystackReference: `join_access_${sId}_${user.uid}_${Date.now()}`,
+                paymentChannel: 'direct_join',
+                status: 'succeeded',
+                email: user.email || '',
+                isHidden: false,
+                createdAt: serverTimestamp(),
+                paidAt: serverTimestamp()
+            });
+            return true;
+        } catch (err) {
+            console.error('[Dashboard:Enroll] Error:', err);
+            showAlert('Failed to add class to your list.', 'error');
+            return false;
         }
     };
 
@@ -292,7 +327,6 @@ function UniversalDashboardContent() {
         showConfirm('Are you sure you want to end this class for everyone? This will eject all participants and permanently close the room.', async () => {
             try {
                 await deleteSession(sId);
-                // If the deleted session is the one currently active in the mini-player/background
                 if (sId === activeSessionId) {
                     leaveClass();
                 }
@@ -312,9 +346,9 @@ function UniversalDashboardContent() {
                     <Skeleton className="h-10 w-40 bg-gray-200 " />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Skeleton className="h-32 rounded-2xl bg-gray-200 " />
-                    <Skeleton className="h-32 rounded-2xl bg-gray-200 " />
-                    <Skeleton className="h-32 rounded-2xl bg-gray-200 " />
+                    <Skeleton className="h-32 rounded-lg bg-gray-200 " />
+                    <Skeleton className="h-32 rounded-lg bg-gray-200 " />
+                    <Skeleton className="h-32 rounded-lg bg-gray-200 " />
                 </div>
             </div>
         );
@@ -322,43 +356,33 @@ function UniversalDashboardContent() {
 
 
     return (
-        <div className="space-y-12 max-w-7xl mx-auto pb-20">
+        <div className="space-y-8 max-w-6xl mx-auto pb-20">
             {/* --- HEADER --- */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="space-y-1">
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">
                         Dashboard
                     </h1>
-                    <p className="text-slate-500 font-bold text-lg">
-                        Welcome back, <span className="text-blue-600">{profile?.fullName?.split(' ')[0]}</span>
+                    <p className="text-slate-500 font-bold text-base">
+                        Welcome back, <span className="text-slate-900">{profile?.fullName?.split(' ')[0]}</span>
                     </p>
                 </div>
-                {activeTab === 'host' && (
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="hidden md:flex px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors items-center gap-2"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Host New Class
-                    </button>
-                )}
             </div>
 
-            {/* --- TABS BROWSER --- */}
-            <div className="w-full flex justify-center sticky top-20 lg:top-8 z-20 pointer-events-none">
-                <div className="flex p-1 bg-slate-100 rounded-xl w-full max-w-sm border border-slate-200 pointer-events-auto">
+            <div className="w-full flex justify-center">
+                <div className="flex p-1 bg-slate-50 rounded-md border border-slate-100/50 w-full max-w-[240px]">
                     <button
                         onClick={() => setActiveTab('join')}
-                        className={`flex-1 py-3 px-6 rounded-lg font-bold text-sm transition-colors flex justify-center items-center gap-2 ${activeTab === 'join' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`flex-1 py-2 px-3 rounded font-bold text-[10px] transition-all flex justify-center items-center gap-1.5 ${activeTab === 'join' ? 'bg-white text-slate-900 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-500'}`}
                     >
-                        <MonitorPlay className="w-5 h-5" />
+                        <MonitorPlay className="w-3.5 h-3.5" />
                         Join
                     </button>
                     <button
                         onClick={() => setActiveTab('host')}
-                        className={`flex-1 py-3 px-6 rounded-lg font-bold text-sm transition-colors flex justify-center items-center gap-2 ${activeTab === 'host' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] transition-all flex justify-center items-center gap-1.5 ${activeTab === 'host' ? 'bg-white text-slate-900 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-500'}`}
                     >
-                        <Plus className="w-5 h-5" />
+                        <Plus className="w-3.5 h-3.5" />
                         Host
                     </button>
                 </div>
@@ -366,32 +390,34 @@ function UniversalDashboardContent() {
 
             {/* --- TAB CONTENT --- */}
             {activeTab === 'join' ? (
-                <div className="space-y-8">
+                <div className="max-w-3xl mx-auto space-y-8">
                     {/* Join Class Action */}
-                    <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 max-w-4xl mx-auto">
+                    <div className="bg-white rounded-lg p-6 sm:p-8 border border-slate-100 shadow-sm shadow-slate-200/20">
                         <div className="space-y-6">
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-3">
-                                    <MonitorPlay className="w-6 h-6 text-blue-600" />
-                                    Join Session
+                            <div className="text-center sm:text-left">
+                                <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                                    Ready to learn?
                                 </h3>
-                                <p className="text-slate-500 text-sm mt-1">Enter a meeting code or link to join your virtual classroom.</p>
+                                <p className="text-slate-400 font-medium text-xs mt-0.5">Enter your meeting code to enter the space.</p>
                             </div>
 
                             <form onSubmit={handleJoinByLink} className="flex flex-col sm:flex-row gap-3">
-                                <input
-                                    type="text"
-                                    value={joinLink}
-                                    onChange={(e) => setJoinLink(e.target.value)}
-                                    placeholder="e.g. pod-xxxx-xxxx"
-                                    className="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 focus:border-blue-600 rounded-xl outline-none transition-colors font-medium text-lg"
-                                />
+                                <div className="flex-1 relative group">
+                                    <input
+                                        type="text"
+                                        value={joinLink}
+                                        onChange={(e) => setJoinLink(e.target.value)}
+                                        placeholder="pod-xxxx-xxxx"
+                                        className="w-full px-5 py-3.5 bg-slate-50/50 border border-slate-100 focus:border-slate-900/30 focus:bg-white rounded-md outline-none transition-all font-bold text-base text-slate-900 placeholder:text-slate-300"
+                                    />
+                                    <div className="absolute inset-0 rounded-md ring-4 ring-slate-900/5 transition-all pointer-events-none" />
+                                </div>
                                 <button
                                     type="submit"
                                     disabled={joining || !joinLink}
-                                    className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold disabled:opacity-50 transition-colors flex items-center justify-center gap-2 text-lg"
+                                    className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-black disabled:opacity-30 transition-all flex items-center justify-center gap-2.5 text-base shadow-xl shadow-slate-900/10 active:scale-95"
                                 >
-                                    {joining ? <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" /> : <span>Join <ArrowRight className="w-5 h-5 inline ml-1" /></span>}
+                                    {joining ? <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" /> : <>Join Space <ArrowRight className="w-4 h-4" /></>}
                                 </button>
                             </form>
                         </div>
@@ -399,44 +425,46 @@ function UniversalDashboardContent() {
 
                     {/* Enrolled / Peer Classes */}
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <Users className="w-5 h-5 text-blue-600" />
-                                Recent Classes
+                        <div className="flex items-center justify-between px-2">
+                            <h2 className="text-xs font-bold text-slate-400 flex items-center gap-2.5 uppercase tracking-widest">
+                                Recent Spaces
                             </h2>
-                            <span className="text-xs font-bold bg-slate-100 px-3 py-1.5 rounded-full text-slate-500 border border-slate-200">{enrolledSessions.length} Joined</span>
+                            <span className="text-[10px] font-black bg-slate-100 text-slate-900 px-3 py-1 rounded-full border border-slate-200 uppercase">{enrolledSessions.length} Joined</span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                             {enrolledSessions.map(session => (
-                                <div key={session.id} className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between group transition-colors hover:border-blue-500 relative overflow-hidden">
-                                    {session.isActive && <div className="absolute top-0 left-0 w-full h-1 bg-red-500" />}
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${session.isActive ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-400'}`}>
-                                            <MonitorPlay className="w-6 h-6" />
+                                <div key={session.id} className="bg-white border border-slate-200 rounded-md p-4 flex flex-col justify-between group transition-colors hover:border-slate-900 relative overflow-hidden">
+                                    {session.isActive && <div className="absolute top-0 left-0 w-full h-1 bg-slate-400" />}
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${session.isActive ? 'bg-slate-100 text-slate-900' : 'bg-slate-50 text-slate-400'}`}>
+                                            <MonitorPlay className="w-5 h-5" />
                                         </div>
-                                        <button onClick={(e) => handleRemoveEnrolled(session.id, e)} className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                                            <Trash2 className="w-4 h-4" />
+                                        <button onClick={(e) => handleRemoveEnrolled(session.id, e)} className="p-1.5 bg-slate-50 rounded text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                            <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
 
                                     <div>
-                                        <h4 className="font-bold text-base line-clamp-2 mb-1 text-slate-900">{session.title}</h4>
-                                        <p className="text-xs font-medium text-slate-500">{session.lecturerName || 'Unknown Host'}</p>
+                                        <h4 className="font-bold text-sm line-clamp-2 mb-0.5 text-slate-900">{session.title}</h4>
+                                        <p className="text-[10px] font-medium text-slate-500">{session.lecturerName || 'Unknown Host'}</p>
                                     </div>
 
-                                    <div className="mt-4 pt-4 border-t border-slate-100">
+                                    <div className="mt-3 pt-3 border-t border-slate-100">
                                         <button
-                                            onClick={() => router.push(`/classroom/${session.id}`)}
-                                            className={`w-full py-3 rounded-xl text-sm font-bold transition-colors flex justify-center items-center gap-2 ${session.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
+                                            onClick={() => {
+                                                setSelectedSessionForJoin(session);
+                                                setShowJoinPreview(true);
+                                            }}
+                                            className={`w-full py-2 rounded text-xs font-bold transition-all flex justify-center items-center gap-2 ${session.isActive ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-sm' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
                                         >
-                                            {session.isActive ? 'Join Live Session' : 'Open Classroom'}
+                                            {session.isActive ? 'Join Live Space' : 'Open Space'}
                                         </button>
                                     </div>
                                 </div>
                             ))}
                             {enrolledSessions.length === 0 && (
-                                <div className="col-span-full py-16 text-center rounded-xl border-2 border-dashed border-slate-200 text-slate-400">
+                                <div className="col-span-full py-16 text-center rounded-md border-2 border-dashed border-slate-200 text-slate-400">
                                     <Users className="w-10 h-10 mx-auto mb-3 opacity-20" />
                                     <p className="text-base font-bold text-slate-500">No classes joined yet.</p>
                                     <p className="text-sm mt-1">Paste a meeting code above to get started.</p>
@@ -446,55 +474,54 @@ function UniversalDashboardContent() {
                     </div>
                 </div>
             ) : (
-                <div className="space-y-8">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200">
+                <div className="max-w-3xl mx-auto space-y-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 bg-white p-6 rounded-lg border border-slate-100 shadow-sm shadow-slate-200/20">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                                <Video className="w-6 h-6 text-blue-600" />
+                            <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center">
+                                <Video className="w-5 h-5 text-slate-900" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-slate-900">Host & Manage Classes</h2>
-                                <p className="text-sm text-slate-500 mt-1">Total Unique Students: {totalStudents}</p>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">Host & Manage</h2>
+                                <p className="text-slate-400 font-medium text-xs mt-0.5">Start a new session or manage existing ones.</p>
                             </div>
                         </div>
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+                            className="w-full sm:w-auto px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-black transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-slate-900/10 active:scale-95 text-sm"
                         >
-                            <Plus className="w-5 h-5" />
-                            Create New Class
+                            <Plus className="w-4 h-4" />
+                            Launch Session
                         </button>
                     </div>
 
                     {/* Hosted Sessions */}
-                    <div className="space-y-8">
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <Video className="w-5 h-5 text-blue-600" />
-                                Hosted Sessions
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between px-2">
+                            <h2 className="text-xs font-bold text-slate-400 flex items-center gap-2.5 uppercase tracking-widest">
+                                Your Sessions
                             </h2>
-                            <span className="text-xs font-bold bg-slate-100 px-3 py-1.5 rounded-full text-slate-500 border border-slate-200">{hostedSessions.length} Total</span>
+                            <span className="text-[10px] font-black bg-slate-100 text-slate-900 px-3 py-1 rounded-full border border-slate-200 uppercase">{hostedSessions.length} Created</span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                             {hostedSessions.filter(s => !s.isDeleted).map(session => (
-                                <div key={session.id} className="group bg-white border border-slate-200 rounded-xl p-6 transition-colors hover:border-blue-500 relative overflow-hidden flex flex-col justify-between">
-                                    {session.isActive && <div className="absolute top-0 left-0 w-full h-1 bg-red-500" />}
+                        <div key={session.id} className="group bg-white border border-slate-100 rounded-md p-5 transition-all hover:border-slate-900/20 hover:shadow-xl hover:shadow-slate-200/30 relative overflow-hidden flex flex-col justify-between">
+                                    {session.isActive && <div className="absolute top-0 left-0 w-full h-1 bg-slate-400" />}
                                     <div>
-                                        <div className="flex items-start justify-between mb-4">
+                                        <div className="flex items-start justify-between mb-5">
                                             <div className="flex-1">
-                                                <h4 className="font-bold text-base text-slate-900 line-clamp-2 leading-tight">{session.title}</h4>
-                                                <div className="inline-flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 mt-2">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Code</span>
-                                                    <span className="text-sm font-bold text-slate-900 tracking-wider">{session.meetingCode}</span>
-                                                    <button onClick={() => handleCopyCode(session.meetingCode, session.id)} className="text-slate-300 hover:text-blue-600 transition-colors ml-1">
-                                                        {copiedCodeId === session.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                                                <h4 className="font-black text-base text-slate-900 line-clamp-2 leading-tight tracking-tight">{session.title}</h4>
+                                                <div className="inline-flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded border border-slate-100 mt-2.5">
+                                                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">Code</span>
+                                                    <span className="text-xs font-black text-slate-800 tracking-wider">{session.meetingCode}</span>
+                                                    <button onClick={() => handleCopyCode(session.meetingCode, session.id)} className="text-slate-300 hover:text-slate-900 transition-colors ml-0.5">
+                                                        {copiedCodeId === session.id ? <Check className="w-3.5 h-3.5 text-slate-900" /> : <Copy className="w-3.5 h-3.5" />}
                                                     </button>
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={(e) => handleDeleteSession(session.id, e)}
-                                                className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-red-500 transition-colors border border-slate-100 opacity-0 group-hover:opacity-100"
+                                                className="p-2.5 bg-slate-50 rounded-md text-slate-300 hover:text-slate-900 hover:bg-slate-100 transition-all border border-slate-100 opacity-0 group-hover:opacity-100 shadow-sm"
                                                 title="End Class for Everyone"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -502,21 +529,21 @@ function UniversalDashboardContent() {
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
-                                        <button onClick={() => router.push(`/classroom/${session.id}`)} className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 text-slate-900 rounded-xl font-bold text-sm transition-colors border border-slate-200">
+                                    <div className="flex gap-2.5 mt-3.5 pt-3.5 border-t border-slate-50">
+                                        <button onClick={() => router.push(`/classroom/${session.id}`)} className="flex-1 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded font-bold text-[10px] transition-all">
                                             Open Space
                                         </button>
                                         <button
                                             onClick={() => handleToggleActive(session.id, session.isActive || false)}
-                                            className={`px-6 py-3 rounded-xl font-bold text-sm transition-colors ${session.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
+                                            className={`px-4 py-2.5 rounded font-black text-[10px] transition-all ${session.isActive ? 'bg-slate-100 text-slate-900 hover:bg-slate-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                                         >
-                                            {session.isActive ? 'End' : 'Go Live'}
+                                            {session.isActive ? 'Go Offline' : 'Go Live'}
                                         </button>
                                     </div>
                                 </div>
                             ))}
                             {hostedSessions.length === 0 && (
-                                <div className="col-span-full py-16 text-center rounded-xl border-2 border-dashed border-slate-200 text-slate-400">
+                                <div className="col-span-full py-16 text-center rounded-md border-2 border-dashed border-slate-200 text-slate-400">
                                     <Video className="w-10 h-10 mx-auto mb-3 opacity-20" />
                                     <p className="text-base font-bold text-slate-500">No classes hosted yet.</p>
                                     <p className="text-sm mt-1">Click &quot;Create New Class&quot; to get started.</p>
@@ -532,57 +559,175 @@ function UniversalDashboardContent() {
             {showCreateModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setShowCreateModal(false)} />
-                    <div className="bg-white w-full max-w-lg rounded-xl p-8 border border-slate-200 relative">
+                    <div className="bg-white w-full max-w-lg rounded-lg p-6 border border-slate-200 relative">
 
-                        <div className="flex justify-between items-center mb-10 relative z-10">
-                            <div className="space-y-1">
-                                <h1 className="text-3xl font-black text-slate-900 tracking-tight">Host New Class</h1>
-                                <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Configure your virtual room</p>
+                        <div className="flex justify-between items-center mb-6 relative z-10">
+                            <div className="space-y-0.5">
+                                <h1 className="text-xl font-black text-slate-900 tracking-tight">Host New Class</h1>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Configure your virtual room</p>
                             </div>
-                            <button onClick={() => setShowCreateModal(false)} className="p-3 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded-2xl transition-all shadow-sm">
-                                <X className="w-6 h-6" />
+                            <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded-xl transition-all shadow-sm">
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateSession} className="space-y-6 relative z-10">
-                            <div className="space-y-4">
+                        <form onSubmit={handleCreateSession} className="space-y-5 relative z-10">
+                            <div className="space-y-3.5">
+                                <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-md border border-slate-100">
+                                    <div className="space-y-0.5">
+                                        <label className="text-xs font-bold text-slate-900">Require Student Details</label>
+                                        <p className="text-[10px] text-slate-400">Ask for name & ID on join.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRequireGuestDetails(!requireGuestDetails)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${requireGuestDetails ? 'bg-slate-900' : 'bg-slate-300'}`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${requireGuestDetails ? 'translate-x-6' : 'translate-x-1'}`}
+                                        />
+                                    </button>
+                                </div>
+
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-500">Class Title</label>
-                                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="e.g. Advanced System Architecture" className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-sm font-medium" />
+                                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="e.g. Advanced System Architecture" className="w-full px-4 py-3 bg-slate-50 rounded-md border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium" />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
                                         <label className="text-xs font-bold text-slate-500">Program</label>
-                                        <input type="text" value={program} onChange={(e) => setProgram(e.target.value)} placeholder="CS Core" className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-sm font-medium" />
+                                        <input type="text" value={program} onChange={(e) => setProgram(e.target.value)} placeholder="CS Core" className="w-full px-4 py-3 bg-slate-50 rounded-md border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium" />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-xs font-bold text-slate-500">Course Code</label>
-                                        <input type="text" value={course} onChange={(e) => setCourse(e.target.value)} placeholder="CS404" className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-sm font-medium" />
+                                        <input type="text" value={course} onChange={(e) => setCourse(e.target.value)} placeholder="CS404" className="w-full px-4 py-3 bg-slate-50 rounded-md border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium" />
                                     </div>
                                 </div>
 
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-500">Scheduled Time (Optional)</label>
-                                    <input type="datetime-local" value={scheduledStartTime} onChange={(e) => setScheduledStartTime(e.target.value)} className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-sm font-medium" />
+                                    <input type="datetime-local" value={scheduledStartTime} onChange={(e) => setScheduledStartTime(e.target.value)} className="w-full px-4 py-3 bg-slate-50 rounded-md border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium" />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
                                         <label className="text-xs font-bold text-slate-500">Duration (Min)</label>
-                                        <input type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-sm font-medium" />
+                                        <input type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} className="w-full px-4 py-3 bg-slate-50 rounded-md border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium" />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-xs font-bold text-slate-500">Checks Count</label>
-                                        <input type="number" min="1" value={verificationCount} onChange={(e) => setVerificationCount(e.target.value)} className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-sm font-medium" />
+                                        <input type="number" min="1" value={verificationCount} onChange={(e) => setVerificationCount(e.target.value)} className="w-full px-4 py-3 bg-slate-50 rounded-md border border-slate-200 focus:border-slate-900 outline-none text-sm font-medium" />
+                                    </div>
+                                </div>
+
+
+                            </div>
+
+                            <button type="submit" className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-black text-xs transition-colors flex items-center justify-center gap-2">
+                                Generate Class Room <ArrowRight className="w-5 h-5" />
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Join Preview Modal */}
+            {showJoinPreview && selectedSessionForJoin && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowJoinPreview(false)} />
+                    <div className="bg-white w-full max-w-md rounded-lg p-6 border border-slate-200 relative shadow-2xl overflow-hidden">
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transform -rotate-1 ${selectedSessionForJoin.isActive ? 'bg-slate-900 text-white' : 'bg-slate-900 text-white'}`}>
+                                    <MonitorPlay className="w-5 h-5" />
+                                </div>
+                                <button onClick={() => setShowJoinPreview(false)} className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded transition-all">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-3 mb-6">
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900 leading-tight mb-0.5">{selectedSessionForJoin.title}</h2>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={`w-1.5 h-1.5 rounded-full ${selectedSessionForJoin.isActive ? 'bg-slate-900' : 'bg-slate-300'}`} />
+                                        <span className={`text-[9px] font-bold uppercase tracking-widest ${selectedSessionForJoin.isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                                            {selectedSessionForJoin.isActive ? 'Live Now' : 'Scheduled / Offline'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2.5 py-3 border-y border-slate-100">
+                                    <div className="space-y-0.5">
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase">Lecturer</p>
+                                        <p className="text-xs font-bold text-slate-800 truncate">{selectedSessionForJoin.lecturerName || 'Unknown'}</p>
+                                    </div>
+                                    <div className="space-y-0.5 text-right">
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase">Session Code</p>
+                                        <p className="text-xs font-bold text-slate-900 tracking-wider">
+                                            {selectedSessionForJoin.meetingCode?.split('-').slice(1).join('-').toUpperCase()}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
+                                    <div className="flex items-center gap-1.5">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span>{selectedSessionForJoin.scheduledStartTime ? selectedSessionForJoin.scheduledStartTime.toDate().toLocaleDateString() : 'Instant'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        <span>{selectedSessionForJoin.durationMinutes} Minutes</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <button type="submit" className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
-                                Generate Class Room <ArrowRight className="w-6 h-6" />
-                            </button>
-                        </form>
+                            <div className="space-y-2">
+                                <button
+                                    disabled={enrolling || !selectedSessionForJoin}
+                                    onClick={async () => {
+                                        if (!selectedSessionForJoin) return;
+                                        setEnrolling(true);
+                                        const success = await enrollInClass(selectedSessionForJoin.id);
+                                        if (success) {
+                                            router.push(`/classroom/${selectedSessionForJoin.id}`);
+                                        }
+                                        setEnrolling(false);
+                                    }}
+                                    className={`w-full py-2.5 rounded-md font-bold flex items-center justify-center gap-2 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 ${selectedSessionForJoin?.isActive ? 'bg-slate-900 text-white shadow-slate-900/10' : 'bg-slate-900 text-white shadow-slate-900/10'}`}
+                                >
+                                    {enrolling ? 'Enrolling...' : (
+                                        <>
+                                            {selectedSessionForJoin?.isActive ? 'Join Live Now' : 'Enter Waiting Room'}
+                                            <ArrowRight className="w-4 h-4" />
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    disabled={enrolling || !selectedSessionForJoin}
+                                    onClick={async () => {
+                                        if (!selectedSessionForJoin) return;
+                                        setEnrolling(true);
+                                        const success = await enrollInClass(selectedSessionForJoin.id);
+                                        if (success) {
+                                            showAlert('Class added to your list!', 'success');
+                                            setShowJoinPreview(false);
+                                        }
+                                        setEnrolling(false);
+                                    }}
+                                    className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-md font-bold transition-all text-xs disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {enrolling ? 'Processing...' : 'Add to My Classes'}
+                                </button>
+                                <button
+                                    onClick={() => setShowJoinPreview(false)}
+                                    className="w-full py-1.5 text-slate-400 hover:text-slate-600 font-bold transition-all text-[9px] uppercase tracking-widest"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -604,9 +749,9 @@ export default function UniversalDashboard() {
                     <Skeleton className="h-14 w-80 rounded-xl bg-slate-200" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Skeleton className="h-48 rounded-xl bg-slate-100" />
-                    <Skeleton className="h-48 rounded-xl bg-slate-100" />
-                    <Skeleton className="h-48 rounded-xl bg-slate-100" />
+                    <Skeleton className="h-48 rounded-md bg-slate-100" />
+                    <Skeleton className="h-48 rounded-md bg-slate-100" />
+                    <Skeleton className="h-48 rounded-md bg-slate-100" />
                 </div>
             </div>
         }>

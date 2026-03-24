@@ -210,7 +210,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                         <button
                             onClick={() => triggerManualCheck('manual')}
                             disabled={isTriggering}
-                            className="p-1.5 text-blue-400 hover:text-white hover:bg-blue-500/20 rounded-lg transition-all"
+                            className="p-1.5 text-blue-400 hover:text-white hover:bg-blue-500/20 rounded-md transition-all"
                             title="Trigger Manual Check"
                         >
                             {isTriggering ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
@@ -218,7 +218,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
 
                         <button
                             onClick={fetchStatus}
-                            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/10 rounded-md transition-all"
                             title="Refresh"
                         >
                             <RefreshCw className="w-3.5 h-3.5" />
@@ -227,14 +227,14 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                         <div className="relative">
                             <button
                                 onClick={() => setShowSettings(!showSettings)}
-                                className={`p-1.5 rounded-lg transition-all ${showSettings ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+                                className={`p-1.5 rounded-md transition-all ${showSettings ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
                                 title="Auto-Attendance Settings"
                             >
                                 <Settings className="w-3.5 h-3.5" />
                             </button>
 
                             {showSettings && (
-                                <div className="absolute bottom-full right-0 mb-3 w-48 bg-gray-900 border border-white/10 rounded-xl p-4 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="absolute bottom-full right-0 mb-3 w-48 bg-gray-900 border border-white/10 rounded-lg p-4 animate-in fade-in slide-in-from-bottom-2">
                                     <div className="flex items-center justify-between mb-4">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Auto-Verify</span>
                                         <label className="relative inline-flex items-center cursor-pointer">
@@ -255,7 +255,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                                             step="5"
                                             value={frequency ?? 15}
                                             onChange={(e) => updateFrequency(parseInt(e.target.value))}
-                                            className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                            className="w-full h-1 bg-gray-700 rounded appearance-none cursor-pointer accent-blue-600"
                                         />
                                     </div>
 

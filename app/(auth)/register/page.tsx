@@ -48,16 +48,16 @@ export default function RegisterPage() {
                 </div>
 
                 {/* Register Card */}
-                <div className="bg-white rounded-xl border border-slate-200 p-8">
+                <div className="bg-white rounded-lg border border-slate-200 p-8">
                     <div className="space-y-6">
                         {error && (
-                            <div className="rounded-xl bg-red-50 border border-red-100 p-4">
+                            <div className="rounded-md bg-red-50 border border-red-100 p-4">
                                 <p className="text-xs text-red-600 font-bold leading-tight">{error}</p>
                             </div>
                         )}
 
                         <div className="space-y-4">
-                            <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="flex items-start gap-3 p-4 rounded-md bg-slate-50 border border-slate-100">
                                 <div className="w-10 h-10 rounded-xl bg-blue-600 flex-shrink-0 flex items-center justify-center">
                                     <ShieldCheck className="w-5 h-5 text-white" />
                                 </div>
@@ -72,7 +72,7 @@ export default function RegisterPage() {
                             type="button"
                             onClick={() => handleGoogleSignUp()}
                             disabled={loading}
-                            className="w-full flex items-center justify-center gap-3 py-3.5 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-bold text-white transition-colors disabled:opacity-50"
+                            className="w-full flex items-center justify-center gap-3 py-3.5 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-bold text-white transition-colors disabled:opacity-50"
                         >
                             {loading ? (
                                 <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />

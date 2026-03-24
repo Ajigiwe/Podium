@@ -102,11 +102,11 @@ function HistoryContent() {
     if (loadingJoin || loadingHosted) {
         return (
             <div className="space-y-8 max-w-5xl mx-auto">
-                <Skeleton className="h-10 w-64 rounded-xl" />
+                <Skeleton className="h-10 w-64 rounded-md" />
                 <div className="space-y-4">
-                    <Skeleton className="h-20 rounded-xl" />
-                    <Skeleton className="h-20 rounded-xl" />
-                    <Skeleton className="h-20 rounded-xl" />
+                    <Skeleton className="h-20 rounded-md" />
+                    <Skeleton className="h-20 rounded-md" />
+                    <Skeleton className="h-20 rounded-md" />
                 </div>
             </div>
         );
@@ -115,7 +115,7 @@ function HistoryContent() {
     return (
         <div className="max-w-5xl mx-auto">
             <div className="flex items-center gap-4 mb-6">
-                <Link href="/dashboard" className="p-2 hover:bg-gray-100  rounded-xl transition-colors">
+                <Link href="/dashboard" className="p-2 hover:bg-gray-100  rounded-md transition-colors">
                     <ArrowLeft className="w-5 h-5 text-gray-500" />
                 </Link>
                 <div>
@@ -133,7 +133,7 @@ function HistoryContent() {
             <div className="flex gap-2 mb-6 border-b border-gray-200  pb-2">
                 <button
                     onClick={() => setActiveTab('joined')}
-                    className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${activeTab === 'joined' ? 'bg-blue-600 text-white border border-blue-700' : 'text-gray-500 hover:bg-gray-100 '}`}
+                    className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'joined' ? 'bg-blue-600 text-white border border-blue-700' : 'text-gray-500 hover:bg-gray-100 '}`}
                 >
                     Classes You Joined
                 </button>
@@ -145,14 +145,14 @@ function HistoryContent() {
                 </button>
             </div>
 
-            <div className="bg-white  border border-gray-200  rounded-2xl overflow-x-auto">
+            <div className="bg-white  border border-gray-200  rounded-lg overflow-x-auto">
                 {activeTab === 'joined' ? (
                     joinHistoryData.length === 0 ? (
                         <div className="py-20 text-center flex flex-col items-center justify-center bg-gray-50 ">
                             <History className="w-12 h-12 text-gray-300  mb-4" />
                             <h3 className="text-lg font-bold text-gray-900 ">No join history</h3>
                             <p className="text-gray-500 font-medium">You haven&apos;t joined any classes yet.</p>
-                            <Link href="/dashboard" className="mt-6 px-6 py-2 bg-gray-900  text-white  rounded-xl font-bold text-sm">
+                            <Link href="/dashboard" className="mt-6 px-6 py-2 bg-gray-900  text-white  rounded-md font-bold text-sm">
                                 Join a Class
                             </Link>
                         </div>
@@ -181,7 +181,7 @@ function HistoryContent() {
                                         <td className="py-4 px-6 text-right">
                                             <button
                                                 onClick={() => handleDeleteRecord(item)}
-                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50  rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50  rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                                                 title="Delete Record"
                                             >
                                                 <Trash2 className="w-5 h-5" />
@@ -198,7 +198,7 @@ function HistoryContent() {
                             <History className="w-12 h-12 text-gray-300  mb-4" />
                             <h3 className="text-lg font-bold text-gray-900 ">No hosted classes</h3>
                             <p className="text-gray-500 font-medium">You haven&apos;t hosted any classes yet.</p>
-                            <Link href="/dashboard" className="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm">
+                            <Link href="/dashboard" className="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-md font-bold text-sm">
                                 Class Setup
                             </Link>
                         </div>
@@ -254,10 +254,10 @@ export default function HistoryPage() {
     return (
         <Suspense fallback={
             <div className="space-y-8 max-w-5xl mx-auto p-8">
-                <Skeleton className="h-10 w-64 rounded-xl" />
+                <Skeleton className="h-10 w-64 rounded-md" />
                 <div className="space-y-4">
-                    <Skeleton className="h-20 rounded-xl" />
-                    <Skeleton className="h-20 rounded-xl" />
+                    <Skeleton className="h-20 rounded-md" />
+                    <Skeleton className="h-20 rounded-md" />
                 </div>
             </div>
         }>

@@ -8,10 +8,10 @@ interface LayoutSelectorProps {
 
 export const LayoutSelector = ({ currentLayout, onLayoutChange }: LayoutSelectorProps) => {
     return (
-        <div className="flex gap-2 bg-gray-900 p-1.5 rounded-xl border border-white/10">
+        <div className="flex gap-2 bg-gray-900 p-1.5 rounded-lg border border-white/10">
             <button
                 onClick={() => onLayoutChange('spotlight')}
-                className={`p-2 rounded-lg transition-all ${currentLayout === 'spotlight'
+                className={`p-2 rounded-md transition-all ${currentLayout === 'spotlight'
                     ? 'bg-blue-600 text-white border-2 border-blue-400'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
@@ -22,7 +22,7 @@ export const LayoutSelector = ({ currentLayout, onLayoutChange }: LayoutSelector
 
             <button
                 onClick={() => onLayoutChange('2x2')}
-                className={`p-2 rounded-lg transition-all ${currentLayout === '2x2'
+                className={`p-2 rounded-md transition-all ${currentLayout === '2x2'
                     ? 'bg-blue-600 text-white border-2 border-blue-400'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
@@ -33,7 +33,7 @@ export const LayoutSelector = ({ currentLayout, onLayoutChange }: LayoutSelector
 
             <button
                 onClick={() => onLayoutChange('4x4')}
-                className={`p-2 rounded-lg transition-all ${currentLayout === '4x4'
+                className={`p-2 rounded-md transition-all ${currentLayout === '4x4'
                     ? 'bg-blue-600 text-white border-2 border-blue-400'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
@@ -44,7 +44,7 @@ export const LayoutSelector = ({ currentLayout, onLayoutChange }: LayoutSelector
 
             <button
                 onClick={() => onLayoutChange('5x5')}
-                className={`p-2 rounded-lg transition-all ${currentLayout === '5x5'
+                className={`p-2 rounded-md transition-all ${currentLayout === '5x5'
                     ? 'bg-blue-600 text-white border-2 border-blue-400'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}

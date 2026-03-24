@@ -60,7 +60,7 @@ export const StudentVerificationModal = ({ sessionId }: StudentVerificationModal
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 animate-in fade-in duration-500" />
 
-            <div className="relative bg-[#0F172A] border-2 border-blue-500/40 rounded-3xl p-6 max-w-xs w-full animate-in zoom-in duration-300">
+            <div className="relative bg-[#0F172A] border-2 border-blue-500/40 rounded-lg p-6 max-w-xs w-full animate-in zoom-in duration-300">
                 {isVerified ? (
                     <div className="text-center py-4 animate-in zoom-in duration-300">
                         <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
@@ -86,7 +86,7 @@ export const StudentVerificationModal = ({ sessionId }: StudentVerificationModal
                             </p>
                         </div>
 
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
                             <div className="flex items-center justify-between mb-1">
                                 <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Time Remaining</span>
                             </div>
@@ -107,7 +107,7 @@ export const StudentVerificationModal = ({ sessionId }: StudentVerificationModal
                         <button
                             onClick={handleVerify}
                             disabled={isResponding || timeLeft === 0}
-                            className={`w-full font-black py-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 text-base ${timeLeft < 10
+                            className={`w-full font-black py-4 rounded-md transition-all active:scale-95 flex items-center justify-center gap-2 text-base ${timeLeft < 10
                                 ? 'bg-red-600 hover:bg-red-700 border-2 border-red-500'
                                 : 'bg-blue-600 hover:bg-blue-700 border-2 border-blue-500'
                                 } text-white`}

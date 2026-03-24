@@ -9,7 +9,8 @@ import { Session } from '@/lib/firebase/types';
 import { hasUserPaid } from '@/lib/payments/verifyPayment';
 import ClassroomContent from '@/components/ClassroomContent';
 import { useClassroom } from '@/contexts/ClassroomContext';
-import { Clock, RefreshCw, ArrowLeft, Laptop } from 'lucide-react';
+import { checkIsCoHost } from '@/lib/firebase/cohost';
+import { Clock, RefreshCw, ArrowLeft, Laptop, Mic, MicOff } from 'lucide-react';
 import CountdownTimer from '@/components/CountdownTimer';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAlert } from '@/contexts/AlertContext';
@@ -47,6 +48,7 @@ export default function ClassroomPage() {
     const [studentName, setStudentName] = useState('');
     const [studentIndex, setStudentIndex] = useState('');
     const [submittingProfile, setSubmittingProfile] = useState(false);
+    const [joinMicEnabled, setJoinMicEnabled] = useState(true);
 
     useEffect(() => {
         if (authLoading || sessionLoading) return;
@@ -71,9 +73,10 @@ export default function ClassroomPage() {
                 // It is now handled by ClassroomContext's background listener
                 // to prevent redirect/alert loops between this page and the provider.
 
-                // CRITICAL: Check if user is the HOST of this session
+                // CRITICAL: Check if user is the HOST or CO-HOST of this session
                 const isHost = session.hostId === user.uid || session.lecturerId === user.uid;
-                const isLecturer = profile.role === 'lecturer';
+                const isCoHost = await checkIsCoHost(sessionId, user.uid);
+                const isModerator = isHost || isCoHost || profile.role === 'lecturer' || profile.role === 'admin';
 
                 if (!isHost && !session.isActive) {
                     // Check if there's a scheduled start time in the future
@@ -112,7 +115,7 @@ export default function ClassroomPage() {
                 let hasPaidAccess = session.isFree || (await hasUserPaid(user.uid, sessionId));
 
                 // If it's a free class and user hasn't enrolled
-                if (session.isFree && !hasPaidAccess && profile.role === 'student' && !isLecturer) {
+                if (session.isFree && !hasPaidAccess && profile.role === 'student' && !isModerator) {
                     const existingAccess = await hasUserPaid(user.uid, sessionId);
                     if (!existingAccess) {
                         let enrollmentSuccessful = false;
@@ -162,17 +165,17 @@ export default function ClassroomPage() {
                     }
                 }
 
-                if (!isHost && !isLecturer && !hasPaidAccess) {
+                if (!isHost && !isModerator && !hasPaidAccess) {
                     showAlert('You need to pay to access this class', 'warning');
                     router.push('/dashboard');
                     return;
                 }
 
                 // Pre-warm LiveKit token in background!
-                preWarmToken(sessionId, profile.fullName, isHost ? 'lecturer' : 'student', user.uid, profile.photoURL);
+                preWarmToken(sessionId, profile.fullName, isModerator ? 'lecturer' : 'student', user.uid, profile.photoURL);
 
                 // Attendance check
-                if (!isHost) {
+                if (!isModerator) {
                     const attendanceRef = collection(db, 'attendance_logs');
                     const q = query(
                         attendanceRef,
@@ -185,10 +188,53 @@ export default function ClassroomPage() {
                         setAttendanceSubmitted(true);
                         setCanAccess(true);
                         if (currentSessionId !== sessionId) {
-                            joinClass(sessionId, session.title, profile.fullName, isHost ? 'lecturer' : 'student', user.uid, profile.photoURL);
+                            joinClass(sessionId, session.title, profile.fullName, isModerator ? 'lecturer' : 'student', user.uid, profile.photoURL);
                         }
                         setLoading(false);
                         return;
+                    }
+
+                    // Auto-join if guest details are not required
+                    if (session.requireGuestDetails === false) {
+                        setSubmittingProfile(true);
+                        try {
+                            const name = profile.fullName || 'Guest';
+                            const index = profile.indexNumber || 'N/A';
+                            
+                            // Log attendance
+                            await addDoc(collection(db, 'attendance_logs'), {
+                                sessionId,
+                                userId: user.uid,
+                                userName: name,
+                                userIndexNumber: index,
+                                userEmail: user.email || '',
+                                joinedAt: Timestamp.now(),
+                                lecturerId: session.lecturerId,
+                                sessionTitle: session.title || 'Unknown Class',
+                            });
+
+                            // Increment participant count
+                            try {
+                                await updateDoc(doc(db, 'sessions', sessionId), {
+                                    participantCount: increment(1)
+                                });
+                            } catch (e) {
+                                console.warn('Failed to update participant count:', e);
+                            }
+
+                            setAttendanceSubmitted(true);
+                            setCanAccess(true);
+                            if (currentSessionId !== sessionId) {
+                                joinClass(sessionId, session.title, name, 'student', user.uid, profile.photoURL, profile.displayIcon, joinMicEnabled);
+                            }
+                            setLoading(false);
+                            return;
+                        } catch (err) {
+                            console.error('[Classroom:AutoJoin] Error:', err);
+                            // Fallback to modal if auto-join fails
+                        } finally {
+                            setSubmittingProfile(false);
+                        }
                     }
 
                     setStudentName(profile.fullName || '');
@@ -200,7 +246,7 @@ export default function ClassroomPage() {
 
                 setCanAccess(true);
                 if (currentSessionId !== sessionId) {
-                    joinClass(sessionId, session.title, profile.fullName, isHost ? 'lecturer' : 'student', user.uid, profile.photoURL);
+                    joinClass(sessionId, session.title, profile.fullName, isModerator ? 'lecturer' : 'student', user.uid, profile.photoURL, profile.displayIcon, joinMicEnabled);
                 }
                 setLoading(false);
             } catch (error) {
@@ -238,6 +284,7 @@ export default function ClassroomPage() {
                 userId: user.uid,
                 userName: studentName,
                 userIndexNumber: studentIndex,
+                userEmail: user.email || '',
                 joinedAt: Timestamp.now(),
                 lecturerId: session?.lecturerId,
                 sessionTitle: session?.title || 'Unknown Class',
@@ -262,12 +309,14 @@ export default function ClassroomPage() {
             setCanAccess(true);
 
             // Join LiveKit after profile update
-            // If they are a guest lecturer, they MUST join as 'student' to avoid admin perms
-            const isHost = session?.lecturerId === user.uid;
+            const isHostCheck = session?.lecturerId === user.uid || session?.hostId === user.uid;
+            const isCoHostCheck = await checkIsCoHost(sessionId, user.uid);
+            const isModCheck = isHostCheck || isCoHostCheck || profile?.role === 'lecturer' || profile?.role === 'admin';
+
             if (typeof window !== 'undefined') {
                 sessionStorage.setItem('podium_user_interacted', 'true');
             }
-            joinClass(sessionId, session?.title || 'Class', studentName, isHost ? 'lecturer' : 'student', user.uid, profile?.photoURL);
+            joinClass(sessionId, session?.title || 'Class', studentName, isModCheck ? 'lecturer' : 'student', user.uid, profile?.photoURL, profile?.displayIcon, joinMicEnabled);
 
         } catch (error) {
             console.error("[Classroom:AttendanceLog] Error saving attendance:", error);
@@ -286,8 +335,8 @@ export default function ClassroomPage() {
                         <Skeleton className="h-10 w-32 bg-gray-800" />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[600px]">
-                        <Skeleton className="h-full w-full rounded-2xl bg-gray-800" />
-                        <Skeleton className="h-full w-full rounded-2xl bg-gray-800" />
+                        <Skeleton className="h-full w-full rounded-lg bg-gray-800" />
+                        <Skeleton className="h-full w-full rounded-lg bg-gray-800" />
                     </div>
                 </div>
             </div>
@@ -319,7 +368,7 @@ export default function ClassroomPage() {
                         )}
                     </div>
 
-                    <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-8">
+                    <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
                         <p className="text-blue-400 font-bold text-sm uppercase tracking-widest mb-2">Class Title</p>
                         <h2 className="text-xl font-bold text-white">{session?.title}</h2>
                         <div className="flex items-center justify-center gap-2 mt-4 text-gray-500 text-sm">
@@ -330,7 +379,7 @@ export default function ClassroomPage() {
 
                     <button
                         onClick={() => router.push('/dashboard')}
-                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 mx-auto"
+                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-md font-bold transition-all flex items-center justify-center gap-2 mx-auto"
                     >
                         <ArrowLeft className="w-5 h-5" />
                         Back to Dashboard
@@ -356,14 +405,14 @@ export default function ClassroomPage() {
                     <p className="text-gray-400 mb-6">
                         The class hasn&apos;t started yet. Please wait for your lecturer to begin the session.
                     </p>
-                    <div className="bg-gray-900 rounded-xl p-4 mb-6 border border-gray-800">
+                    <div className="bg-gray-900 rounded-md p-4 mb-6 border border-gray-800">
                         <p className="text-white font-semibold">{session?.title}</p>
                         <p className="text-gray-500 text-sm mt-1">Class ID: {sessionId.slice(0, 8)}...</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <button
                             onClick={() => window.location.reload()}
-                            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold transition-colors flex items-center justify-center gap-2"
                         >
                             <RefreshCw className="w-4 h-4" />
                             Refresh
@@ -393,7 +442,7 @@ export default function ClassroomPage() {
             {showProfileModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/80" />
-                    <div className="relative w-full max-w-md bg-white rounded-2xl p-8 border border-gray-200">
+                    <div className="relative w-full max-w-md bg-white rounded-lg p-8 border border-gray-200">
                         <h2 className="text-xl font-bold text-gray-900  mb-2">Student Details</h2>
                         <p className="text-gray-600  mb-6">
                             Please enter your details to join the class.
@@ -406,7 +455,7 @@ export default function ClassroomPage() {
                                     required
                                     value={studentName}
                                     onChange={(e) => setStudentName(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                             <div>
@@ -416,13 +465,35 @@ export default function ClassroomPage() {
                                     required
                                     value={studentIndex}
                                     onChange={(e) => setStudentIndex(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-3 bg-gray-50  border border-gray-300  rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
+
+                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md border border-gray-100">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${joinMicEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500'}`}>
+                                        {joinMicEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900">Start with Microphone</p>
+                                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">Initial audio state</p>
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={joinMicEnabled}
+                                        onChange={(e) => setJoinMicEnabled(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-10 h-5 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
                             <button
                                 type="submit"
                                 disabled={submittingProfile}
-                                className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                className="w-full py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                             >
                                 {submittingProfile ? 'Saving...' : 'Join Class'}
                             </button>

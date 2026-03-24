@@ -27,7 +27,7 @@ export default function ImageCropperModal({ image, onCropComplete, onClose, onCo
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80" onClick={onClose} />
 
-            <div className="relative w-full max-w-xl bg-white rounded-2xl overflow-hidden flex flex-col border border-gray-200">
+            <div className="relative w-full max-w-xl bg-white rounded-lg overflow-hidden flex flex-col border border-gray-200">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-200  flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -65,7 +65,7 @@ export default function ImageCropperModal({ image, onCropComplete, onClose, onCo
                             step={0.1}
                             value={zoom}
                             onChange={(e) => setZoom(Number(e.target.value))}
-                            className="flex-1 h-2 bg-gray-200  rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            className="flex-1 h-2 bg-gray-200  rounded appearance-none cursor-pointer accent-blue-600"
                         />
                         <ZoomIn className="w-4 h-4 text-gray-400" />
                     </div>
@@ -79,7 +79,7 @@ export default function ImageCropperModal({ image, onCropComplete, onClose, onCo
                         </button>
                         <button
                             onClick={onConfirm}
-                            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 border border-blue-500"
+                            className="px-6 py-2.5 bg-blue-600 text-white rounded-md font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 border border-blue-500"
                         >
                             <Check className="w-4 h-4" />
                             Apply Crop

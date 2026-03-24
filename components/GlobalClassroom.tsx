@@ -63,7 +63,7 @@ function RoomConnector({ onRoomReady }: { onRoomReady: (room: Room) => void }) {
 
 // Participant Menu Component
 function ParticipantMenu({ participant, closeMenu }: { participant: Participant, closeMenu: () => void }) {
-    const { userRole, muteParticipant, disableParticipantVideo, kickParticipant } = useClassroom();
+    const { isModerator, muteParticipant, disableParticipantVideo, kickParticipant } = useClassroom();
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Close on click outside
@@ -79,12 +79,12 @@ function ParticipantMenu({ participant, closeMenu }: { participant: Participant,
         };
     }, [closeMenu]);
 
-    if (userRole !== 'lecturer') return null;
+    if (!isModerator) return null;
 
     return (
         <div
             ref={menuRef}
-            className="absolute top-10 right-2 z-50 bg-gray-900 border border-gray-700 rounded-lg w-48 py-1 overflow-hidden"
+            className="absolute top-10 right-2 z-50 bg-gray-900 border border-gray-700 rounded-md w-48 py-1 overflow-hidden"
             onClick={(e) => e.stopPropagation()} // Prevent tile click
         >
             <button
@@ -146,7 +146,7 @@ const TileWrapper = memo(({ track, participant, onTileClick, className, ...props
     const hookIsSpeaking = useIsSpeaking(participant);
     const [manualIsSpeaking, setManualIsSpeaking] = useState(participant.isSpeaking);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const { userRole, userId } = useClassroom();
+    const { isModerator, userId } = useClassroom();
 
     // Extract photoURL from metadata
     let photoURL = null;
@@ -159,8 +159,8 @@ const TileWrapper = memo(({ track, participant, onTileClick, className, ...props
         console.error('Error parsing participant metadata:', e);
     }
 
-    // Check if we can show menu (lecturer only, and not on self)
-    const showMenu = userRole === 'lecturer' && participant.identity !== userId;
+    // Check if we can show menu (moderator only, and not on self)
+    const showMenu = isModerator && participant.identity !== userId;
 
     useEffect(() => {
         const handleSpeakingChanged = (speaking: boolean) => {
@@ -177,13 +177,13 @@ const TileWrapper = memo(({ track, participant, onTileClick, className, ...props
     return (
         <div
             ref={ref}
-            className={`h-full w-full max-w-full relative group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-4 ring-green-500' : 'ring-1 ring-white/10'} ${className || ''}`}
+            className={`h-full w-full max-w-full relative group cursor-pointer rounded-lg overflow-hidden transition-all duration-300 ${isSpeaking ? 'ring-4 ring-green-500' : 'ring-1 ring-white/10'} ${className || ''}`}
             onClick={() => onTileClick(track)}
         >
             {inView ? (
                 <ParticipantTile trackRef={track} {...props} className={`!w-full !h-full [&_video]:!object-center ${track.source === Track.Source.ScreenShare ? '[&_video]:!object-contain' : '[&_video]:!object-cover'}`} />
             ) : (
-                <div className="absolute inset-0 bg-gray-900 border border-gray-800 rounded-lg flex items-center justify-center">
+                <div className="absolute inset-0 bg-gray-900 border border-gray-800 rounded-md flex items-center justify-center">
                     <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center">
                         <User className="w-6 h-6 text-gray-600" />
                     </div>
@@ -232,7 +232,7 @@ const TileWrapper = memo(({ track, participant, onTileClick, className, ...props
                         )}
                     </div>
                     {/* Name + mic status */}
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-black/60 rounded-lg px-2 py-1">
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-black/60 rounded-md px-2 py-1">
                         {!participant.isMicrophoneEnabled && <MicOff className="w-3 h-3 text-red-400" />}
                         <span className="text-white text-xs font-medium truncate max-w-[120px]">
                             {participant.name || participant.identity || 'Participant'}
@@ -259,10 +259,10 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
     const hookIsSpeaking = useIsSpeaking(trackRef.participant);
     const [manualIsSpeaking, setManualIsSpeaking] = useState(trackRef.participant.isSpeaking);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const { userRole, userId } = useClassroom();
+    const { isModerator, userId } = useClassroom();
 
-    // Check if we can show menu (lecturer only, and not on self)
-    const showMenu = userRole === 'lecturer' && trackRef.participant.identity !== userId;
+    // Check if we can show menu (moderator only, and not on self)
+    const showMenu = isModerator && trackRef.participant.identity !== userId;
 
     useEffect(() => {
         const p = trackRef.participant;
@@ -329,7 +329,7 @@ function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
                                 </span>
                             )}
                         </div>
-                        <div className="absolute bottom-6 left-6 flex items-center gap-2 bg-black/60 rounded-lg px-3 py-1.5">
+                        <div className="absolute bottom-6 left-6 flex items-center gap-2 bg-black/60 rounded-md px-3 py-1.5">
                             {!trackRef.participant.isMicrophoneEnabled && <MicOff className="w-4 h-4 text-red-400" />}
                             <span className="text-white text-base font-semibold">
                                 {trackRef.participant.name || trackRef.participant.identity || 'Participant'}
@@ -393,7 +393,7 @@ function InnerVideoLayout({
     // We don't rely on layoutContext for basic chat toggle anymore
     // but we can still access it if needed for other things
     const layoutContext = useLayoutContext() as any;
-    const { sessionId, title, userId } = useClassroom();
+    const { sessionId, title, userId, isModerator } = useClassroom();
     console.log('DEBUG: InnerVideoLayout', { sessionId, userId, userRole });
     const [focusTrack, setFocusTrack] = useState<TrackReferenceOrPlaceholder | null>(null);
     const [userDisabledAutoFocus, setUserDisabledAutoFocus] = useState(false);
@@ -590,7 +590,7 @@ function InnerVideoLayout({
             {(!isDocked && !(isMobile && focusTrack)) && (
                 <div className="h-12 bg-black/80 border-b border-white/5 px-4 flex items-center justify-between z-[100]">
                     <div className="flex items-center gap-3">
-                        <div className="bg-blue-600/20 p-1.5 rounded-lg border border-blue-500/20">
+                        <div className="bg-blue-600/20 p-1.5 rounded-md border border-blue-500/20">
                             <Video className="w-4 h-4 text-blue-500" />
                         </div>
                         <span className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md">
@@ -611,7 +611,7 @@ function InnerVideoLayout({
 
                 <div className="flex-1 relative">
                     <RaisedHandsBanner
-                        isLecturer={userRole === 'lecturer'}
+                        isLecturer={isModerator}
                         raisedHands={raisedHands}
                         onClearAll={clearAllHands}
                         onLowerHand={lowerHand}
@@ -628,7 +628,7 @@ function InnerVideoLayout({
                                         setFocusTrack(null);
                                         setUserDisabledAutoFocus(true);
                                     }}
-                                    className="absolute top-4 left-4 z-[60] bg-black/80 text-white px-3 py-2 rounded-xl hover:bg-black ring-1 ring-white/20 flex items-center gap-2"
+                                    className="absolute top-4 left-4 z-[60] bg-black/80 text-white px-3 py-2 rounded-md hover:bg-black ring-1 ring-white/20 flex items-center gap-2"
                                     title="Switch to Grid View"
                                 >
                                     <Minimize2 className="w-5 h-5" />
@@ -650,7 +650,7 @@ function InnerVideoLayout({
                                         }
                                         return t.participant.isLocal || activeSpeakers.some(s => s.sid === t.participant.sid);
                                     }).slice(0, userRole === 'lecturer' ? 4 : 3).map((t) => (
-                                        <div key={`${t.participant.sid}-${t.source}`} className="w-28 sm:w-48 aspect-[3/4] sm:aspect-video rounded-xl overflow-hidden ring-2 ring-white/20 bg-gray-900 pointer-events-none border border-gray-800">
+                                        <div key={`${t.participant.sid}-${t.source}`} className="w-28 sm:w-48 aspect-[3/4] sm:aspect-video rounded-md overflow-hidden ring-2 ring-white/20 bg-gray-900 pointer-events-none border border-gray-800">
                                             <TileWrapper
                                                 track={t}
                                                 participant={t.participant}
@@ -749,7 +749,7 @@ function InnerVideoLayout({
                                                     track={trackRef}
                                                     participant={trackRef.participant}
                                                     onTileClick={handleTileClick}
-                                                    className="w-full h-full bg-gray-900 rounded-xl overflow-hidden border border-gray-800"
+                                                    className="w-full h-full bg-gray-900 rounded-lg overflow-hidden border border-gray-800"
                                                 />
                                             </div>
                                         );
@@ -766,7 +766,7 @@ function InnerVideoLayout({
             {/* Custom Controls */}
             <CustomControlBar
                 roomId={sessionId!}
-                isLecturer={userRole === 'lecturer'}
+                isLecturer={isModerator}
                 onReaction={onReaction}
                 onLeave={onLeave}
                 onToggleChat={onToggleChat}
@@ -780,7 +780,7 @@ function InnerVideoLayout({
 
             {/* Chat Sidebar - Persistent */}
             <div
-                className={`absolute left-4 right-4 sm:left-auto sm:right-4 top-20 bottom-24 sm:w-80 z-[100] rounded-xl overflow-hidden border border-gray-800 bg-gray-900 flex flex-col transition-all duration-300 ease-in-out ${isChatOpen
+                className={`absolute left-4 right-4 sm:left-auto sm:right-4 top-20 bottom-24 sm:w-80 z-[100] rounded-lg overflow-hidden border border-gray-800 bg-gray-900 flex flex-col transition-all duration-300 ease-in-out ${isChatOpen
                     ? 'opacity-100 translate-x-0 pointer-events-auto'
                     : 'opacity-0 translate-x-[120%] pointer-events-none'
                     }`}
@@ -794,7 +794,7 @@ function InnerVideoLayout({
                             e.stopPropagation();
                             onToggleChat();
                         }}
-                        className="flex w-10 h-10 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700 transition-colors -mr-2"
+                        className="flex w-10 h-10 items-center justify-center rounded-md text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700 transition-colors -mr-2"
                         aria-label="Close Chat"
                     >
                         <X className="w-5 h-5" />
@@ -1455,7 +1455,7 @@ export default function GlobalClassroom() {
                                     padding: '8px',
                                     backgroundColor: '#374151',
                                     color: 'white',
-                                    borderRadius: '8px',
+                                    borderRadius: '4px',
                                     border: 'none',
                                     cursor: 'pointer',
                                     display: 'flex',
@@ -1471,7 +1471,7 @@ export default function GlobalClassroom() {
                                     padding: '8px',
                                     backgroundColor: '#dc2626',
                                     color: 'white',
-                                    borderRadius: '8px',
+                                    borderRadius: '4px',
                                     border: 'none',
                                     cursor: 'pointer',
                                     display: 'flex',
@@ -1506,7 +1506,7 @@ export default function GlobalClassroom() {
                     backgroundColor: '#1f2937',
                     width: '100%',
                     height: '100%',
-                    borderRadius: '12px',
+                    borderRadius: '8px',
                     overflow: 'hidden',
                     border: '1px solid #374151',
                     display: 'flex',
@@ -1581,7 +1581,7 @@ export default function GlobalClassroom() {
                             height: '24px',
                             backgroundColor: '#374151',
                             cursor: 'se-resize',
-                            borderTopLeftRadius: '8px'
+                            borderTopLeftRadius: '4px'
                         }}
                     />
                 </div>

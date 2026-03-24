@@ -33,7 +33,7 @@ export default function AboutPage() {
                 <div className="max-w-6xl mx-auto px-4 sm:px-6">
                     <div className="flex justify-between items-center h-16 sm:h-20">
                         <Link href="/" className="flex items-center gap-2 group">
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center border border-blue-700">
+                            <div className="w-8 h-8 rounded-md bg-blue-600 flex items-center justify-center border border-blue-700">
                                 <GraduationCap className="w-5 h-5 text-white" />
                             </div>
                             <span className="text-xl font-black text-gray-900 tracking-tight">Podium</span>
@@ -95,7 +95,7 @@ export default function AboutPage() {
                             }
                         ].map((feature, i) => (
                             <div key={i} className="flex flex-col gap-5">
-                                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                                <div className="w-12 h-12 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
                                     {feature.icon}
                                 </div>
                                 <div>
@@ -119,13 +119,13 @@ export default function AboutPage() {
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link
                             href="/login"
-                            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-all border border-blue-700"
+                            className="w-full sm:w-auto px-8 py-4 rounded-md bg-blue-600 text-white font-black hover:bg-blue-700 transition-all border border-blue-700"
                         >
                             Get Started for Free
                         </Link>
                         <Link
                             href="/"
-                            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-gray-900 font-black border border-gray-200 hover:bg-gray-50 transition-all"
+                            className="w-full sm:w-auto px-8 py-4 rounded-md bg-white text-gray-900 font-black border border-gray-200 hover:bg-gray-50 transition-all"
                         >
                             Back Home
                         </Link>
@@ -134,7 +134,7 @@ export default function AboutPage() {
             </section>
 
             {/* Footer */}
-            <footer className="py-12 px-4 sm:px-6 border-t border-gray-100 bg-white">
+            <footer className="py-6 px-4 sm:px-6 border-t border-gray-100 bg-white">
                 <div className="max-w-6xl mx-auto text-center">
                     <p className="text-xs font-black text-gray-300 uppercase tracking-[0.2em]">
                         PODIUM CLASSROOM &copy; 2026

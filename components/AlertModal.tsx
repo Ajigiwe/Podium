@@ -74,7 +74,7 @@ export default function AlertModal({
             }}
         >
             <div
-                className={`bg-white rounded-xl border border-gray-200 w-full max-w-xs sm:max-w-sm transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
+                className={`bg-white rounded-lg border border-gray-200 w-full max-w-xs sm:max-w-sm transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
                     }`}
             >
                 <div className="p-5">
@@ -98,7 +98,7 @@ export default function AlertModal({
                                         if (onCancel) onCancel();
                                         onClose();
                                     }}
-                                    className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors"
+                                    className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-sm text-sm font-semibold hover:bg-gray-200 transition-colors"
                                 >
                                     {cancelText}
                                 </button>
@@ -108,7 +108,7 @@ export default function AlertModal({
                                     if (onConfirm) onConfirm();
                                     onClose();
                                 }}
-                                className={`flex-1 px-3 py-2 text-white rounded-lg text-sm font-semibold transition-all active:scale-95 ${getColor()}`}
+                                className={`flex-1 px-3 py-2 text-white rounded-sm text-sm font-semibold transition-all active:scale-95 ${getColor()}`}
                             >
                                 {confirmText}
                             </button>

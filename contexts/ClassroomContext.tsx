@@ -3,13 +3,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Room, RemoteParticipant, LocalParticipant, Participant, RoomEvent, Track } from 'livekit-client';
-import { useHostChime } from '@/hooks/useHostChime';
+
 import { useAlert } from '@/contexts/AlertContext';
 import { GridLayout } from '@/types/layout';
 import { db } from '@/lib/firebase/config';
 import { collection, query, orderBy, onSnapshot, limit, addDoc, serverTimestamp, setDoc, doc, updateDoc } from 'firebase/firestore';
 
 import { Session } from '@/lib/firebase/types';
+import type { CoHost } from '@/lib/firebase/types';
+import { subscribeToCoHosts } from '@/lib/firebase/cohost';
 
 // Participant type for LiveKit
 export interface LiveKitParticipant {
@@ -42,6 +44,7 @@ interface ClassroomContextType {
     isHost: boolean;
     sessionData: any | null;
     photoURL: string | null;
+    displayIcon: string | null;
     isMini: boolean;
     isActive: boolean;
     isFloating: boolean;
@@ -49,9 +52,10 @@ interface ClassroomContextType {
     unreadChatCount: number;
     participants: LiveKitParticipant[];
     liveKitRoom: Room | null;
+    joinMicEnabled: boolean;
     // Keep old name for backward compatibility
     jitsiApi: Room | null;
-    joinClass: (sessionId: string, title: string, userName: string, userRole: 'student' | 'lecturer' | 'admin', userId?: string, photoURL?: string) => void;
+    joinClass: (sessionId: string, title: string, userName: string, userRole: 'student' | 'lecturer' | 'admin', userId?: string, photoURL?: string, displayIcon?: string, joinMicEnabled?: boolean) => void;
     leaveClass: () => void;
     toggleMini: (isMini: boolean) => void;
     toggleFloating: (floating: boolean) => void;
@@ -66,6 +70,10 @@ interface ClassroomContextType {
     kickParticipant: (participantId: string) => void;
     askToUnmute: (participantId: string) => void;
     grantModerator: (participantId: string) => void;
+    coHosts: CoHost[];
+    isCoHost: boolean;
+    assignCoHost: (targetUserId: string, targetUserName: string) => Promise<void>;
+    removeCoHost: (coHostUserId: string) => Promise<void>;
     liveMessages: any[];
     sendMessage: (content: string) => void;
     // Chat functions
@@ -76,7 +84,7 @@ interface ClassroomContextType {
     // Token pre-warming
     token: string | null;
     setToken: (token: string | null) => void;
-    preWarmToken: (sessionId: string, userName: string, userRole: string, userId: string, photoURL?: string) => Promise<void>;
+    preWarmToken: (sessionId: string, userName: string, userRole: string, userId: string, photoURL?: string, displayIcon?: string) => Promise<void>;
 }
 
 const ClassroomContext = createContext<ClassroomContextType | undefined>(undefined);
@@ -90,6 +98,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const [userId, setUserId] = useState<string | null>(null);
     const [sessionData, setSessionData] = useState<any | null>(null);
     const [photoURL, setPhotoURL] = useState<string | null>(null);
+    const [displayIcon, setDisplayIcon] = useState<string | null>(null);
+    const [joinMicEnabled, setJoinMicEnabled] = useState(true);
     const [isMini, setIsMini] = useState(false);
     const [isFloating, setIsFloating] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -99,9 +109,10 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const [liveKitRoom, setLiveKitRoomState] = useState<Room | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [layout, setLayout] = useState<GridLayout>('4x4');
+    const [coHosts, setCoHosts] = useState<CoHost[]>([]);
     const isFetchingToken = useRef(false);
     const { showAlert, showConfirm } = useAlert();
-    const { playJoinChime, playMediaChime } = useHostChime();
+
 
     const router = useRouter();
     const pathname = usePathname();
@@ -123,7 +134,9 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         newUserName: string,
         newUserRole: 'student' | 'lecturer' | 'admin',
         newUserId?: string,
-        newPhotoURL?: string
+        newPhotoURL?: string,
+        newDisplayIcon?: string,
+        newJoinMicEnabled: boolean = true
     ) => {
         setSessionId(newSessionId);
         setTitle(newTitle);
@@ -131,6 +144,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         setUserRole(newUserRole);
         setUserId(newUserId || null);
         setPhotoURL(newPhotoURL || null);
+        setDisplayIcon(newDisplayIcon || null);
+        setJoinMicEnabled(newJoinMicEnabled);
         setSessionData(null); // Reset session data
         setIsMini(false);
         setIsChatOpen(false);
@@ -144,7 +159,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         uName: string,
         uRole: string,
         uId: string,
-        uPhotoURL?: string
+        uPhotoURL?: string,
+        uDisplayIcon?: string
     ) => {
         if (token || isFetchingToken.current) return;
 
@@ -161,6 +177,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     role: uRole,
                     userId: uId,
                     photoURL: uPhotoURL,
+                    displayIcon: uDisplayIcon,
                 }),
             });
 
@@ -200,6 +217,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         setUnreadChatCount(0);
         setToken(null);
         setPhotoURL(null);
+        setDisplayIcon(null);
 
         // Exit PiP if active
         if (typeof window !== 'undefined') {
@@ -231,7 +249,18 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
     // Derived Permission States
     const isHost = sessionData?.hostId === userId || sessionData?.lecturerId === userId;
-    const isModerator = isHost || sessionData?.backupModId === userId || userRole === 'admin';
+    const isCoHost = coHosts.some(ch => ch.userId === userId);
+    const isModerator = isHost || isCoHost || sessionData?.backupModId === userId || userRole === 'admin';
+
+    // Real-time co-host subscription
+    useEffect(() => {
+        if (!sessionId) {
+            setCoHosts([]);
+            return;
+        }
+        const unsub = subscribeToCoHosts(sessionId, setCoHosts);
+        return () => unsub();
+    }, [sessionId]);
 
     // Heartbeat & Presence Logic (Unified)
     useEffect(() => {
@@ -310,6 +339,41 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         return () => unsubscribe();
     }, [sessionId, isHost, isModerator]);
 
+    // Handle initial join mic preference & persistent lockdown
+    useEffect(() => {
+        if (!liveKitRoom || !sessionData) return;
+
+        const handleInitialMic = async () => {
+            // Priority 1: Persistent Lockdown (Mute All)
+            if (sessionData.isMutedAll && !isModerator) {
+                if (liveKitRoom.localParticipant.isMicrophoneEnabled) {
+                    console.log('🔇 [Lockdown] Muting local participant due to global lockdown');
+                    await liveKitRoom.localParticipant.setMicrophoneEnabled(false);
+                }
+                return;
+            }
+
+            // Priority 2: Individual Join Preference (Only on first connection)
+            // We use a ref to ensure this only runs once per session join
+            if (!(window as any)._podium_joined_mic_set) {
+                (window as any)._podium_joined_mic_set = true;
+                if (!joinMicEnabled && !isModerator) {
+                    console.log('🔇 [Preference] Muting local participant by join choice');
+                    await liveKitRoom.localParticipant.setMicrophoneEnabled(false);
+                }
+            }
+        };
+
+        handleInitialMic();
+    }, [liveKitRoom, sessionData?.isMutedAll, isModerator, joinMicEnabled]);
+
+    // Clear the joined_mic_set flag on leave
+    useEffect(() => {
+        if (!sessionId) {
+            (window as any)._podium_joined_mic_set = false;
+        }
+    }, [sessionId]);
+
     // Moderation functions using LiveKit API
     const muteParticipant = useCallback((participantId: string) => {
         if (liveKitRoom && isModerator) {
@@ -330,7 +394,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 console.log('Mute request sent to:', participantId);
             }
         }
-    }, [liveKitRoom, userRole]);
+    }, [liveKitRoom, isModerator]);
 
     const disableParticipantVideo = useCallback((participantId: string) => {
         if (liveKitRoom && isModerator) {
@@ -344,10 +408,11 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             );
             console.log('Disable video request sent to:', participantId);
         }
-    }, [liveKitRoom, userRole]);
+    }, [liveKitRoom, isModerator]);
 
-    const muteAllParticipants = useCallback(() => {
-        if (liveKitRoom && isModerator) {
+    const muteAllParticipants = useCallback(async () => {
+        if (liveKitRoom && isModerator && sessionId) {
+            // 1. Send real-time signal
             const encoder = new TextEncoder();
             liveKitRoom.localParticipant.publishData(
                 encoder.encode(JSON.stringify({
@@ -356,8 +421,17 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 { reliable: true }
             );
             console.log('Mute all request sent');
+
+            // 2. Persist to Firestore (Lockdown Mode)
+            try {
+                await updateDoc(doc(db, 'sessions', sessionId), {
+                    isMutedAll: true
+                });
+            } catch (err) {
+                console.error('Failed to persist Mute All state:', err);
+            }
         }
-    }, [liveKitRoom, isModerator]);
+    }, [liveKitRoom, isModerator, sessionId]);
 
     const kickParticipant = useCallback((participantId: string) => {
         if (liveKitRoom && isModerator) {
@@ -413,6 +487,62 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         }
     }, [liveKitRoom, isHost, participants, sessionId, showAlert]);
 
+    const assignCoHost = useCallback(async (targetUserId: string, targetUserName: string) => {
+        if (!sessionId || !userId || !isHost) {
+            showAlert('Only the host can assign co-hosts', 'error');
+            return;
+        }
+        try {
+            const res = await fetch('/api/moderators/assign-cohost', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, hostUserId: userId, targetUserId, targetUserName }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error);
+            // Broadcast over LiveKit data channel so everyone refreshes instantly
+            if (liveKitRoom) {
+                const encoder = new TextEncoder();
+                liveKitRoom.localParticipant.publishData(
+                    encoder.encode(JSON.stringify({ type: 'COHOST_ASSIGNED', coHostId: targetUserId })),
+                    { reliable: true }
+                );
+            }
+            showAlert(`${targetUserName} is now a co-host`, 'success');
+        } catch (err: any) {
+            console.error('Failed to assign co-host:', err);
+            showAlert(err.message || 'Failed to assign co-host', 'error');
+        }
+    }, [sessionId, userId, isHost, liveKitRoom, showAlert]);
+
+    const removeCoHost = useCallback(async (coHostUserId: string) => {
+        if (!sessionId || !userId || !isHost) {
+            showAlert('Only the host can remove co-hosts', 'error');
+            return;
+        }
+        try {
+            const res = await fetch('/api/moderators/remove-cohost', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, hostUserId: userId, coHostUserId }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error);
+            // Broadcast over LiveKit data channel
+            if (liveKitRoom) {
+                const encoder = new TextEncoder();
+                liveKitRoom.localParticipant.publishData(
+                    encoder.encode(JSON.stringify({ type: 'COHOST_REMOVED', coHostId: coHostUserId })),
+                    { reliable: true }
+                );
+            }
+            showAlert('Co-host removed', 'success');
+        } catch (err: any) {
+            console.error('Failed to remove co-host:', err);
+            showAlert(err.message || 'Failed to remove co-host', 'error');
+        }
+    }, [sessionId, userId, isHost, liveKitRoom, showAlert]);
+
     const toggleChat = useCallback(() => {
         setIsChatOpen(prev => {
             if (!prev) setUnreadChatCount(0);
@@ -430,6 +560,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             senderId: userId,
             senderName: userName,
             senderRole: userRole,
+            senderPhotoURL: photoURL,
+            senderDisplayIcon: displayIcon,
             createdAt: Date.now()
         };
 
@@ -456,7 +588,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         } catch (e) {
             console.error('[ClassroomChat] Failed to sync message to Firestore:', e);
         }
-    }, [liveKitRoom, userName, userRole, userId, sessionId]);
+    }, [liveKitRoom, userName, userRole, userId, sessionId, photoURL, displayIcon]);
 
     // Also reset unread count if becomes open through other means
     useEffect(() => {
@@ -533,16 +665,10 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         // Initial load
         updateParticipants();
 
-        // --- Host-only notification chimes ---
-        const handleParticipantJoinedChime = (participant: RemoteParticipant) => {
-            playJoinChime();
-            updateParticipants();
-        };
-
         // Listen for participant changes
         liveKitRoom.on(RoomEvent.Connected, updateParticipants);
         liveKitRoom.on(RoomEvent.Reconnected, updateParticipants);
-        liveKitRoom.on(RoomEvent.ParticipantConnected, handleParticipantJoinedChime);
+        liveKitRoom.on(RoomEvent.ParticipantConnected, updateParticipants);
         liveKitRoom.on(RoomEvent.ParticipantDisconnected, updateParticipants);
         liveKitRoom.on(RoomEvent.TrackMuted, updateParticipants);
         liveKitRoom.on(RoomEvent.TrackUnmuted, updateParticipants);
@@ -628,7 +754,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         liveKitRoom.on(RoomEvent.DataReceived, handleDataReceived);
 
         return () => {
-            liveKitRoom.off(RoomEvent.ParticipantConnected, handleParticipantJoinedChime);
+            liveKitRoom.off(RoomEvent.ParticipantConnected, updateParticipants);
             liveKitRoom.off(RoomEvent.ParticipantDisconnected, updateParticipants);
             liveKitRoom.off(RoomEvent.TrackMuted, updateParticipants);
             liveKitRoom.off(RoomEvent.TrackUnmuted, updateParticipants);
@@ -636,7 +762,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             liveKitRoom.off(RoomEvent.ActiveSpeakersChanged, updateParticipants);
             liveKitRoom.off(RoomEvent.DataReceived, handleDataReceived);
         };
-    }, [liveKitRoom, userRole, leaveClass, playJoinChime, playMediaChime]);
+    }, [liveKitRoom, userRole, leaveClass]);
 
     // Global Message Listener for Notifications
     useEffect(() => {
@@ -765,6 +891,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         isHost,
         sessionData,
         photoURL,
+        displayIcon,
+        joinMicEnabled,
         isMini,
         isFloating,
         isChatOpen,
@@ -789,17 +917,22 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         kickParticipant,
         askToUnmute,
         grantModerator,
+        coHosts,
+        isCoHost,
+        assignCoHost,
+        removeCoHost,
         toggleChat,
         liveMessages,
         sendMessage,
         layout,
         setLayout,
     }), [
-        sessionId, title, userName, userRole, userId, isModerator, isHost, sessionData, photoURL, isMini, isFloating,
+        sessionId, title, userName, userRole, userId, isModerator, isHost, sessionData, photoURL, displayIcon, isMini, isFloating,
         isChatOpen, unreadChatCount, participants, liveKitRoom,
         joinClass, leaveClass, toggleMini, toggleFloating, toggleMinimize,
         setLiveKitRoom, muteParticipant, disableParticipantVideo, muteAllParticipants, kickParticipant,
-        askToUnmute, grantModerator, toggleChat, layout, token, preWarmToken
+        askToUnmute, grantModerator, coHosts, isCoHost, assignCoHost, removeCoHost,
+        toggleChat, layout, token, preWarmToken
     ]);
 
     return (

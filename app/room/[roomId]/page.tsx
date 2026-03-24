@@ -45,7 +45,7 @@ export default function RoomPage() {
 
                 // Join the LiveKit room via context
                 if (currentSessionId !== roomId) {
-                    joinClass(roomId, sessionData.title, profile.fullName, (profile.role as 'lecturer' | 'student' | 'admin') || 'student', user.uid, profile.photoURL);
+                    joinClass(roomId, sessionData.title, profile.fullName, (profile.role as 'lecturer' | 'student' | 'admin') || 'student', user.uid, profile.photoURL, profile.displayIcon, true);
                 }
 
                 setLoading(false);
@@ -63,10 +63,10 @@ export default function RoomPage() {
         return (
             <div className="min-h-screen bg-gray-950 p-8 space-y-8">
                 <div className="max-w-7xl mx-auto">
-                    <div className="h-10 w-48 bg-gray-800 rounded-lg mb-12 animate-pulse" />
+                    <div className="h-10 w-48 bg-gray-800 rounded-md mb-12 animate-pulse" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[600px]">
-                        <Skeleton className="h-full w-full rounded-2xl bg-gray-800" />
-                        <Skeleton className="h-full w-full rounded-2xl bg-gray-800" />
+                        <Skeleton className="h-full w-full rounded-lg bg-gray-800" />
+                        <Skeleton className="h-full w-full rounded-lg bg-gray-800" />
                     </div>
                 </div>
             </div>

@@ -8,6 +8,7 @@ export interface Profile {
     role?: 'student' | 'lecturer' | 'admin';
     bio?: string;
     photoURL?: string;
+    displayIcon?: string; // Icon name from Lucide or custom set
     indexNumber?: string; // Student Index Number
     subscriptionStatus?: 'active' | 'inactive'; // Global subscription
     subscriptionExpiresAt?: Timestamp; // When subscription ends
@@ -56,6 +57,8 @@ export interface Session {
         lastTriggeredAt?: Timestamp;
     };
     autoApproveMic?: boolean;
+    isMutedAll?: boolean;
+    requireGuestDetails?: boolean;
     status?: 'active' | 'on_hold' | 'ended' | 'paused' | 'deleted';
     participantCount?: number;
     hostLastSeen?: Timestamp;
@@ -119,9 +122,19 @@ export interface AttendanceLog {
     userId: string;
     userName: string;
     userIndexNumber?: string;
+    userEmail?: string;
     joinedAt: Timestamp;
     lecturerId?: string; // New field for filtering
     sessionTitle?: string; // New field for history display
+}
+
+// Co-Host (Firestore subcollection: sessions/{id}/co_hosts/{userId})
+export interface CoHost {
+    userId: string;
+    userName: string;
+    assignedBy: string; // hostId of the lecturer who assigned
+    assignedAt: Timestamp;
+    isActive: boolean;
 }
 
 // Chat Message (Realtime Database)
