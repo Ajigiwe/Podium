@@ -300,12 +300,12 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         <div className="min-h-screen bg-gray-950">
             {/* Mobile Header */}
             <header className="bg-gray-900 border-b border-gray-800 fixed top-0 left-0 right-0 z-50">
-                <div className="px-3 sm:px-4 py-2 sm:py-3">
+                <div className="px-3 py-1.5 sm:py-3">
                     <div className="flex justify-between items-center">
                         {/* Title - truncated on mobile */}
                         <div className="flex-1 min-w-0 mr-2">
-                            <h1 className="text-base sm:text-lg font-bold text-white truncate">{session.title}</h1>
-                            <p className="text-xs text-gray-400 flex items-center gap-1">
+                            <h1 className="text-sm sm:text-lg font-bold text-white truncate">{session.title}</h1>
+                            <p className="text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
                                 {session.isActive && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
                                 {session.isActive ? 'Live' : 'Offline'}
                             </p>

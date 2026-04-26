@@ -268,7 +268,7 @@ export function InnerVideoLayout({
                                     ))}
                                 </div>
                             ) : (
-                                <div className="flex flex-wrap items-center justify-center content-center gap-2 sm:gap-4 w-full h-full p-2 sm:p-4 overflow-y-auto pb-28 sm:pb-4">
+                                <div className="flex flex-wrap items-center justify-center content-center gap-2 sm:gap-4 w-full h-full p-2 sm:p-4 overflow-y-auto pb-24 sm:pb-4">
                                     {paginatedTracks.map((trackRef, index, arr) => {
                                         const count = arr.length;
                                         let containerClass = 'w-[calc(50%-0.5rem)] sm:w-[calc(50%-1rem)] md:w-[calc(33.33%-1rem)] lg:w-[calc(25%-1rem)] aspect-[3/4] sm:aspect-video shrink-0';
