@@ -2,8 +2,8 @@
 @config "../tailwind.config.ts";
 
 @theme {
-  --font-sans: var(--font-dm-sans);
-  --font-serif: var(--font-dm-serif);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-outfit);
 }
 
 :root {
