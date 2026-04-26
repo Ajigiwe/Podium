@@ -140,6 +140,7 @@ function setupHostedSessions() {
             .map(d => ({ id: d.id, ...d.data() }));
         hostedCount.innerText = hostedSessionsData.length;
         renderRecords();
+        renderQuickAccess();
     }, (err) => console.error('[HostedSessions] Error:', err));
 }
 
@@ -162,7 +163,68 @@ function setupEnrolledSessions() {
             
         enrolledCount.innerText = enrolledSessionsData.length;
         renderRecords();
+        renderQuickAccess();
     }, (err) => console.error('[EnrolledSessions] Error:', err));
+}
+
+function renderQuickAccess() {
+    const quickSection = document.getElementById('quick-access-section');
+    const quickList = document.getElementById('quick-access-list');
+    if (!quickSection || !quickList) return;
+
+    // Combine and prioritize: 1. Live sessions, 2. Most recent
+    const combined = [
+        ...enrolledSessionsData.map(s => ({ ...s, _type: 'join' })),
+        ...hostedSessionsData.map(s => ({ ...s, _type: 'host' }))
+    ].filter(s => !s.isDeleted)
+    .sort((a, b) => {
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+    });
+
+    const displayData = combined.slice(0, 4);
+
+    if (displayData.length === 0) {
+        quickSection.classList.add('hidden');
+        return;
+    }
+
+    quickSection.classList.remove('hidden');
+    quickList.innerHTML = '';
+
+    displayData.forEach(session => {
+        const div = document.createElement('div');
+        div.className = 'group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-lg p-5 flex items-center justify-between hover:border-[#1845D4] transition-all cursor-pointer';
+        
+        const isHost = session._type === 'host';
+        const isActive = session.isActive;
+
+        div.onclick = () => {
+            if (isHost) window.location.href = `/classroom/${session.id}`;
+            else window.openJoinPreview(session);
+        };
+
+        div.innerHTML = `
+            <div class="flex items-center gap-4 flex-1 min-w-0">
+                <div class="w-10 h-10 rounded-lg ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 text-[#1845D4] dark:text-blue-400' : 'bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8]'} flex items-center justify-center flex-shrink-0 transition-all group-hover:bg-[#1845D4] group-hover:text-white">
+                    <i class="fas ${isActive ? 'fa-video animate-pulse' : 'fa-graduation-cap'} text-sm"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h4 class="text-[14px] font-bold text-[#0D0D1A] dark:text-white truncate group-hover:text-[#1845D4] transition-colors">${session.title}</h4>
+                    <p class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest mt-0.5">${isHost ? 'Owner' : (session.lecturerName || 'Faculty')}</p>
+                </div>
+            </div>
+            <div class="ml-4">
+                ${isActive ? `
+                    <span class="px-2 py-1 bg-[#1845D4] text-white text-[8px] font-black uppercase tracking-[0.2em] rounded shadow-lg shadow-blue-600/20">Live</span>
+                ` : `
+                    <i class="fas fa-chevron-right text-[#DDE0F0] group-hover:text-[#1845D4] transition-all"></i>
+                `}
+            </div>
+        `;
+        quickList.appendChild(div);
+    });
 }
 
 function renderRecords() {
