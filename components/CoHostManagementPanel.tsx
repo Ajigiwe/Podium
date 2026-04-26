@@ -36,13 +36,15 @@ export function CoHostManagementPanel({ sessionId }: CoHostManagementPanelProps)
             <button
                 id="cohost-panel-toggle"
                 onClick={() => setShowPanel((v) => !v)}
-                className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors"
+                className={`h-8 flex items-center gap-2 px-3 text-[10px] font-black uppercase tracking-widest transition-all rounded-lg ${
+                    showPanel ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
                 title="Manage Co-Hosts"
             >
-                <Crown className="w-4 h-4" />
+                <Crown className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">Co-Hosts</span>
                 {coHosts.length > 0 && (
-                    <span className="bg-purple-900 text-purple-200 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    <span className="bg-white/20 text-white px-1.5 py-0.5 rounded text-[9px] tabular-nums">
                         {coHosts.length}
                     </span>
                 )}
@@ -50,16 +52,16 @@ export function CoHostManagementPanel({ sessionId }: CoHostManagementPanelProps)
 
             {/* Panel */}
             {showPanel && (
-                <div className="fixed top-20 right-4 z-[150] w-80 bg-gray-900 rounded-lg shadow-2xl border border-purple-600/30 flex flex-col max-h-[70vh] overflow-hidden">
+                <div className="fixed top-20 right-4 z-[150] w-80 bg-slate-900/90 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/5 flex flex-col max-h-[70vh] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-4 border-b border-gray-800">
-                        <h3 className="text-white font-bold flex items-center gap-2 text-sm">
-                            <Crown className="w-4 h-4 text-purple-400" />
+                    <div className="flex items-center justify-between p-4 border-b border-white/5 bg-white/5">
+                        <h3 className="text-white font-black uppercase tracking-widest text-[10px] flex items-center gap-2">
+                            <Crown className="w-3.5 h-3.5 text-indigo-400" />
                             Co-Host Management
                         </h3>
                         <button
                             onClick={() => setShowPanel(false)}
-                            className="text-gray-400 hover:text-white transition-colors"
+                            className="text-slate-400 hover:text-white transition-colors"
                         >
                             <X className="w-4 h-4" />
                         </button>

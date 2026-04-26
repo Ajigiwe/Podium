@@ -180,12 +180,12 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
     if (!isActive) return null;
 
     return (
-        <div className="relative flex items-center gap-2 bg-gray-900 border border-white/10 rounded-full px-4 py-1.5 h-10">
+        <div className="flex items-center gap-1">
             {!stats ? (
                 <button
                     onClick={handleStartAttendance}
                     disabled={isStarting}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-[10px] font-black px-3 py-1 rounded-full transition-all active:scale-[0.98]"
+                    className="flex items-center gap-2 px-3 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-[9px] font-black tracking-widest rounded-lg transition-all"
                 >
                     {isStarting ? (
                         <RefreshCw className="w-3 h-3 animate-spin" />
@@ -196,12 +196,12 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                 </button>
             ) : (
                 <>
-                    <div className="flex items-center gap-2 pr-2 border-r border-white/10 mr-1">
+                    <div className="flex items-center gap-2 px-2 border-r border-white/5">
                         <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-[9px] font-black text-white uppercase tracking-widest">LIVE</span>
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Attendance</span>
                         </div>
-                        <span className="text-[10px] font-bold text-gray-400 min-w-[30px] tabular-nums">
+                        <span className="text-[10px] font-bold text-white tabular-nums">
                             {stats.triggeredCount}/{stats.expectedVerificationCount}
                         </span>
                     </div>

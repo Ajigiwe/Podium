@@ -104,10 +104,10 @@ export const RecordingControls = ({
         if (!isRecording) return null;
 
         return (
-            <div className="bg-red-600 text-white px-3 py-1 rounded-full flex items-center gap-2 border border-red-500">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse border border-red-400" />
-                <span className="font-bold text-[10px] tracking-tight">REC</span>
-                <span className="font-mono text-xs opacity-90">{formatTime(recordingTime)}</span>
+            <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500">
+                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                <span className="font-black text-[9px] tracking-widest uppercase">Recording</span>
+                <span className="font-mono text-[10px] opacity-80 border-l border-red-500/20 pl-2">{formatTime(recordingTime)}</span>
             </div>
         );
     }
@@ -117,25 +117,25 @@ export const RecordingControls = ({
             {!isRecording ? (
                 <button
                     onClick={startRecording}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-gray-800 hover:bg-red-600 rounded-lg transition-all flex items-center gap-2 border border-gray-700 hover:border-red-500 group"
+                    className="h-8 px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-red-500/10 rounded-lg transition-all flex items-center gap-2 group"
                     title="Start Recording"
                 >
-                    <div className="w-2 h-2 rounded-full bg-red-500 group-hover:bg-white transition-colors" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-red-500 transition-colors" />
                     <span>Record</span>
                 </button>
             ) : (
-                <div className="flex items-center">
-                    <div className="bg-red-600 text-white px-3 py-1.5 rounded-l-lg flex items-center gap-2 border border-red-500">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse border border-red-400" />
-                        <span className="font-bold text-xs tracking-wide">REC</span>
-                        <span className="font-mono text-xs border-l border-white/20 pl-2">{formatTime(recordingTime)}</span>
+                <div className="flex items-center h-8 bg-red-600 rounded-lg overflow-hidden border border-red-500 shadow-lg shadow-red-600/20">
+                    <div className="px-3 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                        <span className="font-black text-[9px] tracking-widest uppercase text-white">REC</span>
+                        <span className="font-mono text-[10px] text-white/90 border-l border-white/20 pl-2">{formatTime(recordingTime)}</span>
                     </div>
                     <button
                         onClick={stopRecording}
-                        className="bg-gray-900 hover:bg-gray-800 text-white p-1.5 rounded-r-lg border border-l-0 border-white/10 transition-colors flex items-center justify-center"
+                        className="h-full px-2 bg-black/20 hover:bg-black/30 text-white transition-colors flex items-center justify-center border-l border-white/10"
                         title="Stop Recording"
                     >
-                        <Square className="w-3 h-3 fill-white" />
+                        <Square className="w-2.5 h-2.5 fill-current" />
                     </button>
                 </div>
             )}

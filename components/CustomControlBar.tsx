@@ -218,77 +218,83 @@ export default function CustomControlBar({
     };
 
     return (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1.5 sm:gap-4 p-1.5 sm:p-2 bg-gray-950/60 backdrop-blur-3xl border border-white/10 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/5 animate-in slide-in-from-bottom-10 duration-700 max-w-[95vw] sm:max-w-none overflow-x-auto no-scrollbar">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1 p-1 bg-slate-900/80 backdrop-blur-2xl border border-white/5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 duration-700 max-w-[95vw] sm:max-w-none">
             {/* Audio Section */}
-            <div className="flex items-center bg-white/5 rounded-2xl p-0.5 sm:p-1 gap-0.5 sm:gap-1" ref={micRef}>
+            <div className="flex items-center" ref={micRef}>
                 <button
                     onClick={toggleMic}
                     disabled={isTogglingMic || !isConnected}
-                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 relative group ${
+                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 relative ${
                         isMicrophoneEnabled 
-                        ? 'bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-600/20' 
-                        : 'bg-white/5 hover:bg-white/10'
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                        : 'text-slate-400 hover:bg-white/5'
                     } ${(!isConnected || isTogglingMic) ? 'opacity-50' : ''}`}
+                    title={isMicrophoneEnabled ? 'Mute' : 'Unmute'}
                 >
-                    {isMicrophoneEnabled ? <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : <MicOff className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />}
-                    {!permissions.mic && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-red-500 rounded-full flex items-center justify-center border-2 border-gray-950"><Lock className="w-2 h-2 text-white scale-75 sm:scale-100" /></div>}
+                    {isMicrophoneEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5 text-red-400" />}
+                    {!permissions.mic && <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center border-2 border-slate-900"><Lock className="w-2 h-2 text-white scale-75" /></div>}
                 </button>
                 <button
                     onClick={(e) => toggleMenu('mic', e)}
-                    className={`device-menu-toggle h-9 w-4 sm:h-11 sm:w-6 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors ${activeMenu === 'mic' ? 'bg-white/10' : ''}`}
+                    className={`device-menu-toggle h-10 w-4 sm:h-12 sm:w-5 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'mic' ? 'text-indigo-400' : 'text-slate-500'}`}
                 >
-                    <ChevronUp className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-500 transition-transform duration-300 ${activeMenu === 'mic' ? 'rotate-180 text-blue-400' : ''}`} />
+                    <ChevronUp className={`w-3 h-3 transition-transform duration-300 ${activeMenu === 'mic' ? 'rotate-180' : ''}`} />
                 </button>
                 <DeviceMenu kind="audioinput" isOpen={activeMenu === 'mic'} onClose={() => setActiveMenu(null)} triggerRef={micRef} />
             </div>
 
+            <div className="w-px h-6 bg-white/5 mx-1" />
+
             {/* Video Section */}
-            <div className="flex items-center bg-white/5 rounded-2xl p-0.5 sm:p-1 gap-0.5 sm:gap-1" ref={cameraRef}>
+            <div className="flex items-center" ref={cameraRef}>
                 <button
                     onClick={toggleVideo}
                     disabled={isTogglingVideo || !isConnected}
-                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 relative group ${
+                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 relative ${
                         isCameraEnabled 
-                        ? 'bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-600/20' 
-                        : 'bg-white/5 hover:bg-white/10'
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                        : 'text-slate-400 hover:bg-white/5'
                     } ${(!isConnected || isTogglingVideo) ? 'opacity-50' : ''}`}
+                    title={isCameraEnabled ? 'Stop Video' : 'Start Video'}
                 >
-                    {isCameraEnabled ? <VideoIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : <VideoOff className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />}
-                    {!permissions.camera && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-red-500 rounded-full flex items-center justify-center border-2 border-gray-950"><Lock className="w-2 h-2 text-white scale-75 sm:scale-100" /></div>}
+                    {isCameraEnabled ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5 text-red-400" />}
+                    {!permissions.camera && <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center border-2 border-slate-900"><Lock className="w-2 h-2 text-white scale-75" /></div>}
                 </button>
                 <button
                     onClick={(e) => toggleMenu('camera', e)}
-                    className={`device-menu-toggle h-9 w-4 sm:h-11 sm:w-6 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors ${activeMenu === 'camera' ? 'bg-white/10' : ''}`}
+                    className={`device-menu-toggle h-10 w-4 sm:h-12 sm:w-5 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'camera' ? 'text-indigo-400' : 'text-slate-500'}`}
                 >
-                    <ChevronUp className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-500 transition-transform duration-300 ${activeMenu === 'camera' ? 'rotate-180 text-blue-400' : ''}`} />
+                    <ChevronUp className={`w-3 h-3 transition-transform duration-300 ${activeMenu === 'camera' ? 'rotate-180' : ''}`} />
                 </button>
                 <DeviceMenu kind="videoinput" isOpen={activeMenu === 'camera'} onClose={() => setActiveMenu(null)} triggerRef={cameraRef} />
             </div>
 
+            <div className="w-px h-6 bg-white/5 mx-1" />
+
             {/* Interaction Section */}
-            <div className="flex items-center bg-white/5 rounded-2xl p-0.5 sm:p-1 gap-0.5 sm:gap-1">
+            <div className="flex items-center gap-1">
                 <button
                     onClick={toggleScreenShare}
                     disabled={isTogglingScreen || !isConnected}
-                    className={`hidden sm:flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 ${
-                        isScreenShareEnabled ? 'bg-green-600/20 text-green-400 ring-2 ring-green-500/50' : 'bg-white/5 hover:bg-white/10 text-white'
+                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 ${
+                        isScreenShareEnabled ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5'
                     }`}
+                    title="Share Screen"
                 >
                     <MonitorUp className="w-5 h-5" />
                 </button>
                 
-                <div className="hidden sm:block w-px h-6 bg-white/10 mx-1" />
-
                 <button
                     onClick={onToggleChat}
-                    className={`h-9 sm:h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl transition-all duration-300 relative ${
-                        isChatOpen ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white/5 hover:bg-white/10 text-white'
+                    className={`h-10 px-3 sm:h-12 sm:px-4 flex items-center gap-2 rounded-xl transition-all duration-300 relative ${
+                        isChatOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:bg-white/5'
                     }`}
+                    title="Toggle Chat"
                 >
-                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="hidden md:inline text-sm font-bold">Chat</span>
+                    <MessageSquare className="w-5 h-5" />
+                    <span className="hidden md:inline text-xs font-black uppercase tracking-widest">Chat</span>
                     {unreadChatCount > 0 && !isChatOpen && (
-                        <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-black min-w-[16px] sm:min-w-[20px] h-[16px] sm:h-[20px] flex items-center justify-center rounded-full border-2 border-gray-950 animate-bounce">
+                        <span className="absolute top-1 right-1 bg-red-600 text-white text-[9px] font-black min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-900 animate-bounce">
                             {unreadChatCount > 9 ? '9+' : unreadChatCount}
                         </span>
                     )}
@@ -296,31 +302,35 @@ export default function CustomControlBar({
 
                 <button
                     onClick={onToggleHand}
-                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 ${
-                        isHandRaised ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-white/5 hover:bg-white/10 text-white'
+                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 ${
+                        isHandRaised ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-white/5'
                     }`}
+                    title="Raise Hand"
                 >
-                    <Hand className={`w-4 h-4 sm:w-5 sm:h-5 ${isHandRaised ? 'animate-bounce' : ''}`} />
+                    <Hand className={`w-5 h-5 ${isHandRaised ? 'animate-bounce' : ''}`} />
                 </button>
 
                 <button
                     ref={reactionBtnRef}
                     onClick={() => setShowReactions(!showReactions)}
-                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 ${
-                        showReactions ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white/5 hover:bg-white/10 text-white'
+                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 ${
+                        showReactions ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-white/5'
                     }`}
+                    title="Reactions"
                 >
-                    <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <Smile className="w-5 h-5" />
                 </button>
             </div>
+
+            <div className="w-px h-6 bg-white/5 mx-1" />
 
             {/* Leave Section */}
             <button
                 onClick={onLeave}
-                className="group h-9 sm:h-11 flex items-center gap-2 px-3 sm:px-5 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-xl sm:rounded-2xl transition-all duration-300 border border-red-500/20 hover:border-red-600 shadow-lg hover:shadow-red-600/20"
+                className="group h-10 px-4 sm:h-12 sm:px-6 flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all duration-300 border border-red-500/20 hover:border-red-600"
             >
                 <PhoneOff className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-rotate-[135deg]" />
-                <span className="hidden sm:inline text-sm font-black uppercase tracking-wider">Leave</span>
+                <span className="hidden sm:inline text-xs font-black uppercase tracking-widest">Leave</span>
             </button>
 
             {/* Reaction Modal Portal */}

@@ -298,83 +298,86 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
     return (
         <div className="min-h-screen bg-gray-950">
-            {/* Mobile Header */}
-            <header className="bg-gray-900 border-b border-gray-800 fixed top-0 left-0 right-0 z-50">
-                <div className="px-3 py-1.5 sm:py-3">
-                    <div className="flex justify-between items-center">
-                        {/* Title - truncated on mobile */}
-                        <div className="flex-1 min-w-0 mr-2">
-                            <h1 className="text-sm sm:text-lg font-bold text-white truncate">{session.title}</h1>
-                            <p className="text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
-                                {session.isActive && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
-                                {session.isActive ? 'Live' : 'Offline'}
-                            </p>
+            {/* Header */}
+            <header className="bg-slate-900/50 backdrop-blur-2xl border-b border-white/5 fixed top-0 left-0 right-0 z-50 h-14 sm:h-16 flex items-center">
+                <div className="w-full px-4 sm:px-6">
+                    <div className="flex justify-between items-center gap-4">
+                        {/* Left: Title & Status */}
+                        <div className="flex items-center gap-4 min-w-0 flex-1 sm:flex-initial">
+                            <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-600/10 border border-indigo-500/20">
+                                <Sparkles className="w-5 h-5 text-indigo-400" />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-sm sm:text-base font-bold text-white truncate leading-none mb-1">{session.title}</h1>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${session.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            {session.isActive ? 'Live Session' : 'Offline'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Desktop Controls */}
-                        <div className="hidden md:flex items-center gap-2">
-                            <RecordingControls
-                                roomId={ctxSessionId || ''}
-                                lecturerId={ctxUserId || ''}
-                                classTitle={ctxTitle || 'Untitled Class'}
-                                isLecturer={isModerator}
-                            />
-
+                        {/* Right: Actions */}
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            {/* Moderator Tools Group */}
                             {isModerator && (
-                                <div className="hidden sm:block">
+                                <div className="hidden md:flex items-center bg-white/5 rounded-xl p-1 border border-white/5">
+                                    <RecordingControls
+                                        roomId={ctxSessionId || ''}
+                                        lecturerId={ctxUserId || ''}
+                                        classTitle={ctxTitle || 'Untitled Class'}
+                                        isLecturer={isModerator}
+                                    />
+                                    
+                                    <div className="w-px h-6 bg-white/10 mx-1" />
+                                    
                                     <SimpleAttendanceConsole sessionId={sessionId} isActive={session.isActive} />
+                                    
+                                    {isHost && (
+                                        <>
+                                            <div className="w-px h-6 bg-white/10 mx-1" />
+                                            <CoHostManagementPanel sessionId={sessionId} />
+                                        </>
+                                    )}
                                 </div>
                             )}
 
-                            <div className="h-6 w-px bg-gray-800 mx-1 hidden lg:block" />
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    onClick={() => setShowShareModal(true)}
+                                    className="h-9 sm:h-10 px-3 sm:px-4 text-xs font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-white/5 flex items-center gap-2"
+                                >
+                                    <Share2 className="w-3.5 h-3.5" />
+                                    <span className="hidden lg:inline">Invite</span>
+                                </button>
 
-                            <div className="hidden lg:block">
-                                <LayoutSelector
-                                    currentLayout={layout}
-                                    onLayoutChange={setLayout}
-                                />
+                                <button
+                                    onClick={() => setShowParticipantsModal(true)}
+                                    className="relative h-9 sm:h-10 px-3 sm:px-4 text-xs font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                                >
+                                    <Users className="w-3.5 h-3.5" />
+                                    <span className="hidden lg:inline">{isModerator ? 'Manage' : 'People'}</span>
+                                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] tabular-nums">{participants.length}</span>
+                                    {isModerator && pendingRequests.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border border-gray-900 animate-bounce">
+                                            {pendingRequests.length}
+                                        </span>
+                                    )}
+                                </button>
+                                
+                                <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
+
+                                <button
+                                    onClick={() => window.location.href = '/'}
+                                    className="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-white/5"
+                                    title="Exit to Dashboard"
+                                >
+                                    <Home className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </button>
                             </div>
-
-                            {/* Co-Host Panel — host only */}
-                            {isHost && (
-                                <CoHostManagementPanel sessionId={sessionId} />
-                            )}
-
-                            <button
-                                onClick={() => setShowShareModal(true)}
-                                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors flex items-center gap-2"
-                            >
-                                <Share2 className="w-4 h-4" />
-                                <span className="hidden lg:inline">Invite</span>
-                            </button>
-
-                            <button
-                                onClick={() => setShowParticipantsModal(true)}
-                                className="relative px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors flex items-center gap-2"
-                            >
-                                <Users className="w-4 h-4" />
-                                <span className="hidden lg:inline">{isModerator ? 'Manage' : 'Participants'}</span>
-                                <span className="bg-white/20 px-1.5 py-0.5 rounded text-xs">{participants.length}</span>
-                                {isModerator && pendingRequests.length > 0 && (
-                                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-red-600 animate-pulse">
-                                        {pendingRequests.length}
-                                    </span>
-                                )}
-                            </button>
-                            <button
-                                onClick={() => window.location.href = '/'}
-                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition-colors"
-                                title="Home"
-                            >
-                                <Home className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={handleLeave}
-                                className={`px-3 py-1.5 text-sm font-medium text-white ${isHost ? 'bg-gray-700 hover:bg-gray-600' : 'bg-red-600 hover:bg-red-700'} rounded-md transition-colors flex items-center gap-2`}
-                            >
-                                <LogOut className="w-4 h-4" />
-                                <span className="hidden lg:inline">Leave</span>
-                            </button>
                         </div>
 
                         {/* Mobile Menu Button */}
@@ -667,12 +670,43 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                             </div>
                                         </div>
                                     )}
-                                </div>
+                                <div className="flex items-center gap-1.5">
+                                <button
+                                    onClick={() => setShowShareModal(true)}
+                                    className="h-9 sm:h-10 px-3 sm:px-4 text-xs font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-white/5 flex items-center gap-2"
+                                >
+                                    <Share2 className="w-3.5 h-3.5" />
+                                    <span className="hidden lg:inline">Invite</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setShowParticipantsModal(true)}
+                                    className="relative h-9 sm:h-10 px-3 sm:px-4 text-xs font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                                >
+                                    <Users className="w-3.5 h-3.5" />
+                                    <span className="hidden lg:inline">{isModerator ? 'Manage' : 'People'}</span>
+                                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] tabular-nums">{participants.length}</span>
+                                    {isModerator && pendingRequests.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border border-gray-900 animate-bounce">
+                                            {pendingRequests.length}
+                                        </span>
+                                    )}
+                                </button>
+                                
+                                <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
+
+                                <button
+                                    onClick={() => window.location.href = '/'}
+                                    className="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-white/5"
+                                    title="Exit to Dashboard"
+                                >
+                                    <Home className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </button>
                             </div>
                         </div>
-                    )}
+                    </div>
                 </div>
-            </header >
+            </header>
 
 
             <div
