@@ -273,8 +273,8 @@ window.deleteSession = async (id, e) => {
 };
 
 // Create Modal Logic
-const createModal = document.getElementById('modal-create');
-const createForm = document.getElementById('create-form');
+const createModal = document.getElementById('modal-create-class');
+const createForm = document.getElementById('create-class-form');
 const groupSelect = document.getElementById('class-group-id');
 const groupContainer = document.getElementById('group-link-container');
 
@@ -286,7 +286,7 @@ if (openCreateCardBtn) openCreateCardBtn.addEventListener('click', () => createM
 
 document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', () => {
-        const modals = ['modal-create', 'modal-join-preview', 'modal-create-community', 'modal-join-community'];
+        const modals = ['modal-create-class', 'modal-join-preview', 'modal-create-community', 'modal-join-community'];
         modals.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.add('hidden');
