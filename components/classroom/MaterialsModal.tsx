@@ -127,10 +127,10 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
     );
 
     return (
-        <div className="fixed inset-0 z-[600] flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />
             
-            <div className="relative w-full sm:max-w-2xl bg-slate-900 border border-white/10 rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-300 shadow-[0_30px_100px_rgba(0,0,0,0.8)]">
+            <div className="relative w-full max-w-2xl bg-slate-900 border border-white/10 rounded-[2rem] flex flex-col max-h-[85vh] animate-in zoom-in-95 fade-in duration-300 shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden">
                 
                 {/* Header */}
                 <div className="p-4 sm:p-8 border-b border-white/5 shrink-0">
