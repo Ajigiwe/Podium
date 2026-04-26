@@ -53,7 +53,7 @@ function setLoading(isLoading) {
 
 function fetchJoinHistory() {
     // Fetch all non-hidden transactions (enrollments)
-    const qTx = query(collection(db, 'transactions'), where('userId', '==', currentUserId), where('isHidden', '==', false), orderBy('createdAt', 'desc'));
+    const qTx = query(collection(db, 'transactions'), where('userId', '==', currentUserId), where('isHidden', '==', false));
     
     onSnapshot(qTx, async (snap) => {
         if (snap.empty) {
@@ -75,7 +75,8 @@ function fetchJoinHistory() {
                     ...data,
                     joinedAt: data.createdAt // Use creation as fallback
                 };
-            });
+            })
+            .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
             
         if (activeTab === 'joined') render();
     }, (err) => console.error('[History:Joined] Error:', err));
@@ -83,7 +84,7 @@ function fetchJoinHistory() {
 
 async function fetchHostedHistory() {
     // Fetch all non-deleted sessions hosted by the user
-    const q = query(collection(db, 'sessions'), where('lecturerId', '==', currentUserId), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'sessions'), where('lecturerId', '==', currentUserId));
     
     onSnapshot(q, async (snap) => {
         const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -122,7 +123,7 @@ async function fetchHostedHistory() {
             console.error('Recordings fetch error:', err);
         }
 
-        hostedHistory = enhancedSessions;
+        hostedHistory = enhancedSessions.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
         if (activeTab === 'hosted') render();
     }, (err) => console.error('[History:Hosted] Error:', err));
 }
