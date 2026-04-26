@@ -1,7 +1,7 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
-    collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, deleteDoc 
+    collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, deleteDoc, Timestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // DOM Elements
@@ -52,62 +52,69 @@ function setLoading(isLoading) {
 }
 
 function fetchJoinHistory() {
-    const q = query(collection(db, 'attendance_logs'), where('userId', '==', auth.currentUser.uid), orderBy('joinedAt', 'desc'));
-    onSnapshot(q, (snap) => {
-        joinedHistory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Fetch all non-hidden transactions (enrollments)
+    const qTx = query(collection(db, 'transactions'), where('userId', '==', currentUserId), where('isHidden', '==', false), orderBy('createdAt', 'desc'));
+    
+    onSnapshot(qTx, async (snap) => {
+        if (snap.empty) {
+            joinedHistory = [];
+            if (activeTab === 'joined') render();
+            return;
+        }
+
+        const sessionIds = Array.from(new Set(snap.docs.map(d => d.data().sessionId)));
+        // Fetch session details for these transactions
+        const sessionSnaps = await Promise.all(sessionIds.map(id => getDoc(doc(db, 'sessions', id))));
+        
+        joinedHistory = sessionSnaps
+            .filter(s => s.exists())
+            .map(s => {
+                const data = s.data();
+                return {
+                    id: s.id,
+                    ...data,
+                    joinedAt: data.createdAt // Use creation as fallback
+                };
+            });
+            
         if (activeTab === 'joined') render();
-    });
+    }, (err) => console.error('[History:Joined] Error:', err));
 }
 
 async function fetchHostedHistory() {
-    const logsQuery = query(collection(db, 'attendance_logs'), where('lecturerId', '==', auth.currentUser.uid), orderBy('joinedAt', 'desc'));
+    // Fetch all non-deleted sessions hosted by the user
+    const q = query(collection(db, 'sessions'), where('lecturerId', '==', currentUserId), orderBy('createdAt', 'desc'));
     
-    onSnapshot(logsQuery, async (snap) => {
-        const logs = snap.docs.map(d => d.data());
-        const sessionsMap = new Map();
+    onSnapshot(q, async (snap) => {
+        const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Enhance with participant counts and recordings
+        const enhancedSessions = await Promise.all(sessions.map(async (session) => {
+            const logsQuery = query(collection(db, 'attendance_logs'), where('sessionId', '==', session.id));
+            const logsSnap = await getDocs(logsQuery);
+            const participants = new Set(logsSnap.docs.map(d => d.data().userId));
+            
+            return {
+                ...session,
+                participantCount: participants.size,
+                type: 'hosted'
+            };
+        }));
 
-        // 1. Process Attendance Logs
-        logs.forEach(log => {
-            if (!sessionsMap.has(log.sessionId)) {
-                sessionsMap.set(log.sessionId, {
-                    id: log.sessionId,
-                    title: log.sessionTitle || 'Untitled Session',
-                    createdAt: log.joinedAt, // Use first join as fallback date
-                    participantCount: 0,
-                    participants: new Set(),
-                    type: 'hosted'
-                });
-            }
-            const s = sessionsMap.get(log.sessionId);
-            s.participants.add(log.userId);
-            s.participantCount = s.participants.size;
-            // Keep the earliest date
-            if (log.joinedAt && (!s.createdAt || log.joinedAt.toMillis() < s.createdAt.toMillis())) {
-                s.createdAt = log.joinedAt;
-            }
-        });
-
-        // 2. Process Recordings (Merge if they exist)
+        // Fetch recordings
         try {
             const response = await fetch(`/api/recordings/lecturer/${currentUserId}`);
             const recData = await response.json();
             if (recData.success) {
                 recData.recordings.forEach(rec => {
                     const sid = rec.roomId;
-                    if (!sessionsMap.has(sid)) {
-                        sessionsMap.set(sid, {
-                            id: sid,
-                            title: rec.classTitle || 'Recorded Session',
-                            createdAt: Timestamp.fromDate(new Date(rec.startedAt)),
-                            participantCount: 0,
-                            type: 'hosted',
-                            hasRecording: true,
-                            recordingId: rec.id
-                        });
+                    const session = enhancedSessions.find(s => s.id === sid);
+                    if (session) {
+                        session.hasRecording = true;
+                        session.recordingId = rec.id;
                     } else {
-                        const s = sessionsMap.get(sid);
-                        s.hasRecording = true;
-                        s.recordingId = rec.id;
+                        // If session not found in hosted list (maybe deleted?), still show recording?
+                        // For now, only show recordings for existing sessions in this list
                     }
                 });
             }
@@ -115,14 +122,9 @@ async function fetchHostedHistory() {
             console.error('Recordings fetch error:', err);
         }
 
-        hostedHistory = Array.from(sessionsMap.values()).sort((a, b) => {
-            const timeA = a.createdAt?.toMillis?.() || 0;
-            const timeB = b.createdAt?.toMillis?.() || 0;
-            return timeB - timeA;
-        });
-
+        hostedHistory = enhancedSessions;
         if (activeTab === 'hosted') render();
-    });
+    }, (err) => console.error('[History:Hosted] Error:', err));
 }
 
 window.switchTab = (tab) => {
