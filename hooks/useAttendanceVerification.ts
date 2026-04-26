@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRoomContext } from '@livekit/components-react';
 import { RoomEvent } from 'livekit-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClassroom } from '@/contexts/ClassroomContext';
 
 interface VerificationPayload {
     verificationId: string;
@@ -15,12 +16,13 @@ interface VerificationPayload {
 export const useAttendanceVerification = (sessionId: string) => {
     const room = useRoomContext();
     const { user, profile } = useAuth();
+    const { userRole } = useClassroom();
     const [activeVerification, setActiveVerification] = useState<VerificationPayload | null>(null);
     const [isResponding, setIsResponding] = useState(false);
     const [isJoined, setIsJoined] = useState(false);
 
     const joinAttendance = useCallback(async () => {
-        if (!sessionId || !user || !profile || profile.role !== 'student' || isJoined) return;
+        if (!sessionId || !user || !userRole || userRole !== 'student' || isJoined) return;
 
         try {
             const response = await fetch('/api/attendance/join', {
@@ -45,17 +47,17 @@ export const useAttendanceVerification = (sessionId: string) => {
 
     // Join when room is connected and role is student
     useEffect(() => {
-        if (room?.state === 'connected' && profile?.role === 'student') {
+        if (room?.state === 'connected' && userRole === 'student') {
             joinAttendance();
         }
-    }, [room?.state, profile?.role, joinAttendance]);
+    }, [room?.state, userRole, joinAttendance]);
 
     const handleDataReceived = useCallback((payload: Uint8Array, participant: any) => {
         try {
             const decoder = new TextDecoder();
             const data = JSON.parse(decoder.decode(payload));
 
-            if (data.type === 'VERIFICATION_TRIGGERED' && profile?.role === 'student') {
+            if (data.type === 'VERIFICATION_TRIGGERED' && userRole === 'student') {
                 console.log('Attendance verification triggered:', data.payload);
                 setActiveVerification(data.payload);
 
