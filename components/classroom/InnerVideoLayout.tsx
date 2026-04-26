@@ -303,6 +303,7 @@ export function InnerVideoLayout({
                 onToggleHand={onToggleHand}
                 isHandRaised={isHandRaised}
                 unreadChatCount={unreadChatCount}
+                isActive={isActive}
                 showAlert={showAlert}
                 customAlert={customAlert}
             />
