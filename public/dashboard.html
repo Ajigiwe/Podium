@@ -70,6 +70,9 @@
                         <button onclick="window.switchTab('communities')" id="nav-communities" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
                             <i class="fas fa-users w-4 h-4"></i> Communities
                         </button>
+                        <button onclick="window.switchTab('attendance')" id="nav-attendance" class="hidden w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
+                            <i class="fas fa-clipboard-list w-4 h-4"></i> Attendance
+                        </button>
                         <a href="./history.html" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
                             <i class="fas fa-history w-4 h-4"></i> My History
                         </a>
@@ -221,6 +224,29 @@
                             </div>
                             <div id="public-communities-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Content -->
+                <div id="content-attendance" class="content-section hidden space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                        <div>
+                            <h2 class="text-3xl font-sans text-[#0D0D1A] dark:text-white tracking-tighter">Attendance Registry</h2>
+                            <p class="text-[13px] text-[#8888A8] font-medium mt-1">Manage and export your class attendance records</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="px-4 py-2 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-lg shadow-sm">
+                                <span class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest block mb-0.5">Total Reports</span>
+                                <span id="attendance-total-count" class="text-xl font-sans text-[#0D0D1A] dark:text-white">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="attendance-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Populated by JS -->
+                        <div class="h-48 skeleton rounded-xl"></div>
+                        <div class="h-48 skeleton rounded-xl"></div>
+                        <div class="h-48 skeleton rounded-xl"></div>
                     </div>
                 </div>
             </div>
@@ -440,12 +466,31 @@
             </form>
         </div>
     </div>
-
-
+    
+    <!-- Attendance Modal -->
+    <div id="modal-attendance" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
+        <div class="absolute inset-0 bg-[#0D0D1A]/40 backdrop-blur-sm modal-overlay" onclick="document.getElementById('modal-attendance').classList.add('hidden')"></div>
+        <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-xl p-10 relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[85vh]">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h2 class="text-2xl font-sans text-[#0D0D1A] dark:text-white tracking-tighter">Attendance Logs</h2>
+                    <p id="attendance-modal-subtitle" class="text-[13px] text-[#8888A8] font-light mt-1">Detailed session check-ins</p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="download-attendance-btn" class="hidden px-4 py-2 bg-[#1845D4] text-white text-[10px] font-bold uppercase tracking-widest rounded flex items-center gap-2 hover:bg-[#0F2FA8] transition-all shadow-lg shadow-blue-600/10 active:scale-95">
+                        <i class="fas fa-download text-xs"></i> Export
+                    </button>
+                    <button onclick="document.getElementById('modal-attendance').classList.add('hidden')" class="w-8 h-8 flex items-center justify-center border border-[#DDE0F0] dark:border-slate-800 rounded-md text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-950">✕</button>
+                </div>
+            </div>
+            <div id="attendance-logs-content" class="space-y-4"></div>
+        </div>
+    </div>
 
     <!-- Firebase Logic -->
     <script type="module" src="./js/sidebar.js"></script>
     <script type="module" src="./js/dashboard.js"></script>
+    <script type="module" src="./js/attendance.js"></script>
     <script src="./js/theme-toggle.js"></script>
 </body>
 </html>

@@ -8,11 +8,13 @@ import { initCommunities } from './communities.js';
 // DOM Elements
 const sidebarLinks = {
     records: document.getElementById('nav-records'),
-    communities: document.getElementById('nav-communities')
+    communities: document.getElementById('nav-communities'),
+    attendance: document.getElementById('nav-attendance')
 };
 const contentSections = {
     records: document.getElementById('content-records'),
-    communities: document.getElementById('content-communities')
+    communities: document.getElementById('content-communities'),
+    attendance: document.getElementById('content-attendance')
 };
 
 const userName = document.getElementById('user-name');
@@ -64,9 +66,15 @@ onAuthStateChanged(auth, async (user) => {
     setTimeout(() => setLoading(false), 800);
 
     // Show admin nav section if admin
-    if (userProfile.role === 'admin') {
+    if (userProfile.role === 'admin' || userProfile.role === 'lecturer') {
         const adminSection = document.getElementById('admin-nav-section');
-        if (adminSection) adminSection.classList.remove('hidden');
+        if (adminSection && userProfile.role === 'admin') adminSection.classList.remove('hidden');
+        
+        const attendanceNav = document.getElementById('nav-attendance');
+        if (attendanceNav) attendanceNav.classList.remove('hidden');
+    } else {
+        const attendanceNav = document.getElementById('nav-attendance');
+        if (attendanceNav) attendanceNav.classList.add('hidden');
     }
 });
 
