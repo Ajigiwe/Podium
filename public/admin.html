@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Panel - Podium</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['DM Sans', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #DDE0F0; border-radius: 10px; }
+        .skeleton { background: linear-gradient(90deg, #F5F6FA 25%, #E8EEFF 50%, #F5F6FA 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .toast { animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-[#F5F6FA] text-[#0D0D1A] font-sans min-h-screen">
+
+    <!-- Top Bar -->
+    <div class="bg-white border-b border-[#DDE0F0] h-[60px] flex items-center px-8 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto w-full flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <a href="/dashboard.html" class="text-[#8888A8] hover:text-[#0D0D1A] transition-all flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest">
+                    <i class="fas fa-arrow-left text-xs"></i> Dashboard
+                </a>
+                <div class="w-px h-4 bg-[#DDE0F0]"></div>
+                <span class="font-bold text-[#1845D4] text-[#0D0D1A] text-[14px]">Control Panel</span>
+            </div>
+            <div class="flex items-center gap-2 bg-red-50 border border-red-100 px-3 py-1.5 rounded-full">
+                <i class="fas fa-shield-alt text-red-500 text-[10px]"></i>
+                <span class="text-[9px] font-black text-red-600 uppercase tracking-widest">Admin Access</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-8 py-10 space-y-8">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-[#0D0D1A] tracking-tight">System Oversight</h1>
+                <p id="today-date" class="text-[13px] text-[#8888A8] font-medium mt-1"></p>
+            </div>
+            <!-- Tab Switcher -->
+            <div class="flex p-1 bg-white border border-[#DDE0F0] rounded-lg shadow-sm w-fit">
+                <button onclick="switchTab('settings')" id="tab-settings" class="px-5 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded transition-all flex items-center gap-2 bg-[#1845D4] text-white">
+                    <i class="fas fa-cog text-xs"></i> Settings
+                </button>
+                <button onclick="switchTab('users')" id="tab-users" class="px-5 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded transition-all flex items-center gap-2 text-[#8888A8] hover:text-[#0D0D1A]">
+                    <i class="fas fa-users text-xs"></i> Users
+                </button>
+            </div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div id="content-settings" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-4">
+                <div class="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm">
+                    <h3 class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-4">Institutional Policy</h3>
+                    <p class="text-[13px] text-[#444460] font-light leading-relaxed">Control global subscription requirements and fee structures for the platform.</p>
+                </div>
+            </div>
+            <div class="lg:col-span-2">
+                <form id="settings-form" class="bg-white border border-[#DDE0F0] rounded-lg p-8 shadow-sm space-y-6">
+                    <!-- Pay to use toggle -->
+                    <div class="flex items-center justify-between p-6 bg-[#F5F6FA] rounded-lg border border-[#DDE0F0]">
+                        <div>
+                            <h4 class="text-[14px] font-bold text-[#0D0D1A]">Subscription Mandatory</h4>
+                            <p class="text-[10px] text-[#8888A8] font-bold uppercase tracking-widest mt-0.5">Require payment for access</p>
+                        </div>
+                        <button type="button" id="pay-toggle" onclick="togglePayToUse()" class="relative h-6 w-11 rounded-full transition-all bg-[#DDE0F0] flex items-center px-1 outline-none">
+                            <span id="pay-toggle-knob" class="inline-block h-4 w-4 rounded-full bg-white transition-all shadow-sm"></span>
+                        </button>
+                    </div>
+                    <!-- Fee -->
+                    <div class="space-y-1.5">
+                        <label class="text-[13px] font-bold text-[#0D0D1A]">Semester Fee (GHS)</label>
+                        <input type="number" id="fee-input" value="200" class="w-full px-4 py-2.5 bg-white border-2 border-[#DDE0F0] focus:border-[#1845D4] rounded-md outline-none text-[14px] transition-all">
+                    </div>
+                    <button type="submit" id="save-btn" class="px-8 py-2.5 bg-[#1845D4] text-white rounded-md font-bold text-[13px] uppercase tracking-widest shadow-lg shadow-blue-600/10 hover:bg-[#0F2FA8] active:scale-95 transition-all">
+                        Update Policies
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- USERS TAB -->
+        <div id="content-users" class="hidden space-y-8">
+            <!-- Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm">
+                    <div class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-3">Total Registry</div>
+                    <div id="stat-total" class="text-3xl font-bold text-[#0D0D1A]">—</div>
+                </div>
+                <div class="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm">
+                    <div class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-3">Students</div>
+                    <div id="stat-students" class="text-3xl font-bold text-[#0D0D1A]">—</div>
+                </div>
+                <div class="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm">
+                    <div class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-3">Lecturers</div>
+                    <div id="stat-lecturers" class="text-3xl font-bold text-[#0D0D1A]">—</div>
+                </div>
+                <div class="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm">
+                    <div class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-3">Admins</div>
+                    <div id="stat-admins" class="text-3xl font-bold text-[#0D0D1A]">—</div>
+                </div>
+            </div>
+
+            <!-- Directory -->
+            <div class="bg-white border border-[#DDE0F0] rounded-lg overflow-hidden shadow-sm">
+                <div class="px-6 py-5 border-b border-[#DDE0F0] flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h2 class="text-[14px] font-bold text-[#0D0D1A]">User Directory</h2>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[#8888A8] text-xs"></i>
+                            <input type="text" id="search-input" placeholder="Search name..." oninput="debounceSearch()" class="pl-9 pr-4 py-2 bg-[#F5F6FA] border border-[#DDE0F0] rounded-md outline-none text-[12px] font-medium focus:border-[#1845D4] transition-all w-48">
+                        </div>
+                        <select id="role-filter" onchange="applyFilters()" class="bg-white border border-[#DDE0F0] rounded-md text-[10px] font-bold uppercase tracking-widest px-3 py-2 outline-none text-[#8888A8] hover:border-[#1845D4] transition-all">
+                            <option value="all">All Roles</option>
+                            <option value="student">Students</option>
+                            <option value="lecturer">Lecturers</option>
+                            <option value="admin">Admins</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-[#F5F6FA] border-b border-[#DDE0F0]">
+                            <tr>
+                                <th class="px-6 py-4 text-[10px] font-bold text-[#8888A8] uppercase tracking-widest">User Identity</th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-[#8888A8] uppercase tracking-widest">Access Role</th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-[#8888A8] uppercase tracking-widest">Registry Date</th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-[#8888A8] uppercase tracking-widest text-right">Operations</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody" class="divide-y divide-[#DDE0F0]">
+                            <tr><td colspan="4" class="px-6 py-12 text-center text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Loading registry...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-6 py-4 bg-[#F5F6FA] flex items-center justify-between border-t border-[#DDE0F0]">
+                    <span id="page-label" class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest">Page 1</span>
+                    <div class="flex gap-2">
+                        <button onclick="changePage(-1)" id="prev-btn" disabled class="px-4 py-1.5 bg-white text-[#0D0D1A] rounded border border-[#DDE0F0] text-[10px] font-bold uppercase tracking-widest hover:border-[#1845D4] disabled:opacity-30 transition-all">Previous</button>
+                        <button onclick="changePage(1)" id="next-btn" class="px-4 py-1.5 bg-[#1845D4] text-white rounded text-[10px] font-bold uppercase tracking-widest hover:bg-[#0F2FA8] disabled:opacity-30 transition-all">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast-container" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 items-center"></div>
+
+    <!-- Role Menu (floating) -->
+    <div id="role-menu" class="hidden fixed bg-white rounded-lg shadow-2xl border border-[#DDE0F0] py-2 z-[100] w-44">
+        <div class="px-3 pb-2 text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Actions</div>
+        <button onclick="openHistoryDrawer()" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#E8EEFF] text-[#1845D4] flex items-center gap-2"><i class="fas fa-history text-xs"></i> View History</button>
+        <div class="h-px bg-[#F5F6FA] my-1 mx-3"></div>
+        <div class="px-3 pb-1 text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Change Role</div>
+        <button onclick="setRole('admin')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] text-[#8888A8]">Admin</button>
+        <button onclick="setRole('lecturer')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] text-[#8888A8]">Lecturer</button>
+        <button onclick="setRole('student')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] text-[#8888A8]">Student</button>
+        <div class="h-px bg-[#F5F6FA] my-1 mx-3"></div>
+        <button onclick="deleteUser()" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-red-600 hover:bg-red-50">Purge User</button>
+    </div>
+
+    <!-- History Drawer -->
+    <div id="history-backdrop" onclick="closeHistoryDrawer()" class="hidden fixed inset-0 bg-[#0D0D1A]/20 backdrop-blur-sm z-[110]"></div>
+    <div id="history-drawer" class="fixed top-0 right-0 h-full w-full max-w-lg bg-white border-l border-[#DDE0F0] shadow-2xl z-[120] translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-[#DDE0F0] flex-shrink-0">
+            <div>
+                <h2 id="history-drawer-name" class="text-[15px] font-bold text-[#0D0D1A]">User History</h2>
+                <p id="history-drawer-email" class="text-[11px] text-[#8888A8] mt-0.5"></p>
+            </div>
+            <button onclick="closeHistoryDrawer()" class="w-8 h-8 flex items-center justify-center border border-[#DDE0F0] rounded-md text-[#444460] hover:bg-[#F5F6FA] transition-all">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+        <div id="history-drawer-body" class="flex-1 overflow-y-auto p-6 space-y-8">
+            <div class="text-center py-16 text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Loading...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './js/firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import {
+            doc, getDoc, setDoc, serverTimestamp, collection, getDocs,
+            query, where, orderBy, limit, startAfter, updateDoc, deleteDoc, getCountFromServer
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // --- DATE ---
+        document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        // --- STATE ---
+        let isPayToUse = true;
+        let currentPage = 0;
+        let lastDocs = [null];
+        let isLastPage = false;
+        let activeMenuUserId = null;
+        let usersCache = {};
+        let searchTimeout = null;
+        const PAGE_SIZE = 20;
+
+        // --- AUTH GUARD ---
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = './auth/login.html'; return; }
+            const profileSnap = await getDoc(doc(db, 'profiles', user.uid));
+            const profile = profileSnap.data();
+            if (!profile || profile.role !== 'admin') {
+                window.location.href = './dashboard.html';
+                return;
+            }
+            loadSettings();
+        });
+
+        // --- TAB SWITCHING ---
+        window.switchTab = (tab) => {
+            ['settings', 'users'].forEach(t => {
+                document.getElementById(`content-${t}`).classList.toggle('hidden', t !== tab);
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    btn.className = 'px-5 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded transition-all flex items-center gap-2 bg-[#1845D4] text-white';
+                } else {
+                    btn.className = 'px-5 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded transition-all flex items-center gap-2 text-[#8888A8] hover:text-[#0D0D1A]';
+                }
+            });
+            if (tab === 'users') { loadStats(); loadUsers(); }
+        };
+
+        // --- SETTINGS ---
+        async function loadSettings() {
+            const snap = await getDoc(doc(db, 'system_settings', 'subscription'));
+            if (snap.exists()) {
+                const data = snap.data();
+                isPayToUse = data.isPayToUse !== false;
+                document.getElementById('fee-input').value = data.semesterFee || 200;
+                updateToggle();
+            }
+        }
+
+        window.togglePayToUse = () => {
+            isPayToUse = !isPayToUse;
+            updateToggle();
+        };
+
+        function updateToggle() {
+            const toggle = document.getElementById('pay-toggle');
+            const knob = document.getElementById('pay-toggle-knob');
+            if (isPayToUse) {
+                toggle.style.backgroundColor = '#1845D4';
+                knob.style.transform = 'translateX(20px)';
+            } else {
+                toggle.style.backgroundColor = '#DDE0F0';
+                knob.style.transform = 'translateX(0)';
+            }
+        }
+
+        document.getElementById('settings-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('save-btn');
+            btn.innerText = 'Preserving...';
+            btn.disabled = true;
+            try {
+                await setDoc(doc(db, 'system_settings', 'subscription'), {
+                    semesterFee: Number(document.getElementById('fee-input').value),
+                    isPayToUse,
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+                showToast('Policies updated.');
+            } catch (err) {
+                showToast('Failed to update.', 'error');
+            } finally {
+                btn.innerText = 'Update Policies';
+                btn.disabled = false;
+            }
+        };
+
+        // --- STATS ---
+        async function loadStats() {
+            const ref = collection(db, 'profiles');
+            const [total, students, lecturers, admins] = await Promise.all([
+                getCountFromServer(query(ref)),
+                getCountFromServer(query(ref, where('role', '==', 'student'))),
+                getCountFromServer(query(ref, where('role', '==', 'lecturer'))),
+                getCountFromServer(query(ref, where('role', '==', 'admin'))),
+            ]);
+            document.getElementById('stat-total').innerText = total.data().count;
+            document.getElementById('stat-students').innerText = students.data().count;
+            document.getElementById('stat-lecturers').innerText = lecturers.data().count;
+            document.getElementById('stat-admins').innerText = admins.data().count;
+        }
+
+        // --- USERS ---
+        async function loadUsers() {
+            const tbody = document.getElementById('users-tbody');
+            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center"><div class="h-4 w-1/3 skeleton mx-auto"></div></td></tr>`;
+
+            const roleFilter = document.getElementById('role-filter').value;
+            const search = document.getElementById('search-input').value.trim().toLowerCase();
+
+            let users = [];
+            
+            if (search) {
+                // Hybrid search: fetch a large batch and search locally to support any part of name/email
+                const snap = await getDocs(query(collection(db, 'profiles'), limit(1000)));
+                const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                users = all.filter(u => 
+                    (u.fullName?.toLowerCase().includes(search)) || 
+                    (u.email?.toLowerCase().includes(search))
+                );
+                
+                if (roleFilter !== 'all') {
+                    users = users.filter(u => u.role === roleFilter);
+                }
+                
+                isLastPage = true; 
+                document.getElementById('prev-btn').disabled = true;
+                document.getElementById('next-btn').disabled = true;
+                document.getElementById('page-label').innerText = `Search results`;
+            } else {
+                // Standard paginated flow for default view
+                let constraints = [orderBy('createdAt', 'desc'), limit(PAGE_SIZE + 1)];
+                if (roleFilter !== 'all') constraints.unshift(where('role', '==', roleFilter));
+                if (lastDocs[currentPage]) constraints.push(startAfter(lastDocs[currentPage]));
+
+                const snap = await getDocs(query(collection(db, 'profiles'), ...constraints));
+                const docs = snap.docs;
+                isLastPage = docs.length <= PAGE_SIZE;
+                users = docs.slice(0, PAGE_SIZE).map(d => ({ id: d.id, ...d.data() }));
+
+                if (!lastDocs[currentPage + 1] && !isLastPage) lastDocs[currentPage + 1] = docs[PAGE_SIZE - 1];
+                document.getElementById('prev-btn').disabled = currentPage === 0;
+                document.getElementById('next-btn').disabled = isLastPage;
+                document.getElementById('page-label').innerText = `Page ${currentPage + 1}`;
+            }
+
+            users.forEach(u => { usersCache[u.id] = u; });
+
+            if (!lastDocs[currentPage + 1] && !isLastPage) lastDocs[currentPage + 1] = docs[PAGE_SIZE - 1];
+
+            document.getElementById('prev-btn').disabled = currentPage === 0;
+            document.getElementById('next-btn').disabled = isLastPage;
+            document.getElementById('page-label').innerText = `Page ${currentPage + 1}`;
+
+            tbody.innerHTML = '';
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">No users found.</td></tr>`;
+                return;
+            }
+
+            users.forEach(u => {
+                const initials = (u.fullName || u.email || '?')[0].toUpperCase();
+                const date = u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString('en-GB') : 'N/A';
+                const roleBadge = u.role === 'admin'
+                    ? 'bg-slate-900 text-white'
+                    : u.role === 'lecturer'
+                    ? 'bg-blue-50 text-[#1845D4]'
+                    : 'bg-[#F5F6FA] text-[#8888A8]';
+
+                const tr = document.createElement('tr');
+                tr.className = 'group hover:bg-[#F5F6FA] transition-colors';
+                tr.innerHTML = `
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-lg bg-[#E8EEFF] flex items-center justify-center overflow-hidden flex-shrink-0">
+                                ${u.photoURL ? `<img src="${u.photoURL}" class="w-full h-full object-cover">` : `<span class="text-sm font-bold text-[#1845D4]">${initials}</span>`}
+                            </div>
+                            <div>
+                                <p class="text-[13px] font-bold text-[#0D0D1A]">${u.fullName || 'Unnamed'}</p>
+                                <p class="text-[11px] text-[#8888A8]">${u.email || ''}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${roleBadge}">${u.role || 'student'}</span>
+                            ${u.role === 'student' ? `<span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${u.isVerified ? 'bg-green-50 text-green-600' : 'bg-[#F5F6FA] text-[#8888A8]'}">${u.isVerified ? 'Verified' : 'Unverified'}</span>` : ''}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-[12px] text-[#8888A8]">${date}</td>
+                    <td class="px-6 py-4 text-right relative">
+                        <button onclick="openRoleMenu(event, '${u.id}')" class="p-2 text-[#DDE0F0] hover:text-[#1845D4] transition-all">
+                            <i class="fas fa-ellipsis-v text-sm"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.applyFilters = () => { currentPage = 0; lastDocs = [null]; loadUsers(); };
+        window.debounceSearch = () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { currentPage = 0; lastDocs = [null]; loadUsers(); }, 400); };
+        window.changePage = (dir) => { currentPage = Math.max(0, currentPage + dir); loadUsers(); };
+
+        // --- ROLE MENU ---
+        let menuUserId = null;
+        let menuUserName = '';
+        let menuUserEmail = '';
+
+        window.openRoleMenu = (e, userId) => {
+            e.stopPropagation();
+            const u = usersCache[userId];
+            menuUserId = userId;
+            menuUserName = u ? u.fullName : '';
+            menuUserEmail = u ? u.email : '';
+            
+            const menu = document.getElementById('role-menu');
+            menu.classList.remove('hidden');
+            const rect = e.currentTarget.getBoundingClientRect();
+            
+            // Fixed positioning: relative to viewport, so no scrollY needed
+            let top = rect.bottom + 4;
+            let left = rect.right - 176;
+
+            // Simple boundary check
+            if (top + 200 > window.innerHeight) {
+                top = rect.top - 200 - 4; // Show above if near bottom
+            }
+
+            menu.style.top = `${top}px`;
+            menu.style.left = `${left}px`;
+        };
+
+        document.addEventListener('click', () => document.getElementById('role-menu').classList.add('hidden'));
+
+        window.setRole = async (role) => {
+            if (!menuUserId) return;
+            try {
+                await updateDoc(doc(db, 'profiles', menuUserId), { role });
+                showToast(`Role updated to ${role}.`);
+                loadStats(); loadUsers();
+            } catch { showToast('Failed to update role.', 'error'); }
+        };
+
+        window.deleteUser = async () => {
+            if (!menuUserId || !confirm('Permanently purge this user?')) return;
+            try {
+                await deleteDoc(doc(db, 'profiles', menuUserId));
+                showToast('User purged.');
+                loadStats(); loadUsers();
+            } catch { showToast('Failed to purge user.', 'error'); }
+        };
+
+        // --- HISTORY DRAWER ---
+        window.openHistoryDrawer = async () => {
+            if (!menuUserId) return;
+            document.getElementById('history-drawer-name').innerText = menuUserName || 'Unknown User';
+            document.getElementById('history-drawer-email').innerText = menuUserEmail || '';
+            document.getElementById('history-drawer-body').innerHTML = '<div class="text-center py-16 text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Loading...</div>';
+            document.getElementById('history-drawer').classList.remove('translate-x-full');
+            document.getElementById('history-backdrop').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            const uid = menuUserId;
+            try {
+                const [hostedSnap, joinedSnap, logsSnap] = await Promise.all([
+                    getDocs(query(collection(db, 'sessions'), where('lecturerId', '==', uid))),
+                    getDocs(query(collection(db, 'transactions'), where('userId', '==', uid))),
+                    getDocs(query(collection(db, 'attendance_logs'), where('userId', '==', uid), limit(100)))
+                ]);
+
+                const hosted = hostedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const joined = joinedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                // Sort logs manually in JS to avoid index requirement
+                const logs = logsSnap.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0))
+                    .slice(0, 50);
+
+                const sessionIds = [...new Set(joined.map(j => j.sessionId).filter(Boolean))];
+                let sessionMap = {};
+                if (sessionIds.length > 0) {
+                    const sessionSnaps = await Promise.all(sessionIds.map(id => getDoc(doc(db, 'sessions', id))));
+                    sessionSnaps.forEach(s => { if (s.exists()) sessionMap[s.id] = s.data(); });
+                }
+
+                const fmt = (ts) => ts?.toDate ? ts.toDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+                const fmtTime = (ts) => ts?.toDate ? ts.toDate().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+
+                const section = (icon, title, count, items) => `
+                    <div>
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="fas ${icon} text-[#1845D4] text-xs"></i>
+                            <h3 class="text-[11px] font-black text-[#0D0D1A] uppercase tracking-widest">${title}</h3>
+                            <span class="ml-auto text-[9px] font-black text-[#8888A8] bg-[#F5F6FA] px-2 py-0.5 rounded-full">${count}</span>
+                        </div>
+                        <div class="bg-[#F5F6FA] rounded-lg overflow-hidden divide-y divide-white">
+                            ${items.length === 0
+                                ? '<div class="px-4 py-4 text-[11px] text-[#8888A8] font-medium">No records found.</div>'
+                                : items.join('')
+                            }
+                        </div>
+                    </div>`;
+
+                const hostedItems = hosted.map(s => `
+                    <div class="px-4 py-3 flex items-center justify-between">
+                        <div>
+                            <p class="text-[13px] font-bold text-[#0D0D1A]">${s.title || 'Untitled'}</p>
+                            <p class="text-[11px] text-[#8888A8]">${s.code || '—'} · Created ${fmt(s.createdAt)}</p>
+                        </div>
+                        ${s.isDeleted ? '<span class="text-[9px] font-black text-red-400 bg-red-50 px-2 py-0.5 rounded uppercase">Deleted</span>' : ''}
+                    </div>`);
+
+                const joinedItems = joined.map(j => {
+                    const s = sessionMap[j.sessionId] || {};
+                    return `<div class="px-4 py-3">
+                        <p class="text-[13px] font-bold text-[#0D0D1A]">${s.title || j.sessionId || '—'}</p>
+                        <p class="text-[11px] text-[#8888A8]">Enrolled ${fmt(j.createdAt)} · GHS ${(j.amount || 0).toFixed(2)}</p>
+                    </div>`;
+                });
+
+                const logItems = logs.map(l => `
+                    <div class="px-4 py-3 flex items-center justify-between">
+                        <div>
+                            <p class="text-[13px] font-bold text-[#0D0D1A]">${l.sessionTitle || l.sessionId || '—'}</p>
+                            <p class="text-[11px] text-[#8888A8]">${fmtTime(l.timestamp)}</p>
+                        </div>
+                        <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase ${l.type === 'join' ? 'bg-green-50 text-green-600' : 'bg-[#F5F6FA] text-[#8888A8]'}">${l.type || 'log'}</span>
+                    </div>`);
+
+                document.getElementById('history-drawer-body').innerHTML =
+                    section('fa-chalkboard-teacher', 'Hosted Sessions', hosted.length, hostedItems) +
+                    section('fa-graduation-cap', 'Enrolled Sessions', joined.length, joinedItems) +
+                    section('fa-clipboard-list', 'Attendance Logs', logs.length, logItems);
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('history-drawer-body').innerHTML = '<div class="text-center py-16 text-[11px] font-bold text-red-400 uppercase tracking-widest">Failed to load history.</div>';
+            }
+        };
+
+        window.closeHistoryDrawer = () => {
+            document.getElementById('history-drawer').classList.add('translate-x-full');
+            document.getElementById('history-backdrop').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        };
+
+        // --- TOAST ---
+        function showToast(msg, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast px-6 py-3 ${type === 'error' ? 'bg-red-600' : 'bg-[#0D0D1A]'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl`;
+            toast.innerText = msg;
+            document.getElementById('toast-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

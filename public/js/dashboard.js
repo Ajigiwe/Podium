@@ -62,6 +62,12 @@ onAuthStateChanged(auth, async (user) => {
     initCommunities(user, userProfile);
     setupGroupOptions();
     setTimeout(() => setLoading(false), 800);
+
+    // Show admin nav section if admin
+    if (userProfile.role === 'admin') {
+        const adminSection = document.getElementById('admin-nav-section');
+        if (adminSection) adminSection.classList.remove('hidden');
+    }
 });
 
 // UI Helpers

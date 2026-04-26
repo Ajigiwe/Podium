@@ -59,18 +59,31 @@
             </div>
             <a href="/" class="h-[60px] px-6 flex items-center border-b border-[#DDE0F0] font-serif text-[1.3rem] text-[#1845D4] font-black tracking-tighter decoration-none">Podium</a>
             
-            <nav class="flex-1 px-3 py-6 overflow-y-auto">
-                <div class="px-3 mb-2 text-[10px] font-bold text-[#8888A8] uppercase tracking-[0.1em]">Main</div>
-                <div class="space-y-0.5">
-                    <button onclick="window.switchTab('records')" id="nav-records" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all sidebar-active">
-                        <i class="fas fa-layer-group w-4 h-4"></i> Records
-                    </button>
-                    <button onclick="window.switchTab('communities')" id="nav-communities" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-[#F5F6FA] hover:text-[#0D0D1A]">
-                        <i class="fas fa-users w-4 h-4"></i> Communities
-                    </button>
-                    <a href="./history.html" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-[#F5F6FA] hover:text-[#0D0D1A]">
-                        <i class="fas fa-history w-4 h-4"></i> History
-                    </a>
+            <nav class="flex-1 px-3 py-6 overflow-y-auto space-y-6">
+                <div>
+                    <div class="px-3 mb-2 text-[10px] font-bold text-[#8888A8] uppercase tracking-[0.1em]">Main</div>
+                    <div class="space-y-0.5">
+                        <button onclick="window.switchTab('records')" id="nav-records" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all sidebar-active">
+                            <i class="fas fa-layer-group w-4 h-4"></i> Records
+                        </button>
+                        <button onclick="window.switchTab('communities')" id="nav-communities" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-[#F5F6FA] hover:text-[#0D0D1A]">
+                            <i class="fas fa-users w-4 h-4"></i> Communities
+                        </button>
+                        <a href="./history.html" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-[#F5F6FA] hover:text-[#0D0D1A]">
+                            <i class="fas fa-history w-4 h-4"></i> History
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Admin Section — hidden by default, shown for role:admin -->
+                <div id="admin-nav-section" class="hidden">
+                    <div class="px-3 mb-2 text-[10px] font-bold text-[#8888A8] uppercase tracking-[0.1em]">Administration</div>
+                    <div class="space-y-0.5">
+                        <a href="./admin.html" target="_blank" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-red-50 hover:text-red-600 group">
+                            <i class="fas fa-shield-alt w-4 h-4 group-hover:text-red-500"></i> Control Panel
+                            <i class="fas fa-external-link-alt text-[9px] ml-auto opacity-40 group-hover:opacity-100"></i>
+                        </a>
+                    </div>
                 </div>
             </nav>
 
