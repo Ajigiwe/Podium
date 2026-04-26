@@ -89,20 +89,21 @@ async function fetchHostedHistory() {
     onSnapshot(q, async (snap) => {
         const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         
-        // Enhance with participant counts and recordings
-        const enhancedSessions = await Promise.all(sessions.map(async (session) => {
-            const logsQuery = query(collection(db, 'attendance_logs'), where('sessionId', '==', session.id));
-            const logsSnap = await getDocs(logsQuery);
-            const participants = new Set(logsSnap.docs.map(d => d.data().userId));
+        // 1. Ensure all sessions have a participant count (fallback to logs query if doc count is 0)
+        const enhancedSessions = await Promise.all(sessions.map(async (s) => {
+            if (s.participantCount && s.participantCount > 0) return { ...s, type: 'hosted' };
             
-            return {
-                ...session,
-                participantCount: participants.size,
-                type: 'hosted'
-            };
+            try {
+                const logsQuery = query(collection(db, 'attendance_logs'), where('sessionId', '==', s.id));
+                const logsSnap = await getDocs(logsQuery);
+                const count = new Set(logsSnap.docs.map(d => d.data().userId)).size;
+                return { ...s, participantCount: count, type: 'hosted' };
+            } catch (e) {
+                return { ...s, participantCount: 0, type: 'hosted' };
+            }
         }));
 
-        // Fetch recordings
+        // 2. Fetch recordings
         try {
             const response = await fetch(`/api/recordings/lecturer/${currentUserId}`);
             const recData = await response.json();
@@ -113,9 +114,6 @@ async function fetchHostedHistory() {
                     if (session) {
                         session.hasRecording = true;
                         session.recordingId = rec.id;
-                    } else {
-                        // If session not found in hosted list (maybe deleted?), still show recording?
-                        // For now, only show recordings for existing sessions in this list
                     }
                 });
             }
