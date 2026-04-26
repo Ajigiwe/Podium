@@ -195,38 +195,40 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
                                     key={material.id}
                                     className="flex items-center justify-between p-3 sm:p-4 bg-white/5 hover:bg-white/[0.08] border border-white/5 rounded-2xl transition-all group"
                                 >
-                                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-800 rounded-xl flex items-center justify-center shrink-0 border border-white/5 group-hover:border-indigo-500/30 transition-colors">
                                             {getFileIcon(material.type)}
                                         </div>
-                                        <div className="min-w-0">
-                                            <p className="font-bold text-xs sm:text-sm text-white truncate pr-4">{material.name}</p>
-                                            <div className="flex items-center gap-2 sm:gap-3 mt-0.5">
-                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-bold text-[11px] sm:text-sm text-white line-clamp-1 group-hover:text-indigo-300 transition-colors" title={material.name}>
+                                                {material.name}
+                                            </p>
+                                            <div className="flex items-center gap-2 sm:gap-3 mt-1">
+                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">
                                                     {formatSize(material.size)}
                                                 </span>
-                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-600">•</span>
-                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-700">•</span>
+                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">
                                                     {material.uploadedAt ? material.uploadedAt.toDate().toLocaleDateString() : 'Just now'}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-4">
                                         <a 
                                             href={material.url} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             download={material.name}
-                                            className="p-2 sm:p-2.5 bg-white/5 hover:bg-indigo-600 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
+                                            className="p-2 sm:p-2.5 bg-white/5 hover:bg-indigo-600 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5 shrink-0"
                                         >
                                             <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                         </a>
                                         {isModerator && (
                                             <button 
                                                 onClick={() => handleDelete(material.id)}
-                                                className="p-2 sm:p-2.5 bg-white/5 hover:bg-red-500 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
+                                                className="p-2 sm:p-2.5 bg-white/5 hover:bg-red-500 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5 shrink-0"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                             </button>
