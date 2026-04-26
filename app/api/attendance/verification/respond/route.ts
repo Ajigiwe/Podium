@@ -56,6 +56,14 @@ export async function POST(request: NextRequest) {
                 verificationPercentage: Math.round((completed / sent) * 100),
                 lastRespondedAt: now
             });
+
+            // Also update flat log for reports
+            const logRef = adminDb.collection('attendance_logs').doc(`${sessionId}_${studentId}`);
+            await logRef.update({
+                totalVerificationsCompleted: completed,
+                verificationPercentage: Math.round((completed / sent) * 100),
+                lastRespondedAt: now
+            }).catch(e => console.error('Error updating flat log:', e));
         }
 
         return NextResponse.json({ success: true });

@@ -70,7 +70,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         sessionData,
         coHosts,
     } = useClassroom();
-    const { showAlert } = useAlert();
+    const { showAlert, showConfirm } = useAlert();
 
     const [showParticipantsModal, setShowParticipantsModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);

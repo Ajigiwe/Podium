@@ -56,6 +56,11 @@ export async function POST(request: NextRequest) {
             batch.update(doc.ref, {
                 totalVerificationsSent: FieldValue.increment(1)
             });
+            // Also update flat log for reports
+            const logRef = adminDb.collection('attendance_logs').doc(`${sessionId}_${doc.id}`);
+            batch.update(logRef, {
+                totalVerificationsSent: FieldValue.increment(1)
+            });
         });
         await batch.commit();
 
