@@ -133,11 +133,11 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
             <div className="relative w-full sm:max-w-2xl bg-slate-900 border border-white/10 rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-300 shadow-[0_30px_100px_rgba(0,0,0,0.8)]">
                 
                 {/* Header */}
-                <div className="p-6 sm:p-8 border-b border-white/5 shrink-0">
-                    <div className="flex justify-between items-center mb-6">
+                <div className="p-4 sm:p-8 border-b border-white/5 shrink-0">
+                    <div className="flex justify-between items-center mb-4 sm:mb-6">
                         <div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-tight">Learning Materials</h2>
-                            <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">
+                            <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">Learning Materials</h2>
+                            <p className="text-[9px] sm:text-xs text-slate-400 mt-0.5 uppercase tracking-widest font-bold">
                                 {materials.length} Shared Resources
                             </p>
                         </div>
@@ -146,24 +146,24 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
                         </button>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 sm:gap-3">
                         <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                             <input 
                                 type="text" 
                                 placeholder="Search materials..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white/5 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                className="w-full bg-white/5 border border-white/5 rounded-xl py-2 sm:py-2.5 pl-9 pr-4 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 transition-all"
                             />
                         </div>
                         {isModerator && (
                             <button 
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isUploading}
-                                className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+                                className="px-3 sm:px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20"
                             >
-                                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                                 <span className="hidden sm:inline">Upload</span>
                             </button>
                         )}
@@ -177,7 +177,7 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
                 </div>
 
                 {/* List */}
-                <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
                     {filteredMaterials.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
                             <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4 border border-white/5">
@@ -193,42 +193,42 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
                             {filteredMaterials.map((material) => (
                                 <div 
                                     key={material.id}
-                                    className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/[0.08] border border-white/5 rounded-2xl transition-all group"
+                                    className="flex items-center justify-between p-3 sm:p-4 bg-white/5 hover:bg-white/[0.08] border border-white/5 rounded-2xl transition-all group"
                                 >
-                                    <div className="flex items-center gap-4 min-w-0">
-                                        <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center shrink-0 border border-white/5 group-hover:border-indigo-500/30 transition-colors">
+                                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-800 rounded-xl flex items-center justify-center shrink-0 border border-white/5 group-hover:border-indigo-500/30 transition-colors">
                                             {getFileIcon(material.type)}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="font-bold text-sm text-white truncate pr-4">{material.name}</p>
-                                            <div className="flex items-center gap-3 mt-0.5">
-                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                            <p className="font-bold text-xs sm:text-sm text-white truncate pr-4">{material.name}</p>
+                                            <div className="flex items-center gap-2 sm:gap-3 mt-0.5">
+                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest">
                                                     {formatSize(material.size)}
                                                 </span>
-                                                <span className="text-[9px] font-black text-slate-600">•</span>
-                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-600">•</span>
+                                                <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest">
                                                     {material.uploadedAt ? material.uploadedAt.toDate().toLocaleDateString() : 'Just now'}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 sm:gap-2">
                                         <a 
                                             href={material.url} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             download={material.name}
-                                            className="p-2.5 bg-white/5 hover:bg-indigo-600 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
+                                            className="p-2 sm:p-2.5 bg-white/5 hover:bg-indigo-600 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
                                         >
-                                            <Download className="w-4 h-4" />
+                                            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                         </a>
                                         {isModerator && (
                                             <button 
                                                 onClick={() => handleDelete(material.id)}
-                                                className="p-2.5 bg-white/5 hover:bg-red-500 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
+                                                className="p-2 sm:p-2.5 bg-white/5 hover:bg-red-500 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                             </button>
                                         )}
                                     </div>
@@ -239,8 +239,8 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
                 </div>
 
                 {/* Footer Tip */}
-                <div className="p-6 border-t border-white/5 bg-black/20 text-center">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                <div className="p-4 sm:p-6 border-t border-white/5 bg-black/20 text-center">
+                    <p className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
                         <FileText className="w-3 h-3" />
                         PDF, Images, and Documents supported
                     </p>
