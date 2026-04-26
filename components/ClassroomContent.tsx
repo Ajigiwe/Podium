@@ -321,7 +321,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             />
 
                             {isModerator && (
-                                <div className="hidden lg:block">
+                                <div className="hidden sm:block">
                                     <SimpleAttendanceConsole sessionId={sessionId} isActive={session.isActive} />
                                 </div>
                             )}

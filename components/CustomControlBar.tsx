@@ -12,16 +12,9 @@ import { Track, ConnectionState } from 'livekit-client';
 import { Smile, PictureInPicture2, MoreVertical, Mic, VideoIcon, MicOff, VideoOff, MonitorUp, PhoneOff, MessageSquare, Hand, Lock, Volume2, ChevronUp } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import dynamic from 'next/dynamic';
 import { ReactionModal } from './ReactionModal';
 import UnifiedMediaButton from './media/UnifiedMediaButton';
 import { usePermissions } from '@/hooks/usePermissions';
-import { ClipboardList } from 'lucide-react';
-
-const SimpleAttendanceConsole = dynamic(() => import('./attendance/SimpleAttendanceConsole').then(mod => mod.SimpleAttendanceConsole), {
-    ssr: false,
-    loading: () => <div className="h-8 w-28 bg-gray-800 animate-pulse rounded-full" />
-});
 
 const DeviceMenu = ({
     kind,
@@ -116,7 +109,6 @@ interface CustomControlBarProps {
     onToggleHand: () => void;
     isHandRaised: boolean;
     unreadChatCount: number;
-    isActive: boolean;
     showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
     customAlert: (options: any) => void;
 }
@@ -131,7 +123,6 @@ export default function CustomControlBar({
     onToggleHand,
     isHandRaised,
     unreadChatCount,
-    isActive,
     showAlert,
     customAlert
 }: CustomControlBarProps) {
@@ -147,7 +138,6 @@ export default function CustomControlBar({
     const isConnected = room?.state === ConnectionState.Connected;
     const [activeMenu, setActiveMenu] = useState<'mic' | 'camera' | null>(null);
     const [showReactions, setShowReactions] = useState(false);
-    const [showAttendance, setShowAttendance] = useState(false);
     const emojis = ['👍', '👏', '❤️', '🔥', '🎉', '😂', '😮', '🤔'];
 
     const micRef = useRef<HTMLDivElement>(null);
@@ -322,34 +312,6 @@ export default function CustomControlBar({
                 >
                     <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
-
-                {isLecturer && (
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowAttendance(!showAttendance)}
-                            className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 ${
-                                showAttendance ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white/5 hover:bg-white/10 text-white'
-                            }`}
-                            title="Attendance Taker"
-                        >
-                            <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </button>
-
-                        {showAttendance && (
-                            <div className="absolute bottom-full right-0 mb-4 z-[300] animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="bg-gray-950/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 shadow-2xl ring-1 ring-white/5">
-                                    <div className="flex items-center justify-between mb-3 px-1">
-                                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Attendance Control</span>
-                                        <button onClick={() => setShowAttendance(false)} className="text-gray-500 hover:text-white transition-colors">
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                    <SimpleAttendanceConsole sessionId={roomId} isActive={isActive} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* Leave Section */}
