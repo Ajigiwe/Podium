@@ -131,7 +131,13 @@ service cloud.firestore {
     match /attendance_logs/{logId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.lecturerId == request.auth.uid ||
+        exists(/databases/$(database)/documents/sessions/$(resource.data.sessionId)/co_hosts/$(request.auth.uid)) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
     }
     match /transactions/{transactionId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isLecturer() || isAdmin());

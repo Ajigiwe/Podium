@@ -71,21 +71,65 @@ export default function ClassroomPage() {
                 if (!isModerator && isPayToUse && profile.subscriptionStatus !== 'active') { window.location.href = '/dashboard.html'; return; }
 
                 const attendanceSnap = await getDocs(query(collection(db, 'attendance_logs'), where('sessionId', '==', sessionId), where('userId', '==', user.uid)));
-                if (!isModerator && attendanceSnap.empty) { setStudentName(profile.fullName || ''); setStudentIndex(profile.indexNumber || ''); setShowProfileModal(true); setLoading(false); return; }
+                
+                if (attendanceSnap.empty) {
+                    // If it's a student with incomplete profile, show the modal
+                    if (!isModerator && (!profile.fullName || !profile.indexNumber)) {
+                        setStudentName(profile.fullName || '');
+                        setStudentIndex(profile.indexNumber || '');
+                        setShowProfileModal(true);
+                        setLoading(false);
+                        return;
+                    }
 
-                setCanAccess(true); setLoading(false);
+                    // Otherwise (Lecturer, Co-host, or Student with profile), auto-create the log
+                    const logRef = doc(db, 'attendance_logs', `${sessionId}_${user.uid}`);
+                    await setDoc(logRef, {
+                        sessionId,
+                        sessionTitle: session.title || 'Class',
+                        userId: user.uid,
+                        userName: profile.fullName || user.email?.split('@')[0] || 'User',
+                        userEmail: user.email,
+                        userIndexNumber: profile.indexNumber || 'N/A',
+                        joinedAt: serverTimestamp(),
+                        lecturerId: session.lecturerId || session.hostId || '',
+                        totalVerificationsSent: 0,
+                        totalVerificationsCompleted: 0,
+                        verificationPercentage: 0,
+                        role: isModerator ? 'lecturer' : 'student'
+                    });
+                    
+                    // Increment count
+                    await updateDoc(doc(db, 'sessions', sessionId), { participantCount: increment(1) });
+                }
+
+                setCanAccess(true);
+                setLoading(false);
                 if (typeof window !== 'undefined') sessionStorage.setItem('podium_user_interacted', 'true');
-                joinClass(sessionId, session.title || 'Class', profile.fullName || 'User', isModerator ? 'lecturer' : 'student', user.uid, profile.photoURL, profile.displayIcon, true);
-            } catch (error) { setLoading(false); }
+                
+                const finalName = profile.fullName || user.email?.split('@')[0] || 'User';
+                joinClass(sessionId, session.title || 'Class', finalName, isModerator ? 'lecturer' : 'student', user.uid, profile.photoURL, profile.displayIcon, true);
+            } catch (error) { 
+                console.error('[Classroom:VerifyAccess] Error:', error);
+                setLoading(false); 
+            }
         };
         verifyAccess();
     }, [user, profile, session, authLoading, sessionLoading, sessionError]);
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
-        e.preventDefault(); if (!studentName.trim() || !studentIndex.trim()) return showAlert("Fields required.", "error");
+        e.preventDefault(); 
+        if (!studentName.trim() || !studentIndex.trim()) return showAlert("Fields required.", "error");
         setSubmittingProfile(true);
         try {
-            await updateDoc(doc(db, 'profiles', user!.uid), { fullName: studentName, indexNumber: studentIndex, updatedAt: Timestamp.now() });
+            // Update profile
+            await updateDoc(doc(db, 'profiles', user!.uid), { 
+                fullName: studentName, 
+                indexNumber: studentIndex, 
+                updatedAt: serverTimestamp() 
+            });
+
+            // Create log
             const logRef = doc(db, 'attendance_logs', `${sessionId}_${user!.uid}`);
             await setDoc(logRef, { 
                 sessionId, 
@@ -95,16 +139,25 @@ export default function ClassroomPage() {
                 userEmail: user!.email, 
                 userIndexNumber: studentIndex, 
                 joinedAt: serverTimestamp(), 
-                lecturerId: session?.lecturerId || '',
+                lecturerId: session?.lecturerId || session?.hostId || '',
                 totalVerificationsSent: 0,
                 totalVerificationsCompleted: 0,
-                verificationPercentage: 0
+                verificationPercentage: 0,
+                role: 'student'
             });
+
             await updateDoc(doc(db, 'sessions', sessionId), { participantCount: increment(1) });
-            setShowProfileModal(false); setCanAccess(true);
+            
+            setShowProfileModal(false); 
+            setCanAccess(true);
             if (typeof window !== 'undefined') sessionStorage.setItem('podium_user_interacted', 'true');
             joinClass(sessionId, session?.title || 'Class', studentName, 'student', user!.uid, profile?.photoURL, profile?.displayIcon, joinMicEnabled);
-        } catch (error) { showAlert("Identity check failed.", "error"); } finally { setSubmittingProfile(false); }
+        } catch (error) { 
+            console.error('[Classroom:ProfileSubmit] Error:', error);
+            showAlert("Identity check failed.", "error"); 
+        } finally { 
+            setSubmittingProfile(false); 
+        }
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8F9FF]"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
