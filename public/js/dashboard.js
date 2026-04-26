@@ -83,11 +83,11 @@ window.switchTab = (tab) => {
     Object.keys(sidebarLinks).forEach(key => {
         if (key === tab) {
             sidebarLinks[key].classList.add('sidebar-active');
-            sidebarLinks[key].classList.remove('text-[#444460]', 'hover:bg-[#F5F6FA]', 'hover:text-[#0D0D1A]');
+            sidebarLinks[key].classList.remove('text-[#444460]', 'dark:text-slate-400', 'hover:bg-[#F5F6FA]', 'dark:hover:bg-slate-800', 'hover:text-[#0D0D1A]', 'dark:hover:text-white');
             contentSections[key].classList.remove('hidden');
         } else {
             sidebarLinks[key].classList.remove('sidebar-active');
-            sidebarLinks[key].classList.add('text-[#444460]', 'hover:bg-[#F5F6FA]', 'hover:text-[#0D0D1A]');
+            sidebarLinks[key].classList.add('text-[#444460]', 'dark:text-slate-400', 'hover:bg-[#F5F6FA]', 'dark:hover:bg-slate-800', 'hover:text-[#0D0D1A]', 'dark:hover:text-white');
             contentSections[key].classList.add('hidden');
         }
     });
@@ -100,11 +100,11 @@ window.switchRecordTab = (tab) => {
     const tabHost = document.getElementById('tab-host');
     
     if (tab === 'join') {
-        if (tabJoin) tabJoin.className = 'text-[12px] font-bold transition-all text-[#1845D4]';
-        if (tabHost) tabHost.className = 'text-[12px] font-bold transition-all text-[#8888A8] hover:text-[#0D0D1A]';
+        if (tabJoin) tabJoin.className = 'text-[12px] font-bold transition-all text-[#1845D4] dark:text-blue-400';
+        if (tabHost) tabHost.className = 'text-[12px] font-bold transition-all text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white';
     } else {
-        if (tabHost) tabHost.className = 'text-[12px] font-bold transition-all text-[#1845D4]';
-        if (tabJoin) tabJoin.className = 'text-[12px] font-bold transition-all text-[#8888A8] hover:text-[#0D0D1A]';
+        if (tabHost) tabHost.className = 'text-[12px] font-bold transition-all text-[#1845D4] dark:text-blue-400';
+        if (tabJoin) tabJoin.className = 'text-[12px] font-bold transition-all text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white';
     }
     renderRecords();
 };
@@ -205,7 +205,7 @@ function createRecordItem(session, isHost) {
         <div class="flex items-center gap-4 flex-1 min-w-0">
             <div class="w-2 h-2 rounded-full flex-shrink-0 ${dotColor}"></div>
             <div class="flex-1 min-w-0">
-                <div class="text-[14px] font-medium text-[#0D0D1A] group-hover:text-[#1845D4] transition-colors truncate">
+                <div class="text-[14px] font-medium text-[#0D0D1A] dark:text-white group-hover:text-[#1845D4] transition-colors truncate">
                     ${session.title}
                     ${session.isDeleted ? '<span class="ml-2 text-[8px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100 uppercase font-black">Deleted</span>' : ''}
                 </div>
@@ -219,7 +219,7 @@ function createRecordItem(session, isHost) {
             ${isHost ? `
                 <button onclick="window.copyCode('${session.meetingCode}', event)" class="p-2 text-[#8888A8] hover:text-[#1845D4] transition-colors flex-shrink-0"><i class="fas fa-copy"></i></button>
                 ${!session.isDeleted ? `
-                    <a href="/classroom/${session.id}" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-[#DDE0F0] text-[#0D0D1A] text-[10px] font-bold uppercase tracking-widest rounded hover:border-[#1845D4] transition-all whitespace-nowrap text-center">Control</a>
+                    <a href="/classroom/${session.id}" class="flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 text-[#0D0D1A] dark:text-white text-[10px] font-bold uppercase tracking-widest rounded hover:border-[#1845D4] transition-all whitespace-nowrap text-center">Control</a>
                     <button onclick="window.toggleLive('${session.id}', ${isActive}, event)" class="flex-1 sm:flex-none px-4 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${isActive ? 'bg-[#1845D4] text-white shadow-lg shadow-blue-600/10' : 'bg-[#F5F6FA] text-[#8888A8] hover:bg-[#E8EEFF]'}">
                         ${isActive ? 'Live' : 'Go Live'}
                     </button>

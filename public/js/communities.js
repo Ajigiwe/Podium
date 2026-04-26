@@ -101,23 +101,23 @@ function setupPublicCommunities(uid) {
 
 function createCommunityCard(group, isMember) {
     const div = document.createElement('div');
-    div.className = 'group bg-white border border-[#DDE0F0] rounded-xl p-8 relative overflow-hidden flex flex-col justify-between shadow-sm hover:border-[#1845D4] hover:shadow-lg transition-all';
+    div.className = 'group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-8 relative overflow-hidden flex flex-col justify-between shadow-sm hover:border-[#1845D4] hover:shadow-lg transition-all';
     
     div.innerHTML = `
         <div class="space-y-6">
             <div class="flex justify-between items-start">
-                <div class="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-                    <i class="fas fa-users text-[#1845D4] text-xl"></i>
+                <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 flex items-center justify-center">
+                    <i class="fas fa-users text-[#1845D4] dark:text-blue-400 text-xl"></i>
                 </div>
-                <span class="px-3 py-1 bg-[#F5F6FA] border border-[#DDE0F0] rounded-full text-[9px] font-bold uppercase tracking-widest text-[#8888A8]">
+                <span class="px-3 py-1 bg-[#F5F6FA] dark:bg-slate-950 border border-[#DDE0F0] dark:border-slate-800 rounded-full text-[9px] font-bold uppercase tracking-widest text-[#8888A8]">
                     ${group.memberCount || 0} Members
                 </span>
             </div>
             <div>
-                <h4 class="font-serif font-black text-xl line-clamp-1 tracking-tight text-[#0D0D1A]">${group.name}</h4>
-                <p class="text-[13px] text-[#444460] line-clamp-2 mt-2 font-medium leading-relaxed">${group.description}</p>
+                <h4 class="font-serif font-black text-xl line-clamp-1 tracking-tight text-[#0D0D1A] dark:text-white">${group.name}</h4>
+                <p class="text-[13px] text-[#444460] dark:text-slate-400 line-clamp-2 mt-2 font-medium leading-relaxed">${group.description}</p>
             </div>
-            <button class="w-full py-3.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${isMember ? 'bg-[#F5F6FA] text-[#0D0D1A] border border-[#DDE0F0] hover:bg-[#1845D4] hover:text-white' : 'bg-[#0D0D1A] text-white hover:bg-black'}">
+            <button class="w-full py-3.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${isMember ? 'bg-[#F5F6FA] dark:bg-slate-800 text-[#0D0D1A] dark:text-white border border-[#DDE0F0] dark:border-slate-700 hover:bg-[#1845D4] hover:text-white' : 'bg-[#0D0D1A] dark:bg-slate-100 text-white dark:text-[#0D0D1A] hover:bg-black'}">
                 ${isMember ? 'Enter Workspace' : 'Request to Join'}
             </button>
         </div>
@@ -190,18 +190,18 @@ function setupWorkspaceListeners(groupId) {
         snap.forEach(doc => {
             const ann = doc.data();
             const div = document.createElement('div');
-            div.className = 'bg-white p-8 rounded-xl border border-[#DDE0F0] shadow-sm group';
+            div.className = 'bg-white dark:bg-slate-900 p-8 rounded-xl border border-[#DDE0F0] dark:border-slate-800 shadow-sm group';
             div.innerHTML = `
                 <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#1845D4]">
+                    <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 flex items-center justify-center text-[#1845D4] dark:text-blue-400">
                         <i class="fas fa-bullhorn text-xs"></i>
                     </div>
                     <div>
-                        <p class="text-[13px] font-bold text-[#0D0D1A]">${ann.authorName}</p>
+                        <p class="text-[13px] font-bold text-[#0D0D1A] dark:text-white">${ann.authorName}</p>
                         <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-[0.2em] mt-1">${ann.createdAt?.toDate().toLocaleDateString('en-GB')}</p>
                     </div>
                 </div>
-                <p class="text-[13px] font-medium text-[#444460] leading-relaxed">${ann.content}</p>
+                <p class="text-[13px] font-medium text-[#444460] dark:text-slate-300 leading-relaxed">${ann.content}</p>
             `;
             announcementsList.appendChild(div);
         });
@@ -214,18 +214,18 @@ function setupWorkspaceListeners(groupId) {
         snap.forEach(doc => {
             const res = doc.data();
             const div = document.createElement('div');
-            div.className = 'bg-white p-6 rounded-xl border border-[#DDE0F0] shadow-sm flex items-center justify-between group hover:border-[#1845D4] transition-all';
+            div.className = 'bg-white dark:bg-slate-900 p-6 rounded-xl border border-[#DDE0F0] dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-[#1845D4] transition-all';
             div.innerHTML = `
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-lg bg-[#F5F6FA] flex items-center justify-center text-[#8888A8] border border-[#DDE0F0]">
+                    <div class="w-12 h-12 rounded-lg bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center text-[#8888A8] dark:text-slate-400 border border-[#DDE0F0] dark:border-slate-700">
                         <i class="fas ${res.type === 'link' ? 'fa-link' : 'fa-file-pdf'} text-sm"></i>
                     </div>
                     <div>
-                        <h5 class="text-sm font-serif font-black tracking-tight text-[#0D0D1A]">${res.title}</h5>
+                        <h5 class="text-sm font-serif font-black tracking-tight text-[#0D0D1A] dark:text-white">${res.title}</h5>
                         <p class="text-[9px] font-bold text-[#8888A8] uppercase tracking-widest mt-0.5">${res.type === 'link' ? 'External Link' : 'Document'}</p>
                     </div>
                 </div>
-                <a href="${res.url}" target="_blank" class="w-10 h-10 rounded-lg bg-[#F5F6FA] flex items-center justify-center text-[#8888A8] hover:bg-[#1845D4] hover:text-white transition-all border border-[#DDE0F0]">
+                <a href="${res.url}" target="_blank" class="w-10 h-10 rounded-lg bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center text-[#8888A8] dark:text-slate-400 hover:bg-[#1845D4] hover:text-white transition-all border border-[#DDE0F0] dark:border-slate-700">
                     <i class="fas fa-arrow-right text-xs"></i>
                 </a>
             `;
@@ -243,11 +243,11 @@ function setupWorkspaceListeners(groupId) {
             tr.innerHTML = `
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-[#F5F6FA] flex items-center justify-center font-bold text-[#8888A8] uppercase text-[10px]">
+                        <div class="w-8 h-8 rounded-full bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center font-bold text-[#8888A8] dark:text-slate-400 uppercase text-[10px]">
                             ${mem.userName.charAt(0)}
                         </div>
                         <div>
-                            <p class="text-[13px] font-bold text-[#0D0D1A]">${mem.userName}</p>
+                            <p class="text-[13px] font-bold text-[#0D0D1A] dark:text-white">${mem.userName}</p>
                             <p class="text-[9px] text-[#8888A8] uppercase tracking-widest font-bold">${mem.userEmail || ''}</p>
                         </div>
                     </div>

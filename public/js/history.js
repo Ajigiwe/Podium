@@ -132,10 +132,10 @@ window.switchTab = (tab) => {
     
     if (tab === 'joined') {
         tabJoined.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all bg-[#1845D4] text-white';
-        tabHosted.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all text-[#8888A8] hover:text-[#0D0D1A]';
+        tabHosted.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white';
     } else {
         tabHosted.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all bg-[#1845D4] text-white';
-        tabJoined.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all text-[#8888A8] hover:text-[#0D0D1A]';
+        tabJoined.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white';
     }
     render();
 };
@@ -153,7 +153,7 @@ function render() {
     const fragment = document.createDocumentFragment();
     data.forEach((item, index) => {
         const div = document.createElement('div');
-        div.className = 'flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-5 sm:py-4 hover:bg-[#F5F6FA] transition-all group animate-fade-in border-b border-[#F5F6FA] sm:border-none';
+        div.className = 'flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-5 sm:py-4 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-all group animate-fade-in border-b border-[#F5F6FA] dark:border-slate-800 sm:border-none';
         div.style.animationDelay = `${index * 0.05}s`;
         
         const date = item.joinedAt?.toDate() || item.createdAt?.toDate() || new Date();
@@ -161,11 +161,11 @@ function render() {
 
         div.innerHTML = `
             <div class="flex items-center gap-4 flex-1 min-w-0">
-                <div class="w-8 h-8 bg-[#F5F6FA] rounded-lg flex-shrink-0 flex items-center justify-center text-[#1845D4] border border-[#DDE0F0] group-hover:bg-[#1845D4] group-hover:text-white transition-all">
+                <div class="w-8 h-8 bg-[#F5F6FA] dark:bg-slate-800 rounded-lg flex-shrink-0 flex items-center justify-center text-[#1845D4] dark:text-blue-400 border border-[#DDE0F0] dark:border-slate-700 group-hover:bg-[#1845D4] group-hover:text-white transition-all">
                     <i class="fas ${icon} text-xs"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="text-[14px] font-medium text-[#0D0D1A] truncate">${item.sessionTitle || item.title || 'Untitled Session'}</div>
+                    <div class="text-[14px] font-medium text-[#0D0D1A] dark:text-white truncate">${item.sessionTitle || item.title || 'Untitled Session'}</div>
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-[#8888A8] uppercase tracking-widest mt-1">
                         <span class="flex items-center gap-1"><i class="far fa-calendar text-[10px]"></i> ${date.toLocaleDateString('en-GB')}</span>
                         ${activeTab === 'joined' 
@@ -177,12 +177,12 @@ function render() {
             </div>
             <div class="flex items-center gap-2 sm:ml-auto">
                 ${activeTab === 'joined' 
-                    ? `<button onclick="window.deleteRecord('${item.id}', event)" class="p-2 text-[#DDE0F0] hover:text-red-600 transition-colors sm:opacity-0 sm:group-hover:opacity-100"><i class="fas fa-trash-alt"></i></button>`
+                    ? `<button onclick="window.deleteRecord('${item.id}', event)" class="p-2 text-[#DDE0F0] dark:text-slate-700 hover:text-red-600 transition-colors sm:opacity-0 sm:group-hover:opacity-100"><i class="fas fa-trash-alt"></i></button>`
                     : `
-                        <button onclick="window.viewLogs('${item.id}', '${item.title.replace(/'/g, "\\'")}')" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-[#DDE0F0] text-[#0D0D1A] text-[10px] font-bold uppercase tracking-widest rounded hover:border-[#1845D4] transition-all">Logs</button>
+                        <button onclick="window.viewLogs('${item.id}', '${item.title.replace(/'/g, "\\\\'")}')" class="flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 text-[#0D0D1A] dark:text-white text-[10px] font-bold uppercase tracking-widest rounded hover:border-[#1845D4] transition-all">Logs</button>
                         ${item.hasRecording 
                             ? `<button onclick="window.downloadMedia('${item.recordingId}')" class="flex-1 sm:flex-none px-4 py-2 bg-[#1845D4] text-white text-[10px] font-bold uppercase tracking-widest rounded shadow-lg shadow-blue-600/10 hover:bg-[#0F2FA8] transition-all">Media</button>`
-                            : `<button disabled class="flex-1 sm:flex-none px-4 py-2 bg-[#F5F6FA] text-[#8888A8] text-[10px] font-bold uppercase tracking-widest rounded cursor-not-allowed border border-[#DDE0F0]">No Media</button>`
+                            : `<button disabled class="flex-1 sm:flex-none px-4 py-2 bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] text-[10px] font-bold uppercase tracking-widest rounded cursor-not-allowed border border-[#DDE0F0] dark:border-slate-700">No Media</button>`
                         }
                     `
                 }
@@ -246,9 +246,9 @@ window.viewLogs = async (sessionId, title) => {
                         const percentage = data.verificationPercentage || 0;
                         return `
                             <tr>
-                                <td class="py-3 text-[13px] font-medium text-[#0D0D1A]">${data.userName || 'Anonymous'}</td>
+                                <td class="py-3 text-[13px] font-medium text-[#0D0D1A] dark:text-white">${data.userName || 'Anonymous'}</td>
                                 <td class="py-3 text-[11px] font-bold text-[#8888A8] uppercase">${data.userIndexNumber || 'N/A'}</td>
-                                <td class="py-3 text-[11px] font-bold text-[#1845D4]">
+                                <td class="py-3 text-[11px] font-bold text-[#1845D4] dark:text-blue-400">
                                     ${checkins} 
                                     <span class="ml-1 text-[9px] text-[#8888A8]">(${percentage}%)</span>
                                 </td>

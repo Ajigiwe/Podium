@@ -268,19 +268,19 @@ async function fetchRecordings() {
             list.innerHTML = '';
             data.recordings.forEach(rec => {
                 const div = document.createElement('div');
-                div.className = 'group p-6 bg-white border border-[#DDE0F0] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-[#1845D4] transition-all';
+                div.className = 'group p-6 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-[#1845D4] transition-all';
                 div.innerHTML = `
                     <div class="flex items-center gap-6">
-                        <div class="w-12 h-12 bg-[#F5F6FA] rounded-lg flex items-center justify-center border border-[#DDE0F0] text-[#1845D4]"><i class="fas fa-video"></i></div>
+                        <div class="w-12 h-12 bg-[#F5F6FA] dark:bg-slate-800 rounded-lg flex items-center justify-center border border-[#DDE0F0] dark:border-slate-700 text-[#1845D4] dark:text-blue-400"><i class="fas fa-video"></i></div>
                         <div>
-                            <h4 class="text-sm font-bold text-[#0D0D1A]">${rec.classTitle || 'Session'}</h4>
+                            <h4 class="text-sm font-bold text-[#0D0D1A] dark:text-white">${rec.classTitle || 'Session'}</h4>
                             <div class="flex gap-4 text-[10px] font-bold text-[#8888A8] uppercase tracking-widest mt-1">
                                 <span><i class="far fa-calendar"></i> ${new Date(rec.startedAt).toLocaleDateString()}</span>
                                 <span><i class="far fa-clock"></i> ${Math.floor(rec.durationSeconds/60)}m</span>
                             </div>
                         </div>
                     </div>
-                    <a href="/api/recordings/download/${rec.id}" class="px-6 py-2 bg-[#0D0D1A] text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#1845D4] transition-all text-center">Download</a>
+                    <a href="/api/recordings/download/${rec.id}" class="px-6 py-2 bg-[#0D0D1A] dark:bg-slate-100 text-white dark:text-[#0D0D1A] rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#1845D4] hover:text-white transition-all text-center">Download</a>
                 `;
                 list.appendChild(div);
             });
@@ -297,7 +297,7 @@ document.getElementById('refresh-recordings').onclick = fetchRecordings;
 // Toast Helper
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
+    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A] dark:bg-slate-100 text-white dark:text-[#0D0D1A]' : 'bg-red-600 text-white'} text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
     toast.innerText = msg;
     document.body.appendChild(toast);
     setTimeout(() => {
