@@ -1,26 +1,43 @@
 // public/js/theme-toggle.js
-document.addEventListener('DOMContentLoaded', () => {
-    const themeToggle = document.getElementById('theme-toggle');
-    const themeIcon = document.getElementById('theme-icon');
+const initThemeToggle = () => {
+    const themeToggles = document.querySelectorAll('#theme-toggle');
+    const themeIcons = document.querySelectorAll('#theme-icon');
 
-    if (!themeToggle || !themeIcon) return;
+    if (themeToggles.length === 0) return;
 
-    // Initial icon state
-    if (document.documentElement.classList.contains('dark')) {
-        themeIcon.classList.remove('fa-moon');
-        themeIcon.classList.add('fa-sun');
-    }
-
-    themeToggle.addEventListener('click', () => {
-        const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('podium-theme', isDark ? 'dark' : 'light');
-
+    // Sync icons with current theme
+    const isDark = document.documentElement.classList.contains('dark');
+    themeIcons.forEach(icon => {
         if (isDark) {
-            themeIcon.classList.remove('fa-moon');
-            themeIcon.classList.add('fa-sun');
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
         } else {
-            themeIcon.classList.remove('fa-sun');
-            themeIcon.classList.add('fa-moon');
+            icon.classList.remove('fa-sun');
+            icon.classList.add('fa-moon');
         }
     });
-});
+
+    themeToggles.forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            const currentlyDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('podium-theme', currentlyDark ? 'dark' : 'light');
+
+            // Update ALL icons on the page
+            document.querySelectorAll('#theme-icon').forEach(icon => {
+                if (currentlyDark) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                } else {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                }
+            });
+        });
+    });
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initThemeToggle);
+} else {
+    initThemeToggle();
+}
