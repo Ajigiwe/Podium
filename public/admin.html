@@ -327,9 +327,25 @@
             let users = [];
             
             if (search) {
-                // Hybrid search: fetch a large batch and search locally to support any part of name/email
-                const snap = await getDocs(query(collection(db, 'profiles'), limit(1000)));
-                const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Hybrid search: 
+                // 1. Always try exact email match first (bypasses limit)
+                const emailQuery = query(collection(db, 'profiles'), where('email', '==', search));
+                const emailSnap = await getDocs(emailQuery);
+                
+                // 2. Fetch a larger batch of newest users for partial matching
+                const partialSnap = await getDocs(query(collection(db, 'profiles'), orderBy('createdAt', 'desc'), limit(2000)));
+                
+                // Combine and deduplicate
+                const combined = [...emailSnap.docs, ...partialSnap.docs];
+                const seen = new Set();
+                const all = [];
+                
+                combined.forEach(d => {
+                    if (!seen.has(d.id)) {
+                        seen.add(d.id);
+                        all.push({ id: d.id, ...d.data() });
+                    }
+                });
                 
                 users = all.filter(u => 
                     (u.fullName?.toLowerCase().includes(search)) || 
