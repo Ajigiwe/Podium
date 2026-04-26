@@ -140,53 +140,46 @@ export async function sendPaymentConfirmation({
 export async function sendVerificationEmail(to: string, link: string) {
     try {
         const { data, error } = await resend.emails.send({
-            from: 'Podium Class <noreply@podiumclass.online>',
+            from: 'Podium <support@podiumclass.online>',
             to: [to],
-            subject: 'Verify your email for Podium',
+            subject: 'Verify your Podium account',
             html: `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify your email</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 0; }
-        .wrapper { width: 100%; table-layout: fixed; background-color: #f9fafb; padding: 40px 0; }
-        .container { max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .header { padding: 40px 40px 20px; text-align: center; }
-        .logo-box { width: 56px; height: 56px; background-color: #2563eb; border-radius: 14px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; }
-        .content { padding: 0 40px 40px; text-align: center; }
-        h1 { color: #111827; font-size: 24px; font-weight: 800; margin: 0 0 12px; letter-spacing: -0.025em; }
-        p { color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 32px; font-weight: 500; }
-        .button { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 16px 40px; border-radius: 16px; font-size: 15px; font-weight: 800; text-decoration: none; transition: background-color 0.2s; }
-        .footer { padding: 32px 40px; background-color: #fcfcfc; border-top: 1px solid #f3f4f6; text-align: center; }
-        .footer p { font-size: 11px; color: #9ca3af; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+        body { font-family: 'DM Sans', sans-serif; background-color: #f5f6fa; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; border: 1px solid #dde0f0; overflow: hidden; }
+        .header { background-color: #1845d4; padding: 40px; text-align: center; }
+        .content { padding: 40px; text-align: center; }
+        h1 { color: #0d0d1a; font-size: 24px; font-weight: 800; margin-bottom: 16px; }
+        p { color: #444460; font-size: 15px; line-height: 1.6; margin-bottom: 32px; }
+        .button { display: inline-block; background-color: #1845d4; color: #ffffff !important; padding: 16px 40px; border-radius: 8px; font-size: 13px; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; }
+        .footer { padding: 32px; border-top: 1px solid #f5f6fa; text-align: center; }
+        .footer p { font-size: 11px; color: #8888a8; margin: 0; text-transform: uppercase; letter-spacing: 0.1em; }
     </style>
 </head>
 <body>
-    <div class="wrapper">
-        <div class="container">
-            <div class="header">
-                <div class="logo-box" style="display: inline-block; padding: 12px;">
-                    <img src="https://lite-class.firebaseapp.com/logo.png" alt="P" width="32" height="32" style="display: block;">
-                </div>
-                <h1>Verify your email</h1>
+    <div class="container">
+        <div class="header">
+            <div style="background-color: white; width: 48px; height: 48px; border-radius: 10px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                <img src="https://lite-class.firebaseapp.com/logo.png" alt="P" width="24" height="24">
             </div>
-            <div class="content">
-                <p>Welcome to Podium! Please confirm your email address to start hosting and joining interactive classrooms.</p>
-                <a href="${link}" class="button">Verify Email Address</a>
-            </div>
-            <div class="footer">
-                <p>Podium Class • Education Without Limits</p>
-            </div>
+        </div>
+        <div class="content">
+            <h1>Confirm your identity</h1>
+            <p>Welcome to Podium. Please verify your email address to unlock full access to Ghana's premium digital classroom environment.</p>
+            <a href="${link}" class="button">Verify Account</a>
+        </div>
+        <div class="footer">
+            <p>Podium Technologies • Absolute Record Reliability</p>
         </div>
     </div>
 </body>
 </html>
             `,
         });
-
         if (error) throw error;
         return data;
     } catch (error) {
@@ -198,7 +191,7 @@ export async function sendVerificationEmail(to: string, link: string) {
 export async function sendPasswordResetEmail(to: string, link: string) {
     try {
         const { data, error } = await resend.emails.send({
-            from: 'Podium Class <noreply@podiumclass.online>',
+            from: 'Podium <security@podiumclass.online>',
             to: [to],
             subject: 'Reset your Podium password',
             html: `
@@ -206,51 +199,179 @@ export async function sendPasswordResetEmail(to: string, link: string) {
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 0; }
-        .wrapper { width: 100%; table-layout: fixed; background-color: #f9fafb; padding: 40px 0; }
-        .container { max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .header { padding: 40px 40px 20px; text-align: center; }
-        .logo-box { width: 56px; height: 56px; background-color: #2563eb; border-radius: 14px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; }
-        .content { padding: 0 40px 40px; text-align: center; }
-        h1 { color: #111827; font-size: 24px; font-weight: 800; margin: 0 0 12px; letter-spacing: -0.025em; }
-        p { color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 32px; font-weight: 500; }
-        .button { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 16px 40px; border-radius: 16px; font-size: 15px; font-weight: 800; text-decoration: none; transition: background-color 0.2s; }
-        .footer { padding: 32px 40px; background-color: #fcfcfc; border-top: 1px solid #f3f4f6; text-align: center; }
-        .footer p { font-size: 11px; color: #9ca3af; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
-        .small-note { font-size: 12px; color: #9ca3af; margin-top: 24px; }
+        body { font-family: 'DM Sans', sans-serif; background-color: #f5f6fa; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; border: 1px solid #dde0f0; overflow: hidden; }
+        .header { background-color: #0d0d1a; padding: 40px; text-align: center; }
+        .content { padding: 40px; text-align: center; }
+        h1 { color: #0d0d1a; font-size: 24px; font-weight: 800; margin-bottom: 16px; }
+        p { color: #444460; font-size: 15px; line-height: 1.6; margin-bottom: 32px; }
+        .button { display: inline-block; background-color: #1845d4; color: #ffffff !important; padding: 16px 40px; border-radius: 8px; font-size: 13px; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; }
+        .footer { padding: 32px; border-top: 1px solid #f5f6fa; text-align: center; }
+        .footer p { font-size: 11px; color: #8888a8; margin: 0; text-transform: uppercase; letter-spacing: 0.1em; }
+        .note { font-size: 12px; color: #8888a8; margin-top: 24px; font-style: italic; }
     </style>
 </head>
 <body>
-    <div class="wrapper">
-        <div class="container">
-            <div class="header">
-                <div class="logo-box" style="display: inline-block; padding: 12px;">
-                    <img src="https://lite-class.firebaseapp.com/logo.png" alt="P" width="32" height="32" style="display: block;">
-                </div>
-                <h1>Reset password</h1>
+    <div class="container">
+        <div class="header">
+            <div style="background-color: #1845d4; width: 48px; height: 48px; border-radius: 10px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                <i style="color: white; font-size: 20px;">🔒</i>
             </div>
-            <div class="content">
-                <p>We received a request to reset your password. Click the button below to choose a new one.</p>
-                <a href="${link}" class="button">Reset Password</a>
-                <p class="small-note">If you didn't request this, you can safely ignore this email.</p>
-            </div>
-            <div class="footer">
-                <p>Podium Class • Education Without Limits</p>
-            </div>
+        </div>
+        <div class="content">
+            <h1>Reset your password</h1>
+            <p>We received a request to reset your account password. Click the secure link below to choose a new one.</p>
+            <a href="${link}" class="button">Reset Password</a>
+            <p class="note">If you didn't request this, you can safely ignore this email.</p>
+        </div>
+        <div class="footer">
+            <p>Podium Security • Protecting your Academic Workbench</p>
         </div>
     </div>
 </body>
 </html>
             `,
         });
-
         if (error) throw error;
         return data;
     } catch (error) {
         console.error('Failed to send password reset email:', error);
         throw error;
     }
+}
+
+export async function sendCommunityJoinRequestEmail({ to, ownerName, requesterName, communityName }: { to: string, ownerName: string, requesterName: string, communityName: string }) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: 'Podium Communities <noreply@podiumclass.online>',
+            to: [to],
+            subject: `Join Request: ${communityName}`,
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
+                    <h2 style="color: #111827;">New Access Request</h2>
+                    <p>Hi ${ownerName},</p>
+                    <p><strong>${requesterName}</strong> has requested to join your community <strong>${communityName}</strong>.</p>
+                    <p>You can approve or reject this request from your Community Dashboard.</p>
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
+                        <p style="font-size: 12px; color: #9ca3af;">Podium Class Communities</p>
+                    </div>
+                </div>
+            `
+        });
+        if (error) throw error;
+        return data;
+    } catch (e) { console.error(e); throw e; }
+}
+
+export async function sendCommunityApprovalEmail({ to, userName, communityName }: { to: string, userName: string, communityName: string }) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: 'Podium Communities <noreply@podiumclass.online>',
+            to: [to],
+            subject: `Welcome to ${communityName}!`,
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
+                    <h2 style="color: #1845D4;">Request Approved!</h2>
+                    <p>Hi ${userName},</p>
+                    <p>Your request to join <strong>${communityName}</strong> has been approved.</p>
+                    <p>You can now access announcements and resources in the community workspace.</p>
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/communities" style="display: inline-block; background: #1845D4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px;">Open Workspace</a>
+                </div>
+            `
+        });
+        if (error) throw error;
+        return data;
+    } catch (e) { console.error(e); throw e; }
+}
+
+export async function sendCommunityAnnouncementEmail({ to, communityName, authorName, content }: { to: string, communityName: string, authorName: string, content: string }) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: 'Podium Communities <noreply@podiumclass.online>',
+            to: [to],
+            subject: `New Announcement in ${communityName}`,
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
+                    <p style="font-size: 11px; color: #8888A8; text-transform: uppercase; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 10px;">New Update from ${authorName}</p>
+                    <h2 style="color: #111827; margin-top: 0;">${communityName}</h2>
+                    <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-top: 20px; white-space: pre-wrap; line-height: 1.6;">${content}</div>
+                    <p style="margin-top: 20px; font-size: 13px; color: #6b7280;">Log in to the dashboard to view more details or join the discussion.</p>
+                </div>
+            `
+        });
+        if (error) throw error;
+        return data;
+    } catch (e) { console.error(e); throw e; }
+}
+
+export async function sendCommunitySessionStartEmail({ to, communityName, lecturerName, sessionTitle, sessionId }: { to: string, communityName: string, lecturerName: string, sessionTitle: string, sessionId: string }) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: 'Podium Communities <noreply@podiumclass.online>',
+            to: [to],
+            subject: `LIVE NOW: ${sessionTitle} (${communityName})`,
+            html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
+                    <div style="display: inline-block; background: #fee2e2; color: #ef4444; font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; margin-bottom: 12px;">Happening Now</div>
+                    <h2 style="color: #111827; margin-top: 0;">${sessionTitle}</h2>
+                    <p style="color: #6b7280; font-size: 14px;">${lecturerName} has started a live session in <strong>${communityName}</strong>.</p>
+                    <div style="margin-top: 30px;">
+                        <a href="${process.env.NEXT_PUBLIC_APP_URL}/classroom/${sessionId}" style="background: #1845D4; color: white; padding: 12px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">Join Classroom Now</a>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 11px; color: #9ca3af; font-weight: bold; text-transform: uppercase;">Podium Class Communities</p>
+                </div>
+            `
+        });
+        if (error) throw error;
+        return data;
+    } catch (e) { console.error(e); throw e; }
+}
+
+export async function sendWelcomeEmail(to: string, userName: string) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: 'Podium <welcome@podiumclass.online>',
+            to: [to],
+            subject: 'Welcome to Podium!',
+            html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background-color: #f5f6fa; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; border: 1px solid #dde0f0; overflow: hidden; }
+        .header { background-color: #1845d4; padding: 40px; text-align: center; }
+        .content { padding: 40px; text-align: center; }
+        h1 { color: #0d0d1a; font-size: 28px; font-weight: 800; margin-bottom: 16px; letter-spacing: -0.02em; }
+        p { color: #444460; font-size: 15px; line-height: 1.6; margin-bottom: 32px; }
+        .button { display: inline-block; background-color: #1845d4; color: #ffffff !important; padding: 16px 40px; border-radius: 8px; font-size: 13px; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: 1px; }
+        .footer { padding: 32px; border-top: 1px solid #f5f6fa; text-align: center; }
+        .footer p { font-size: 11px; color: #8888a8; margin: 0; text-transform: uppercase; letter-spacing: 0.1em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="background-color: white; width: 48px; height: 48px; border-radius: 10px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                <img src="https://lite-class.firebaseapp.com/logo.png" alt="P" width="24" height="24">
+            </div>
+        </div>
+        <div class="content">
+            <h1>Welcome to the Modern Classroom</h1>
+            <p>Hi ${userName},<br><br>We're thrilled to have you join Podium. You've just unlocked Ghana's most powerful digital workspace for academic engagement and record reliability.</p>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" class="button">Go to Dashboard</a>
+        </div>
+        <div class="footer">
+            <p>Podium Class • Education Without Limits</p>
+        </div>
+    </div>
+</body>
+</html>
+            `
+        });
+        if (error) throw error;
+        return data;
+    } catch (e) { console.error(e); throw e; }
 }

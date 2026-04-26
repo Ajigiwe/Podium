@@ -1,7 +1,7 @@
-// components/ConnectionStatus.tsx
+// components/ConnectionRecoveryStatus.tsx
 import { useConnectionRecovery } from '@/hooks/useConnectionRecovery';
 import { ConnectionState } from 'livekit-client';
-import { Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
 
 export const ConnectionRecoveryStatus = () => {
     const { connectionState, isRecovering } = useConnectionRecovery();
@@ -11,33 +11,39 @@ export const ConnectionRecoveryStatus = () => {
     }
 
     return (
-        <div className="fixed top-20 right-4 z-[100]">
+        <div className="fixed top-24 right-8 z-[150] animate-in slide-in-from-right-8 duration-500">
             {connectionState === ConnectionState.Reconnecting && (
-                <div className="bg-yellow-500 text-black px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-pulse">
-                    <RefreshCw className="w-5 h-5 animate-spin" />
+                <div className="bg-white border border-slate-100 text-slate-900 px-6 py-4 rounded-[1.5rem] shadow-2xl shadow-slate-200/40 flex items-center gap-4 border-l-4 border-l-amber-500">
+                    <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                        <RefreshCw className="w-5 h-5 text-amber-600 animate-spin" />
+                    </div>
                     <div>
-                        <p className="font-semibold">Reconnecting...</p>
-                        <p className="text-xs">Please wait, restoring connection</p>
+                        <p className="text-sm font-bold tracking-tight">Restoring Presence</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reconnecting to session...</p>
                     </div>
                 </div>
             )}
 
             {connectionState === ConnectionState.Disconnected && (
-                <div className="bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
-                    <WifiOff className="w-5 h-5" />
+                <div className="bg-white border border-slate-100 text-slate-900 px-6 py-4 rounded-[1.5rem] shadow-2xl shadow-slate-200/40 flex items-center gap-4 border-l-4 border-l-red-500">
+                    <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                        <WifiOff className="w-5 h-5 text-red-600" />
+                    </div>
                     <div>
-                        <p className="font-semibold">Connection Lost</p>
-                        <p className="text-xs">Attempting to reconnect...</p>
+                        <p className="text-sm font-bold tracking-tight">Session Severed</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Attempting reconnection</p>
                     </div>
                 </div>
             )}
 
             {isRecovering && connectionState === ConnectionState.Connected && (
-                <div className="bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
-                    <RefreshCw className="w-5 h-5 animate-spin" />
+                <div className="bg-white border border-slate-100 text-slate-900 px-6 py-4 rounded-[1.5rem] shadow-2xl shadow-slate-200/40 flex items-center gap-4 border-l-4 border-l-slate-900">
+                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
+                        <Sparkles className="w-5 h-5 text-slate-900 animate-pulse" />
+                    </div>
                     <div>
-                        <p className="font-semibold">Recovering Tracks</p>
-                        <p className="text-xs">Restoring audio and video...</p>
+                        <p className="text-sm font-bold tracking-tight">Synchronizing Media</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Restoring audio and video</p>
                     </div>
                 </div>
             )}

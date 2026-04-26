@@ -17,6 +17,7 @@ export interface Profile {
     status?: 'active' | 'disabled';
     university?: string;
     classCount?: number; // Total unique classes joined (aggregated)
+    isVerified?: boolean; // For Course Reps to create groups
 }
 
 export type UserProfile = Profile;
@@ -67,6 +68,7 @@ export interface Session {
     auto_alert_triggered?: boolean;
     auto_alert_triggered_at?: Timestamp;
     createdAt: Timestamp;
+    groupId?: string; // Optional: Link session to a persistent group
 }
 
 // Attendance Statistics for a specific student in a session
@@ -146,4 +148,41 @@ export interface ChatMessage {
     userRole: 'student' | 'lecturer';
     content: string;
     createdAt: number; // Unix timestamp
+}
+
+// Persistent Group/Class
+export interface Group {
+    id: string;
+    name: string;
+    description: string;
+    ownerId: string;
+    ownerName: string;
+    ownerEmail?: string; // For notifications
+    isPublic: boolean; // If false, it won't show in discovery
+    joinCode?: string; // Secret code to find/join private groups
+    memberCount: number;
+    createdAt: Timestamp;
+    updatedAt?: Timestamp;
+}
+
+// Group Membership
+export interface GroupMembership {
+    id: string; // userId_groupId
+    userId: string;
+    groupId: string;
+    role: 'owner' | 'instructor' | 'student';
+    joinedAt: Timestamp;
+    userEmail?: string;
+    userName?: string;
+}
+
+// Join Request
+export interface GroupRequest {
+    id: string;
+    userId: string;
+    groupId: string;
+    userName: string;
+    userEmail: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: Timestamp;
 }

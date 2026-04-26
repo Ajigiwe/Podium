@@ -84,11 +84,15 @@ export const triggerVerification = async (
     const attendanceRef = collection(db, SESSIONS_COLLECTION, sessionId, ATTENDANCE_SUBCOLLECTION);
     const studentsSnap = await getDocs(query(attendanceRef, where('isPresent', '==', true)));
 
-    const updates = studentsSnap.docs.map(studentDoc =>
-        updateDoc(studentDoc.ref, {
+    const updates = studentsSnap.docs.map(studentDoc => {
+        const studentId = studentDoc.id;
+        const logRef = doc(db, 'attendance_logs', `${sessionId}_${studentId}`);
+        // We update both subcollection and flat log
+        updateDoc(logRef, { totalVerificationsSent: increment(1) }).catch(() => {});
+        return updateDoc(studentDoc.ref, {
             totalVerificationsSent: increment(1)
-        })
-    );
+        });
+    });
 
     await Promise.all(updates);
 
@@ -132,11 +136,19 @@ export const respondToVerification = async (
         const data = recordSnap.data();
         const completed = (data.totalVerificationsCompleted || 0) + 1;
         const sent = data.totalVerificationsSent || 1;
+        const percentage = Math.round((completed / sent) * 100);
 
         await updateDoc(recordRef, {
             totalVerificationsCompleted: completed,
-            verificationPercentage: Math.round((completed / sent) * 100)
+            verificationPercentage: percentage
         });
+
+        // Sync to flat log
+        const logRef = doc(db, 'attendance_logs', `${sessionId}_${studentId}`);
+        await updateDoc(logRef, {
+            totalVerificationsCompleted: completed,
+            verificationPercentage: percentage
+        }).catch(() => {});
     }
 
     return true;

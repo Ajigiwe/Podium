@@ -1,0 +1,310 @@
+// public/js/profile.js
+import { auth, db, storage } from './firebase-config.js';
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { 
+    doc, getDoc, updateDoc, setDoc, serverTimestamp, collection, query, where, getDocs, Timestamp 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { 
+    ref, uploadBytesResumable, getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+// DOM Elements
+const userName = document.getElementById('user-name');
+const userRole = document.getElementById('user-role');
+const userAvatar = document.getElementById('user-avatar');
+const loadingBar = document.getElementById('top-loading-bar');
+
+const profilePhotoContainer = document.getElementById('profile-photo-container');
+const photoUpload = document.getElementById('photo-upload');
+const profileName = document.getElementById('profile-name');
+const profileRoleBadge = document.getElementById('profile-role-badge');
+const profileEmail = document.getElementById('profile-email');
+const displayEmail = document.getElementById('display-email');
+const statClasses = document.getElementById('stat-classes');
+const statSecondary = document.getElementById('stat-secondary');
+const statSecondaryLabel = document.getElementById('stat-secondary-label');
+const verificationStatus = document.getElementById('verification-status');
+const verificationCard = document.getElementById('verification-card');
+const requestVerificationBtn = document.getElementById('request-verification-btn');
+
+const profileForm = document.getElementById('profile-form');
+const inputFullname = document.getElementById('input-fullname');
+const inputBio = document.getElementById('input-bio');
+const resetPasswordBtn = document.getElementById('reset-password-btn');
+
+// State
+let currentUserId = null;
+let userProfile = null;
+let activeTab = 'personal';
+
+// Auth Listener
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        window.location.href = './auth/login.html';
+        return;
+    }
+    currentUserId = user.uid;
+    setLoading(true);
+    
+    // Fetch Profile
+    const profileSnap = await getDoc(doc(db, 'profiles', user.uid));
+    userProfile = profileSnap.data() || {};
+    
+    // Hide password section entirely for Google/social accounts
+    const isGoogleUser = user.providerData.some(p => p.providerId === 'google.com');
+    const passwordSection = document.getElementById('password-section');
+    if (isGoogleUser && passwordSection) {
+        passwordSection.style.display = 'none';
+    }
+
+    // Initial Render
+    renderProfile();
+    loadStatistics();
+    if (userProfile.role === 'lecturer') {
+        document.getElementById('tab-recordings').classList.remove('hidden');
+        fetchRecordings();
+    }
+    
+    setLoading(false);
+});
+
+function setLoading(isLoading) {
+    if (!loadingBar) return;
+    loadingBar.style.width = isLoading ? '30%' : '100%';
+    if (!isLoading) setTimeout(() => loadingBar.style.width = '0%', 400);
+}
+
+function renderProfile() {
+    const nameStr = userProfile.fullName || auth.currentUser.email.split('@')[0];
+    const roleStr = userProfile.role || 'student';
+    
+    // Sidebar
+    userName.innerText = nameStr.split(' ')[0];
+    userRole.innerText = roleStr.charAt(0).toUpperCase() + roleStr.slice(1);
+    
+    // Profile Main
+    profileName.innerText = userProfile.fullName || 'Identity Pending';
+    profileRoleBadge.innerText = roleStr;
+    profileEmail.innerText = auth.currentUser.email;
+    displayEmail.innerText = auth.currentUser.email;
+    
+    // Form
+    inputFullname.value = userProfile.fullName || '';
+    inputBio.value = userProfile.bio || '';
+    
+    // Avatars
+    const photoHTML = userProfile.photoURL 
+        ? `<img src="${userProfile.photoURL}" class="w-full h-full object-cover">` 
+        : (userProfile.fullName || 'U').charAt(0).toUpperCase();
+    
+    userAvatar.innerHTML = photoHTML;
+    profilePhotoContainer.innerHTML = photoHTML;
+    
+    // Verification Status
+    if (userProfile.isVerified) {
+        verificationStatus.innerText = 'Verified Rep';
+        verificationStatus.classList.replace('text-[#8888A8]', 'text-[#1BA05C]');
+        requestVerificationBtn.innerText = 'Badge Active';
+        requestVerificationBtn.disabled = true;
+        requestVerificationBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    } else if (roleStr === 'lecturer') {
+        verificationCard.classList.add('hidden');
+    }
+}
+
+async function loadStatistics() {
+    try {
+        // Hosted classes
+        const hostedSnap = await getDocs(query(collection(db, 'sessions'), where('lecturerId', '==', currentUserId)));
+        const hostedCount = hostedSnap.size;
+
+        // Joined classes (via transactions)
+        const joinedSnap = await getDocs(query(collection(db, 'transactions'), where('userId', '==', currentUserId), where('isHidden', '==', false)));
+        const joinedCount = joinedSnap.size;
+
+        statClasses.innerText = hostedCount + joinedCount;
+
+        if (userProfile.role === 'lecturer') {
+            // Unique learners across hosted sessions
+            const logsSnap = await getDocs(query(collection(db, 'attendance_logs'), where('lecturerId', '==', currentUserId)));
+            const studentIds = new Set(logsSnap.docs.map(d => d.data().userId));
+            statSecondary.innerText = studentIds.size;
+            statSecondaryLabel.innerText = 'Learners';
+        } else {
+            // Unique sessions attended
+            const logsSnap = await getDocs(query(collection(db, 'attendance_logs'), where('userId', '==', currentUserId)));
+            const sessionIds = new Set(logsSnap.docs.map(d => d.data().sessionId));
+            statSecondary.innerText = sessionIds.size;
+            statSecondaryLabel.innerText = 'Attended';
+        }
+    } catch (err) {
+        console.error('Stats error:', err);
+    }
+}
+
+// Tab Switching
+window.switchProfileTab = (tab) => {
+    activeTab = tab;
+    const tabs = ['personal', 'security', 'recordings'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        const view = document.getElementById(`view-${t}`);
+        if (!btn || !view) return;
+        
+        if (t === tab) {
+            btn.classList.add('border-[#1845D4]', 'text-[#1845D4]');
+            btn.classList.remove('border-transparent', 'text-[#8888A8]');
+            view.classList.remove('hidden');
+        } else {
+            btn.classList.remove('border-[#1845D4]', 'text-[#1845D4]');
+            btn.classList.add('border-transparent', 'text-[#8888A8]');
+            view.classList.add('hidden');
+        }
+    });
+};
+
+// --- ACTIONS ---
+
+// Save Changes
+profileForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerText = 'Preserving...';
+    
+    try {
+        await updateDoc(doc(db, 'profiles', currentUserId), {
+            fullName: inputFullname.value,
+            bio: inputBio.value,
+            updatedAt: Timestamp.now()
+        });
+        userProfile.fullName = inputFullname.value;
+        userProfile.bio = inputBio.value;
+        renderProfile();
+        showToast('Changes preserved.');
+    } catch (err) {
+        showToast('Failed to save.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Save Changes';
+    }
+};
+
+// Photo Upload
+photoUpload.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setLoading(true);
+    try {
+        const storageRef = ref(storage, `profile-pictures/${currentUserId}`);
+        const uploadTask = await uploadBytesResumable(storageRef, file);
+        const url = await getDownloadURL(uploadTask.ref);
+        
+        await updateDoc(doc(db, 'profiles', currentUserId), { 
+            photoURL: url, 
+            updatedAt: Timestamp.now() 
+        });
+        
+        userProfile.photoURL = url;
+        renderProfile();
+        showToast('Photo updated.');
+    } catch (err) {
+        showToast('Upload failed.', 'error');
+    } finally {
+        setLoading(false);
+    }
+};
+
+// Password Reset
+resetPasswordBtn.onclick = async () => {
+    try {
+        const response = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: auth.currentUser.email })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Failed to send');
+
+        showToast('Reset link sent to email.');
+    } catch (err) {
+        showToast(err.message.toUpperCase(), 'error');
+    }
+};
+
+// Verification Request
+requestVerificationBtn.onclick = async () => {
+    const adminPhone = "233550599755";
+    const message = `Hi, I am ${userProfile.fullName} (${auth.currentUser.email}), and I'd like to be verified as a Course Representative on Podium.`;
+    const whatsappUrl = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
+    
+    try {
+        await setDoc(doc(db, 'verification_requests', currentUserId), {
+            userId: currentUserId,
+            userName: userProfile.fullName,
+            userEmail: auth.currentUser.email,
+            status: 'pending',
+            requestedAt: serverTimestamp()
+        });
+        window.open(whatsappUrl, '_blank');
+        showToast('Request logged.');
+    } catch (err) {
+        showToast('Failed to log request.', 'error');
+    }
+};
+
+// Recordings (Lecturers only)
+async function fetchRecordings() {
+    const list = document.getElementById('recordings-list');
+    list.innerHTML = `<div class="py-10 text-center animate-pulse"><i class="fas fa-circle-notch fa-spin text-[#1845D4]"></i></div>`;
+    
+    try {
+        const response = await fetch(`/api/recordings/lecturer/${currentUserId}`);
+        const data = await response.json();
+        
+        if (data.success && data.recordings.length > 0) {
+            list.innerHTML = '';
+            data.recordings.forEach(rec => {
+                const div = document.createElement('div');
+                div.className = 'group p-6 bg-white border border-[#DDE0F0] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-[#1845D4] transition-all';
+                div.innerHTML = `
+                    <div class="flex items-center gap-6">
+                        <div class="w-12 h-12 bg-[#F5F6FA] rounded-lg flex items-center justify-center border border-[#DDE0F0] text-[#1845D4]"><i class="fas fa-video"></i></div>
+                        <div>
+                            <h4 class="text-sm font-bold text-[#0D0D1A]">${rec.classTitle || 'Session'}</h4>
+                            <div class="flex gap-4 text-[10px] font-bold text-[#8888A8] uppercase tracking-widest mt-1">
+                                <span><i class="far fa-calendar"></i> ${new Date(rec.startedAt).toLocaleDateString()}</span>
+                                <span><i class="far fa-clock"></i> ${Math.floor(rec.durationSeconds/60)}m</span>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="/api/recordings/download/${rec.id}" class="px-6 py-2 bg-[#0D0D1A] text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#1845D4] transition-all text-center">Download</a>
+                `;
+                list.appendChild(div);
+            });
+        } else {
+            list.innerHTML = `<div class="py-20 text-center text-[#8888A8] text-[10px] font-black uppercase tracking-[0.4em] italic">No preservation logs found.</div>`;
+        }
+    } catch (err) {
+        list.innerHTML = `<div class="py-20 text-center text-red-500 text-[10px] font-bold uppercase tracking-widest">Failed to load archive.</div>`;
+    }
+}
+
+document.getElementById('refresh-recordings').onclick = fetchRecordings;
+
+// Toast Helper
+function showToast(msg, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
+    toast.innerText = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Logout
+document.getElementById('logout-btn').onclick = () => signOut(auth);

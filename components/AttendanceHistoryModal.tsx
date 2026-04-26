@@ -4,291 +4,75 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase/config';
 import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { AttendanceLog } from '@/lib/firebase/types';
-import { X, History, Download } from 'lucide-react';
+import { X, History, Download, Sparkles, User, Calendar, BookOpen } from 'lucide-react';
 import { useAlert } from '@/contexts/AlertContext';
 import { Skeleton } from './ui/Skeleton';
 
-interface AttendanceHistoryModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    userId: string;
-}
+interface AttendanceHistoryModalProps { isOpen: boolean; onClose: () => void; userId: string; }
 
 export default function AttendanceHistoryModal({ isOpen, onClose, userId }: AttendanceHistoryModalProps) {
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const { showAlert } = useAlert();
 
-    useEffect(() => {
-        if (isOpen && userId) {
-            handleOpenHistory();
-        }
-    }, [isOpen, userId]);
+    useEffect(() => { if (isOpen && userId) handleOpenHistory(); }, [isOpen, userId]);
 
     const handleOpenHistory = async () => {
         setLoadingHistory(true);
         try {
-            // Query logs specifically for this lecturer
             const logsRef = collection(db, 'attendance_logs');
-            const q = query(
-                logsRef,
-                where('lecturerId', '==', userId),
-                orderBy('joinedAt', 'desc')
-            );
-
-            const snapshot = await getDocs(q);
+            let q = query(logsRef, where('lecturerId', '==', userId), orderBy('joinedAt', 'desc'));
+            let snapshot;
+            try { snapshot = await getDocs(q); } catch (e) { snapshot = await getDocs(query(logsRef, where('lecturerId', '==', userId))); }
             const logs = snapshot.docs.map(doc => doc.data() as AttendanceLog);
-
-            // Group by Session ID
-            const grouped: Record<string, {
-                sessionId: string;
-                title: string;
-                studentIds: Set<string>;
-                lastJoined: Timestamp;
-            }> = {};
-
+            const grouped: Record<string, any> = {};
             logs.forEach(log => {
-                const sid = log.sessionId;
-                if (!grouped[sid]) {
-                    grouped[sid] = {
-                        sessionId: sid,
-                        title: log.sessionTitle || 'Unknown Class', // Fallback
-                        studentIds: new Set(),
-                        lastJoined: log.joinedAt
-                    };
-                }
-
-                if (log.userId) {
-                    grouped[sid].studentIds.add(log.userId);
-                }
-
-                // Keep the most recent date
-                if (log.joinedAt > grouped[sid].lastJoined) {
-                    grouped[sid].lastJoined = log.joinedAt;
-                }
+                if (!log.sessionId) return;
+                if (!grouped[log.sessionId]) grouped[log.sessionId] = { sessionId: log.sessionId, title: log.sessionTitle || 'Class', studentIds: new Set(), lastJoined: log.joinedAt };
+                if (log.userId) grouped[log.sessionId].studentIds.add(log.userId);
+                if (log.joinedAt && (!grouped[log.sessionId].lastJoined || log.joinedAt > grouped[log.sessionId].lastJoined)) grouped[log.sessionId].lastJoined = log.joinedAt;
             });
-
-            setHistoryData(Object.values(grouped).map(item => ({
-                ...item,
-                count: item.studentIds.size
-            })).sort((a, b) => b.lastJoined.seconds - a.lastJoined.seconds));
-        } catch (error) {
-            console.error("Error fetching history:", error);
-            showAlert("Failed to load attendance history.", "error");
-        } finally {
-            setLoadingHistory(false);
-        }
+            setHistoryData(Object.values(grouped).map(item => ({ ...item, count: item.studentIds.size })).sort((a, b) => (b.lastJoined?.seconds || 0) - (a.lastJoined?.seconds || 0)));
+        } catch (error) { showAlert("Failed to load records.", "error"); } finally { setLoadingHistory(false); }
     };
 
     const handleDownloadAttendance = async (sessionId: string, title: string) => {
         try {
-            // 1. Fetch Session Details (to get Lecturer Name, Program, Course, Time)
-            const sessionRef = doc(db, 'sessions', sessionId);
-            const sessionSnap = await getDoc(sessionRef);
-
-            let lecturerName = 'N/A';
-            let program = 'N/A';
-            let course = 'N/A';
-            let classDate = 'N/A';
-            let classTime = 'N/A';
-
+            const sessionSnap = await getDoc(doc(db, 'sessions', sessionId));
+            let info = { lecturer: 'N/A', program: 'N/A', course: 'N/A', date: 'N/A' };
             if (sessionSnap.exists()) {
                 const data = sessionSnap.data();
-                lecturerName = data.lecturerName || 'N/A';
-                program = data.program || 'N/A';
-                course = data.course || 'N/A';
-
-                if (data.scheduledStartTime) {
-                    const dateObj = data.scheduledStartTime.toDate();
-                    classDate = dateObj.toLocaleDateString();
-                    classTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                } else if (data.createdAt) {
-                    const dateObj = data.createdAt.toDate();
-                    classDate = dateObj.toLocaleDateString();
-                    classTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                }
-            } else {
-                // Fallback for hard-deleted sessions
-                try {
-                    const profileRef = doc(db, 'profiles', userId);
-                    const profileSnap = await getDoc(profileRef);
-                    if (profileSnap.exists()) {
-                        lecturerName = profileSnap.data().fullName || 'N/A';
-                    }
-                } catch (err) {
-                    console.error("[AttendanceHistory:ProfileFallback] Error fetching profile fallback:", err);
-                }
+                info = { lecturer: data.lecturerName || 'N/A', program: data.program || 'N/A', course: data.course || 'N/A', date: data.scheduledStartTime?.toDate().toLocaleDateString() || data.createdAt?.toDate().toLocaleDateString() || 'N/A' };
             }
-
-            // 2. Fetch Join Logs (attendance_logs)
-            const logsRef = collection(db, 'attendance_logs');
-            const qLogs = query(
-                logsRef,
-                where('sessionId', '==', sessionId)
-            );
-            const logsSnap = await getDocs(qLogs);
-            const basicLogs = logsSnap.docs
-                .map(doc => doc.data() as AttendanceLog)
-                .sort((a, b) => {
-                    const timeA = a.joinedAt?.toMillis?.() || 0;
-                    const timeB = b.joinedAt?.toMillis?.() || 0;
-                    return timeA - timeB;
-                });
-
-            if (basicLogs.length === 0) {
-                showAlert("No join records found for this class.", "info");
-                return;
-            }
-
-            // 3. Fetch Verification Stats (subcollection)
-            const attendanceSubRef = collection(db, 'sessions', sessionId, 'attendance');
-            const verifSnap = await getDocs(attendanceSubRef);
-            const verifData: Record<string, number> = {};
-            verifSnap.docs.forEach(doc => {
-                const data = doc.data();
-                verifData[doc.id] = data.totalVerificationsCompleted || 0;
-            });
-
-            // 4. Form CSV Content
-            const csvRows = [];
-
-            // Header Section
-            csvRows.push(['ATTENDANCE REPORT']);
-            csvRows.push([`Class Title,${title.replace(/,/g, ' ')}`]);
-            csvRows.push([`Lecturer Name,${lecturerName.replace(/,/g, ' ')}`]);
-            csvRows.push([`Date,${classDate}`]);
-            csvRows.push([`Time,${classTime}`]);
-            csvRows.push([`Program,${program.replace(/,/g, ' ')}`]);
-            csvRows.push([`Course,${course.replace(/,/g, ' ')}`]);
-            csvRows.push([`Generated At,${new Date().toLocaleString()}`]);
-            csvRows.push([]); // Empty line
-
-            // Table Header
-            const headers = ['Student Name', 'Student Email', 'Index Number', 'Joined At', 'Presence Checks'];
-            csvRows.push([headers.join(',')]);
-
-            // Table Data (Group by student to avoid duplicates if they joined multiple times)
-            const uniqueStudents: Record<string, {
-                name: string;
-                email: string;
-                index: string;
-                joinedAt: string;
-                checks: number;
-            }> = {};
-
+            const logsSnap = await getDocs(query(collection(db, 'attendance_logs'), where('sessionId', '==', sessionId)));
+            const basicLogs = logsSnap.docs.map(doc => doc.data() as AttendanceLog).sort((a, b) => (a.joinedAt?.toMillis?.() || 0) - (b.joinedAt?.toMillis?.() || 0));
+            if (basicLogs.length === 0) return showAlert("Registry is empty.", "info");
+            const verifSnap = await getDocs(collection(db, 'sessions', sessionId, 'attendance'));
+            const verifData: Record<string, number> = {}; verifSnap.docs.forEach(doc => { verifData[doc.id] = doc.data().totalVerificationsCompleted || 0; });
+            const csv = [['ATTENDANCE REPORT'], [`Title,${title}`], [`Lecturer,${info.lecturer}`], [`Date,${info.date}`], [`Course,${info.course}`], [], ['Name', 'Email', 'ID', 'Joined', 'Checks'].join(',')];
+            const seen = new Set();
             basicLogs.forEach(log => {
-                if (!uniqueStudents[log.userId]) {
-                    uniqueStudents[log.userId] = {
-                        name: log.userName || 'Unknown',
-                        email: log.userEmail || 'N/A',
-                        index: log.userIndexNumber || 'N/A',
-                        joinedAt: log.joinedAt?.toDate ? log.joinedAt.toDate().toLocaleString() : 'N/A',
-                        checks: verifData[log.userId] || 0
-                    };
-                }
+                if (seen.has(log.userId)) return; seen.add(log.userId);
+                csv.push([`"${log.userName}"`, `"${log.userEmail}"`, `"${log.userIndexNumber}"`, `"${log.joinedAt?.toDate().toLocaleString()}"`, verifData[log.userId] || 0].join(','));
             });
-
-            Object.values(uniqueStudents).forEach(student => {
-                const name = `"${student.name.replace(/"/g, '""')}"`;
-                const email = `"${student.email.replace(/"/g, '""')}"`;
-                const index = `"${student.index.replace(/"/g, '""')}"`;
-                csvRows.push([name, email, index, `"${student.joinedAt}"`, student.checks].join(','));
-            });
-
-            const csvContent = csvRows.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `${title.replace(/[^a-z0-9]/gi, '_')}_attendance_full.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } catch (error) {
-            console.error("[AttendanceHistory:Download] Error downloading attendance:", error);
-            showAlert("Failed to download attendance.", "error");
-        }
+            const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv.join('\n')], { type: 'text/csv' })); link.download = `${title}_attendance.csv`; link.click();
+        } catch (error) { showAlert("Download failed.", "error"); }
     };
-
-    // RESTARTING PLAN: Update imports first, then function.
-    // actually, I'll just use the existing `getDocs` mechanism to fetch the session by ID if I don't want to touch imports, BUT `where('__name__', ...)` works.
-    // However, fetching extra data is key.
-
-    // Let's try to update imports AND the function in one go if they are close? No, they are far apart.
-    // I will use `replace_file_content` for imports first.
-
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-            <div className="relative w-full max-w-4xl bg-white rounded-lg p-8 border border-gray-200 max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-gray-900  flex items-center gap-2">
-                        <History className="w-6 h-6 text-blue-600" />
-                        Attendance History
-                    </h2>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100  rounded-md transition-colors">
-                        <X className="w-5 h-5 text-gray-500" />
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto min-h-0">
-                    {loadingHistory ? (
-                        <div className="p-6 space-y-4">
-                            {[1, 2, 3, 4].map(i => (
-                                <div key={i} className="flex gap-4 p-4 border border-gray-100  rounded-md">
-                                    <div className="flex-1 space-y-2">
-                                        <Skeleton className="h-5 w-1/3" />
-                                        <Skeleton className="h-3 w-1/4" />
-                                    </div>
-                                    <Skeleton className="h-10 w-32" />
-                                </div>
-                            ))}
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-8 animate-in fade-in duration-500">
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative w-full max-w-2xl bg-white rounded-3xl p-10 border border-slate-100 shadow-2xl flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-300">
+                <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-serif text-slate-900 tracking-tight">Attendance <span className="italic">History</span></h2><button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-900 transition-colors active:scale-90"><X className="w-6 h-6" /></button></div>
+                <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                    {loadingHistory ? [1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-2xl bg-slate-50" />) : historyData.length === 0 ? <div className="text-center py-24 text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] italic">No archive entries found.</div> : historyData.map(item => (
+                        <div key={item.sessionId} className="group p-6 bg-white border border-slate-100 rounded-2xl flex items-center justify-between hover:border-slate-900/20 hover:shadow-xl hover:shadow-slate-200/40 transition-all">
+                            <div className="space-y-1"><h4 className="text-base font-serif text-slate-900 leading-tight tracking-tight">{item.title}</h4><div className="flex gap-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest"><span>{item.count} Attendees</span><span>{item.lastJoined?.toDate().toLocaleDateString()}</span></div></div>
+                            <button onClick={() => handleDownloadAttendance(item.sessionId, item.title)} className="p-3 bg-slate-50 hover:bg-slate-900 hover:text-white rounded-xl text-slate-400 transition-all shadow-sm border border-slate-100 active:scale-95"><Download className="w-4 h-4" /></button>
                         </div>
-                    ) : historyData.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500 ">
-                            No attendance records found.
-                        </div>
-                    ) : (
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50  sticky top-0">
-                                <tr>
-                                    <th className="p-4 text-sm font-semibold text-gray-600 ">Class Title</th>
-                                    <th className="p-4 text-sm font-semibold text-gray-600 ">Unique Attendees</th>
-                                    <th className="p-4 text-sm font-semibold text-gray-600 ">Last Activity</th>
-                                    <th className="p-4 text-sm font-semibold text-gray-600  text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 ">
-                                {historyData.map((item) => (
-                                    <tr key={item.sessionId} className="hover:bg-gray-50 ">
-                                        <td className="p-4">
-                                            <div className="font-medium text-gray-900 ">{item.title}</div>
-                                            <div className="text-xs text-gray-500 font-mono mt-0.5">{item.sessionId}</div>
-                                        </td>
-                                        <td className="p-4 text-gray-700 ">
-                                            {item.count}
-                                        </td>
-                                        <td className="p-4 text-gray-500  text-sm">
-                                            {item.lastJoined?.toDate ? item.lastJoined.toDate().toLocaleDateString() : 'N/A'}
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => handleDownloadAttendance(item.sessionId, item.title)}
-                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50  text-blue-600  rounded-md hover:bg-blue-100  transition-colors text-sm font-medium"
-                                            >
-                                                <Download className="w-4 h-4" />
-                                                Download CSV
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
+                    ))}
                 </div>
             </div>
         </div>

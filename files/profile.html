@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — Podium</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue:#1845D4; --blue-dark:#0f2fa8; --blue-light:#e8eeff; --white:#ffffff;
+    --gray:#f5f6fa; --gray2:#eef0f8; --ink:#0d0d1a; --ink-mid:#444460;
+    --ink-light:#8888a8; --line:#dde0f0; --nav-width:240px; --header-h:60px;
+  }
+  body { font-family:'DM Sans',sans-serif; background:var(--gray); color:var(--ink); display:flex; min-height:100vh; }
+
+  /* ── SIDEBAR (shared) ── */
+  .sidebar { width:var(--nav-width); background:var(--white); border-right:1px solid var(--line); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:50; }
+  .sidebar-logo { padding:0 24px; height:var(--header-h); display:flex; align-items:center; border-bottom:1px solid var(--line); font-family:'DM Serif Display',serif; font-size:1.3rem; color:var(--blue); text-decoration:none; flex-shrink:0; }
+  .nav-section { padding:20px 12px 8px; flex:1; overflow-y:auto; }
+  .nav-group-label { font-size:.65rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-light); padding:0 12px; margin-bottom:4px; margin-top:16px; }
+  .nav-group-label:first-child { margin-top:0; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:.875rem; font-weight:500; color:var(--ink-mid); text-decoration:none; transition:background .15s,color .15s; cursor:pointer; }
+  .nav-item:hover { background:var(--gray); color:var(--ink); }
+  .nav-item.active { background:var(--blue-light); color:var(--blue); }
+  .nav-item svg { width:16px; height:16px; flex-shrink:0; stroke:currentColor; }
+  .nav-item .badge { margin-left:auto; font-size:.7rem; font-weight:600; background:var(--blue); color:var(--white); padding:2px 7px; border-radius:20px; }
+  .sidebar-footer { padding:16px 12px; border-top:1px solid var(--line); flex-shrink:0; }
+  .profile-thumb { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:6px; text-decoration:none; transition:background .15s; cursor:pointer; }
+  .profile-thumb:hover { background:var(--gray); }
+  .avatar { width:32px; height:32px; background:var(--blue); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:600; color:var(--white); flex-shrink:0; }
+  .profile-info { flex:1; min-width:0; }
+  .profile-name { font-size:.8rem; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .profile-role { font-size:.7rem; color:var(--ink-light); }
+
+  /* ── LAYOUT ── */
+  .main-wrap { margin-left:var(--nav-width); flex:1; display:flex; flex-direction:column; min-height:100vh; }
+  .topbar { height:var(--header-h); background:var(--white); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:0 32px; position:sticky; top:0; z-index:40; }
+  .topbar-title { font-size:1rem; font-weight:600; color:var(--ink); }
+  .icon-btn { width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:6px; border:1px solid var(--line); background:none; cursor:pointer; transition:background .15s; }
+  .icon-btn:hover { background:var(--gray); }
+  .icon-btn svg { width:16px; height:16px; stroke:var(--ink-mid); }
+  .content { padding:36px 32px; flex:1; }
+
+  /* ── PROFILE PAGE ── */
+  .profile-layout { display:grid; grid-template-columns:300px 1fr; gap:24px; }
+
+  /* Left card */
+  .profile-card { background:var(--white); border:1px solid var(--line); border-radius:8px; padding:32px; text-align:center; }
+  .profile-avatar-lg { width:80px; height:80px; background:var(--blue); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.6rem; font-weight:600; color:var(--white); margin:0 auto 16px; }
+  .profile-card h2 { font-family:'DM Serif Display',serif; font-size:1.3rem; letter-spacing:-.5px; color:var(--ink); }
+  .profile-card .role-tag { display:inline-block; font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; background:var(--blue-light); color:var(--blue); padding:3px 10px; border-radius:20px; margin:8px 0 4px; }
+  .profile-card .email { font-size:.8rem; color:var(--ink-light); }
+
+  .profile-stats { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-top:24px; }
+  .pstat { background:var(--white); padding:16px; text-align:center; }
+  .pstat .val { font-family:'DM Serif Display',serif; font-size:1.5rem; color:var(--ink); }
+  .pstat .lbl { font-size:.7rem; color:var(--ink-light); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+
+  .change-photo-btn { margin-top:20px; width:100%; padding:9px; font-family:'DM Sans',sans-serif; font-size:.8rem; font-weight:500; color:var(--ink-mid); background:none; border:1.5px solid var(--line); border-radius:6px; cursor:pointer; transition:all .2s; }
+  .change-photo-btn:hover { border-color:var(--blue); color:var(--blue); }
+
+  /* Right */
+  .profile-right { display:flex; flex-direction:column; gap:20px; }
+
+  .card { background:var(--white); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .card-header { display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--line); }
+  .card-header h2 { font-size:.9rem; font-weight:600; color:var(--ink); }
+  .card-body { padding:24px; }
+
+  .form-group { margin-bottom:18px; }
+  .form-group:last-child { margin-bottom:0; }
+  .form-label { display:block; font-size:.8rem; font-weight:600; color:var(--ink); margin-bottom:6px; }
+  .form-input { width:100%; padding:10px 14px; font-family:'DM Sans',sans-serif; font-size:.875rem; color:var(--ink); background:var(--white); border:1.5px solid var(--line); border-radius:6px; outline:none; transition:border-color .2s; }
+  .form-input:focus { border-color:var(--blue); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  .btn-primary { display:inline-flex; align-items:center; gap:8px; padding:9px 20px; background:var(--blue); color:var(--white); font-family:'DM Sans',sans-serif; font-size:.875rem; font-weight:500; border:none; border-radius:6px; cursor:pointer; transition:background .2s; }
+  .btn-primary:hover { background:var(--blue-dark); }
+  .btn-outline { display:inline-flex; align-items:center; gap:8px; padding:9px 20px; background:none; color:var(--ink); font-family:'DM Sans',sans-serif; font-size:.875rem; font-weight:500; border:1.5px solid var(--line); border-radius:6px; cursor:pointer; transition:all .2s; }
+  .btn-outline:hover { border-color:var(--blue); color:var(--blue); }
+  .card-footer { padding:16px 24px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px; }
+
+  /* Badge list */
+  .badge-grid { display:flex; flex-wrap:wrap; gap:10px; }
+  .badge-item { display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--gray); border-radius:6px; font-size:.8rem; font-weight:500; color:var(--ink-mid); }
+  .badge-dot { width:8px; height:8px; border-radius:50%; background:var(--blue); }
+  .badge-dot.green { background:#1ba05c; }
+  .badge-dot.orange { background:#e05c2a; }
+  .badge-dot.purple { background:#7c3af7; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <a href="index.html" class="sidebar-logo">Podium</a>
+  <nav class="nav-section">
+    <div class="nav-group-label">Main</div>
+    <a href="dashboard.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      My Classes
+      <span class="badge">4</span>
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      Assignments
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+    </a>
+    <div class="nav-group-label">Account</div>
+    <a href="profile.html" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+    <a href="settings.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="profile.html" class="profile-thumb">
+      <div class="avatar">AO</div>
+      <div class="profile-info">
+        <div class="profile-name">Ama Owusu</div>
+        <div class="profile-role">Student</div>
+      </div>
+    </a>
+  </div>
+</aside>
+
+<div class="main-wrap">
+  <header class="topbar">
+    <div class="topbar-title">Profile</div>
+    <div style="display:flex;gap:10px">
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="profile-layout">
+      <!-- Left -->
+      <div>
+        <div class="profile-card">
+          <div class="profile-avatar-lg">AO</div>
+          <h2>Ama Owusu</h2>
+          <div class="role-tag">Student</div>
+          <div class="email">ama.owusu@email.com</div>
+
+          <div class="profile-stats">
+            <div class="pstat">
+              <div class="val">4</div>
+              <div class="lbl">Classes</div>
+            </div>
+            <div class="pstat">
+              <div class="val">28h</div>
+              <div class="lbl">Learned</div>
+            </div>
+            <div class="pstat">
+              <div class="val">84%</div>
+              <div class="lbl">Avg grade</div>
+            </div>
+            <div class="pstat">
+              <div class="val">12</div>
+              <div class="lbl">Assignments</div>
+            </div>
+          </div>
+
+          <button class="change-photo-btn">Change photo</button>
+        </div>
+      </div>
+
+      <!-- Right -->
+      <div class="profile-right">
+        <!-- Personal info -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Personal Information</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">First name</label>
+                <input type="text" class="form-input" value="Ama">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Last name</label>
+                <input type="text" class="form-input" value="Owusu">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email address</label>
+              <input type="email" class="form-input" value="ama.owusu@email.com">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-input" value="+233 20 000 0000">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Location</label>
+                <input type="text" class="form-input" value="Accra, Ghana">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bio</label>
+              <textarea class="form-input" rows="3">Computer Science student with a passion for data and design. Currently exploring machine learning and frontend development.</textarea>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn-outline">Discard</button>
+            <button class="btn-primary">Save changes</button>
+          </div>
+        </div>
+
+        <!-- Enrolled classes -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Enrolled Classes</h2>
+            <a href="dashboard.html" style="font-size:.8rem;color:var(--blue);text-decoration:none;font-weight:500;">Browse more</a>
+          </div>
+          <div class="card-body">
+            <div class="badge-grid">
+              <div class="badge-item"><div class="badge-dot"></div> Introduction to Data Science</div>
+              <div class="badge-item"><div class="badge-dot orange"></div> Advanced Web Development</div>
+              <div class="badge-item"><div class="badge-dot purple"></div> UX Research Methods</div>
+              <div class="badge-item"><div class="badge-dot green"></div> Business Communication</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Change password -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Change Password</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Current password</label>
+              <input type="password" class="form-input" placeholder="••••••••">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">New password</label>
+                <input type="password" class="form-input" placeholder="••••••••">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirm new password</label>
+                <input type="password" class="form-input" placeholder="••••••••">
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn-primary">Update password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

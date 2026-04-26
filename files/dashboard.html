@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Podium</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #1845D4;
+    --blue-dark: #0f2fa8;
+    --blue-light: #e8eeff;
+    --blue-mid: #3a60f7;
+    --white: #ffffff;
+    --gray: #f5f6fa;
+    --gray2: #eef0f8;
+    --ink: #0d0d1a;
+    --ink-mid: #444460;
+    --ink-light: #8888a8;
+    --line: #dde0f0;
+    --nav-width: 240px;
+    --header-h: 60px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--gray);
+    color: var(--ink);
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--nav-width);
+    background: var(--white);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    z-index: 50;
+  }
+
+  .sidebar-logo {
+    padding: 0 24px;
+    height: var(--header-h);
+    display: flex; align-items: center;
+    border-bottom: 1px solid var(--line);
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    color: var(--blue);
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  .nav-section {
+    padding: 20px 12px 8px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .nav-group-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    padding: 0 12px;
+    margin-bottom: 4px;
+    margin-top: 16px;
+  }
+  .nav-group-label:first-child { margin-top: 0; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-size: 0.875rem; font-weight: 500;
+    color: var(--ink-mid);
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+  }
+
+  .nav-item:hover { background: var(--gray); color: var(--ink); }
+
+  .nav-item.active {
+    background: var(--blue-light);
+    color: var(--blue);
+  }
+
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; stroke: currentColor; }
+
+  .nav-item .badge {
+    margin-left: auto;
+    font-size: 0.7rem; font-weight: 600;
+    background: var(--blue); color: var(--white);
+    padding: 2px 7px; border-radius: 20px;
+  }
+
+  /* Sidebar bottom — profile */
+  .sidebar-footer {
+    padding: 16px 12px;
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+
+  .profile-thumb {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .profile-thumb:hover { background: var(--gray); }
+
+  .avatar {
+    width: 32px; height: 32px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 600; color: var(--white);
+    flex-shrink: 0;
+  }
+
+  .profile-info { flex: 1; min-width: 0; }
+  .profile-name {
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .profile-role {
+    font-size: 0.7rem; color: var(--ink-light);
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main-wrap {
+    margin-left: var(--nav-width);
+    flex: 1;
+    display: flex; flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    height: var(--header-h);
+    background: var(--white);
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    position: sticky; top: 0; z-index: 40;
+  }
+
+  .topbar-title {
+    font-size: 1rem; font-weight: 600; color: var(--ink);
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+
+  .icon-btn {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; border: 1px solid var(--line);
+    background: none; cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .icon-btn:hover { background: var(--gray); }
+  .icon-btn svg { width: 16px; height: 16px; stroke: var(--ink-mid); }
+  .icon-btn .dot {
+    position: absolute; top: 6px; right: 6px;
+    width: 7px; height: 7px;
+    background: var(--blue); border-radius: 50%;
+    border: 1.5px solid var(--white);
+  }
+
+  /* ── CONTENT ── */
+  .content {
+    padding: 36px 32px;
+    flex: 1;
+  }
+
+  /* Page heading row */
+  .page-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .page-head h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+  }
+
+  .page-head p {
+    font-size: 0.875rem; color: var(--ink-light);
+    margin-top: 2px; font-weight: 300;
+  }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 20px;
+    background: var(--blue); color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem; font-weight: 500;
+    border: none; border-radius: 6px;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .btn-primary:hover { background: var(--blue-dark); }
+  .btn-primary svg { width: 15px; height: 15px; stroke: white; }
+
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 20px;
+    background: none; color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem; font-weight: 500;
+    border: 1.5px solid var(--line); border-radius: 6px;
+    cursor: pointer; text-decoration: none;
+    transition: all 0.2s;
+  }
+  .btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+  .btn-outline svg { width: 15px; height: 15px; stroke: currentColor; }
+
+  /* ── STAT CARDS ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  .stat-card .label {
+    font-size: 0.75rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-light);
+    margin-bottom: 10px;
+  }
+
+  .stat-card .value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: var(--ink);
+    letter-spacing: -1px;
+  }
+
+  .stat-card .delta {
+    font-size: 0.75rem; color: #1ba05c;
+    margin-top: 4px; font-weight: 500;
+  }
+
+  /* ── ACTION CARDS ── */
+  .action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .action-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 32px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    display: block;
+  }
+  .action-card:hover {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px var(--blue-light);
+  }
+
+  .action-card.blue-fill {
+    background: var(--blue);
+  }
+
+  .action-icon {
+    width: 48px; height: 48px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  .action-icon.bg-blue { background: var(--blue); }
+  .action-icon.bg-light { background: var(--blue-light); }
+  .action-icon.bg-white { background: rgba(255,255,255,0.2); }
+
+  .action-icon svg { width: 22px; height: 22px; }
+
+  .action-card h3 {
+    font-size: 1rem; font-weight: 600;
+    color: var(--ink); margin-bottom: 6px;
+  }
+
+  .action-card.blue-fill h3 { color: var(--white); }
+
+  .action-card p {
+    font-size: 0.85rem; color: var(--ink-mid);
+    line-height: 1.6; font-weight: 300;
+  }
+
+  .action-card.blue-fill p { color: rgba(255,255,255,0.75); }
+
+  .action-card .arrow {
+    margin-top: 20px;
+    font-size: 0.85rem; font-weight: 600;
+    color: var(--blue);
+  }
+  .action-card.blue-fill .arrow { color: rgba(255,255,255,0.9); }
+
+  /* ── CLASS LIST ── */
+  .section-row {
+    display: grid; grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .card-header h2 {
+    font-size: 0.9rem; font-weight: 600; color: var(--ink);
+  }
+
+  .card-header a {
+    font-size: 0.8rem; color: var(--blue);
+    text-decoration: none; font-weight: 500;
+  }
+
+  .class-list { }
+
+  .class-item {
+    display: flex; align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--line);
+    text-decoration: none;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .class-item:last-child { border-bottom: none; }
+  .class-item:hover { background: var(--gray); }
+
+  .class-color {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 14px;
+    flex-shrink: 0;
+  }
+
+  .class-info { flex: 1; min-width: 0; }
+  .class-name {
+    font-size: 0.875rem; font-weight: 500;
+    color: var(--ink);
+  }
+  .class-meta {
+    font-size: 0.75rem; color: var(--ink-light);
+    margin-top: 2px;
+  }
+
+  .class-badge {
+    font-size: 0.7rem; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px;
+    margin-left: 12px;
+  }
+  .badge-active { background: #e6f9f0; color: #1ba05c; }
+  .badge-upcoming { background: var(--blue-light); color: var(--blue); }
+  .badge-ended { background: var(--gray2); color: var(--ink-light); }
+
+  /* Upcoming widget */
+  .upcoming-list { }
+  .upcoming-item {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .upcoming-item:last-child { border-bottom: none; }
+  .upcoming-date {
+    font-size: 0.7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--blue); margin-bottom: 4px;
+  }
+  .upcoming-title {
+    font-size: 0.875rem; font-weight: 500; color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .upcoming-sub {
+    font-size: 0.75rem; color: var(--ink-light);
+  }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(13,13,26,0.4);
+    z-index: 200;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--white);
+    border-radius: 10px;
+    width: 480px; max-width: calc(100vw - 40px);
+    padding: 36px;
+    animation: fadeUp 0.2s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .modal-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .modal-head h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem; letter-spacing: -0.5px;
+    color: var(--ink);
+  }
+
+  .modal-head p {
+    font-size: 0.85rem; color: var(--ink-light);
+    margin-top: 4px; font-weight: 300;
+  }
+
+  .modal-close {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: none; cursor: pointer; color: var(--ink-mid);
+    font-size: 1rem; flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .modal-close:hover { background: var(--gray); }
+
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    display: block;
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--ink); margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%; padding: 10px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem; color: var(--ink);
+    background: var(--white);
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--blue); }
+
+  .form-hint {
+    font-size: 0.75rem; color: var(--ink-light);
+    margin-top: 4px;
+  }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .modal-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+    margin-top: 28px;
+  }
+
+  .tabs {
+    display: flex; border-bottom: 1px solid var(--line);
+    margin-bottom: 24px;
+  }
+  .tab {
+    padding: 10px 20px;
+    font-size: 0.875rem; font-weight: 500;
+    color: var(--ink-light); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s;
+  }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <a href="index.html" class="sidebar-logo">Podium</a>
+
+  <nav class="nav-section">
+    <div class="nav-group-label">Main</div>
+    <a href="dashboard.html" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      My Classes
+      <span class="badge">4</span>
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      Assignments
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+    </a>
+
+    <div class="nav-group-label">Account</div>
+    <a href="profile.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+    <a href="settings.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="profile.html" class="profile-thumb">
+      <div class="avatar">AO</div>
+      <div class="profile-info">
+        <div class="profile-name">Ama Owusu</div>
+        <div class="profile-role">Student</div>
+      </div>
+    </a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main-wrap">
+  <header class="topbar">
+    <div class="topbar-title">Good morning, Ama 👋</div>
+    <div class="topbar-right">
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="dot"></div>
+      </button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- Page head -->
+    <div class="page-head">
+      <div>
+        <h1>Dashboard</h1>
+        <p>Thursday, 24 April 2026</p>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-outline" onclick="openModal('joinModal')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Join class
+        </button>
+        <button class="btn-primary" onclick="openModal('createModal')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New class
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="label">Classes enrolled</div>
+        <div class="value">4</div>
+        <div class="delta">↑ 1 this month</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Assignments due</div>
+        <div class="value">3</div>
+        <div class="delta">2 this week</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Hours learned</div>
+        <div class="value">28</div>
+        <div class="delta">↑ 6h vs last week</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Avg. grade</div>
+        <div class="value">84%</div>
+        <div class="delta">↑ 3% improvement</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <div class="action-card" onclick="openModal('createModal')">
+        <div class="action-icon bg-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <h3>Create a class</h3>
+        <p>Set up a new classroom, add materials, and invite students to get started.</p>
+        <div class="arrow">Create class →</div>
+      </div>
+      <div class="action-card" onclick="openModal('joinModal')">
+        <div class="action-icon bg-light">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#1845D4" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        </div>
+        <h3>Join a class</h3>
+        <p>Enter a class code shared by your instructor to join and access materials.</p>
+        <div class="arrow">Join class →</div>
+      </div>
+    </div>
+
+    <!-- Classes + upcoming -->
+    <div class="section-row">
+      <div class="card">
+        <div class="card-header">
+          <h2>My Classes</h2>
+          <a href="#">View all</a>
+        </div>
+        <div class="class-list">
+          <div class="class-item">
+            <div class="class-color" style="background:#1845D4"></div>
+            <div class="class-info">
+              <div class="class-name">Introduction to Data Science</div>
+              <div class="class-meta">Dr. Mensah · 18 students</div>
+            </div>
+            <span class="class-badge badge-active">Active</span>
+          </div>
+          <div class="class-item">
+            <div class="class-color" style="background:#e05c2a"></div>
+            <div class="class-info">
+              <div class="class-name">Advanced Web Development</div>
+              <div class="class-meta">Prof. Asante · 24 students</div>
+            </div>
+            <span class="class-badge badge-active">Active</span>
+          </div>
+          <div class="class-item">
+            <div class="class-color" style="background:#7c3af7"></div>
+            <div class="class-info">
+              <div class="class-name">UX Research Methods</div>
+              <div class="class-meta">Ms. Adjei · 12 students</div>
+            </div>
+            <span class="class-badge badge-upcoming">Upcoming</span>
+          </div>
+          <div class="class-item">
+            <div class="class-color" style="background:#1ba05c"></div>
+            <div class="class-info">
+              <div class="class-name">Business Communication</div>
+              <div class="class-meta">Mr. Boateng · 30 students</div>
+            </div>
+            <span class="class-badge badge-ended">Ended</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Upcoming</h2>
+          <a href="#">Calendar</a>
+        </div>
+        <div class="upcoming-list">
+          <div class="upcoming-item">
+            <div class="upcoming-date">Today · 2:00 PM</div>
+            <div class="upcoming-title">Data Science Lab Session</div>
+            <div class="upcoming-sub">Live · Dr. Mensah</div>
+          </div>
+          <div class="upcoming-item">
+            <div class="upcoming-date">Tomorrow · 10:00 AM</div>
+            <div class="upcoming-title">Assignment 3 Due</div>
+            <div class="upcoming-sub">Web Development</div>
+          </div>
+          <div class="upcoming-item">
+            <div class="upcoming-date">Apr 28 · 11:00 AM</div>
+            <div class="upcoming-title">UX Research Kickoff</div>
+            <div class="upcoming-sub">First session · Ms. Adjei</div>
+          </div>
+          <div class="upcoming-item">
+            <div class="upcoming-date">Apr 30 · 3:00 PM</div>
+            <div class="upcoming-title">Mid-term Review</div>
+            <div class="upcoming-sub">Data Science · Dr. Mensah</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- CREATE CLASS MODAL -->
+<div class="modal-overlay" id="createModal" onclick="closeModalOnOverlay(event,'createModal')">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2>Create a class</h2>
+        <p>Set up a new classroom for your students.</p>
+      </div>
+      <button class="modal-close" onclick="closeModal('createModal')">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Class name</label>
+      <input type="text" class="form-input" placeholder="e.g. Introduction to Python">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Subject</label>
+        <input type="text" class="form-input" placeholder="Computer Science">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Level</label>
+        <select class="form-input">
+          <option>Undergraduate</option>
+          <option>Postgraduate</option>
+          <option>Professional</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-input" rows="3" placeholder="Brief description of the class..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Max students</label>
+      <input type="number" class="form-input" value="30">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeModal('createModal')">Cancel</button>
+      <button class="btn-primary">Create class</button>
+    </div>
+  </div>
+</div>
+
+<!-- JOIN CLASS MODAL -->
+<div class="modal-overlay" id="joinModal" onclick="closeModalOnOverlay(event,'joinModal')">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2>Join a class</h2>
+        <p>Enter the code your instructor shared with you.</p>
+      </div>
+      <button class="modal-close" onclick="closeModal('joinModal')">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Class code</label>
+      <input type="text" class="form-input" placeholder="e.g. PDM-4X92" style="font-size:1.1rem;letter-spacing:0.1em;text-transform:uppercase">
+      <div class="form-hint">Codes are 8 characters and case-insensitive.</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeModal('joinModal')">Cancel</button>
+      <button class="btn-primary">Join class</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+  function closeModalOnOverlay(e, id) {
+    if (e.target === document.getElementById(id)) closeModal(id);
+  }
+</script>
+</body>
+</html>

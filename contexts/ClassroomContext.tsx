@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Room, RemoteParticipant, LocalParticipant, Participant, RoomEvent, Track } from 'livekit-client';
 
@@ -34,7 +34,7 @@ export interface LiveKitParticipant {
 // Keep old name for backward compatibility
 export type JitsiParticipant = LiveKitParticipant;
 
-interface ClassroomContextType {
+interface ClassroomState {
     sessionId: string | null;
     title: string | null;
     userName: string | null;
@@ -42,52 +42,49 @@ interface ClassroomContextType {
     userId: string | null;
     isModerator: boolean;
     isHost: boolean;
+    isCoHost: boolean;
     sessionData: any | null;
     photoURL: string | null;
     displayIcon: string | null;
     isMini: boolean;
     isActive: boolean;
     isFloating: boolean;
-    isChatOpen?: boolean;
+    isChatOpen: boolean;
     unreadChatCount: number;
     participants: LiveKitParticipant[];
     liveKitRoom: Room | null;
+    token: string | null;
+    coHosts: CoHost[];
+    liveMessages: any[];
+    layout: GridLayout;
     joinMicEnabled: boolean;
-    // Keep old name for backward compatibility
-    jitsiApi: Room | null;
+}
+
+interface ClassroomActions {
     joinClass: (sessionId: string, title: string, userName: string, userRole: 'student' | 'lecturer' | 'admin', userId?: string, photoURL?: string, displayIcon?: string, joinMicEnabled?: boolean) => void;
     leaveClass: () => void;
     toggleMini: (isMini: boolean) => void;
     toggleFloating: (floating: boolean) => void;
     toggleMinimize: (minimize: boolean) => void;
     setLiveKitRoom: (room: Room | null) => void;
-    // Keep old name for backward compatibility
     setJitsiApi: (api: any) => void;
-    // Moderation functions
+    setToken: (token: string | null) => void;
+    preWarmToken: (sessionId: string, userName: string, userRole: string, userId: string, photoURL?: string, displayIcon?: string) => Promise<void>;
     muteParticipant: (participantId: string) => void;
     disableParticipantVideo: (participantId: string) => void;
     muteAllParticipants: () => void;
     kickParticipant: (participantId: string) => void;
     askToUnmute: (participantId: string) => void;
     grantModerator: (participantId: string) => void;
-    coHosts: CoHost[];
-    isCoHost: boolean;
     assignCoHost: (targetUserId: string, targetUserName: string) => Promise<void>;
     removeCoHost: (coHostUserId: string) => Promise<void>;
-    liveMessages: any[];
     sendMessage: (content: string) => void;
-    // Chat functions
     toggleChat: () => void;
-    // Layout functions
-    layout: GridLayout;
     setLayout: (layout: GridLayout) => void;
-    // Token pre-warming
-    token: string | null;
-    setToken: (token: string | null) => void;
-    preWarmToken: (sessionId: string, userName: string, userRole: string, userId: string, photoURL?: string, displayIcon?: string) => Promise<void>;
 }
 
-const ClassroomContext = createContext<ClassroomContextType | undefined>(undefined);
+const ClassroomStateContext = createContext<ClassroomState | undefined>(undefined);
+const ClassroomActionsContext = createContext<ClassroomActions | undefined>(undefined);
 
 export function ClassroomProvider({ children }: { children: ReactNode }) {
     console.log('ClassroomProvider initializing...');
@@ -113,19 +110,14 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     const isFetchingToken = useRef(false);
     const { showAlert, showConfirm } = useAlert();
 
-
     const router = useRouter();
     const pathname = usePathname();
-
-
-
-
 
     const setLiveKitRoom = useCallback((room: Room | null) => {
         setLiveKitRoomState(room);
     }, []);
 
-    // Backward compatibility
+    // Backward compatibility helper
     const setJitsiApi = setLiveKitRoom;
 
     const joinClass = useCallback((
@@ -146,12 +138,10 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         setPhotoURL(newPhotoURL || null);
         setDisplayIcon(newDisplayIcon || null);
         setJoinMicEnabled(newJoinMicEnabled);
-        setSessionData(null); // Reset session data
+        setSessionData(null);
         setIsMini(false);
         setIsChatOpen(false);
         setUnreadChatCount(0);
-        // If we don't have a token, it will be fetched in GlobalClassroom
-        // but if we do (from pre-warming), it's already there
     }, []);
 
     const preWarmToken = useCallback(async (
@@ -163,10 +153,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         uDisplayIcon?: string
     ) => {
         if (token || isFetchingToken.current) return;
-
         isFetchingToken.current = true;
         try {
-            console.log('Pre-warming LiveKit token...');
             const response = await fetch('/api/livekit/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -180,11 +168,9 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     displayIcon: uDisplayIcon,
                 }),
             });
-
             if (response.ok) {
                 const data = await response.json();
                 setToken(data.token);
-                console.log('Token pre-warmed successfully');
             }
         } catch (error) {
             console.error('Failed to pre-warm token:', error);
@@ -201,8 +187,6 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 console.error('Error disconnecting from LiveKit room:', e);
             }
         }
-
-        // Reset state
         setSessionId(null);
         setTitle(null);
         setUserName(null);
@@ -218,41 +202,29 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         setToken(null);
         setPhotoURL(null);
         setDisplayIcon(null);
-
-        // Exit PiP if active
         if (typeof window !== 'undefined') {
             try {
-                if (document.pictureInPictureElement) {
-                    document.exitPictureInPicture();
-                }
+                if (document.pictureInPictureElement) document.exitPictureInPicture();
             } catch (pipError) {
                 console.log('No PiP element to exit:', pipError);
             }
         }
     }, [liveKitRoom]);
 
-    const toggleMini = useCallback((mini: boolean) => {
-        setIsMini(mini);
-    }, []);
-
+    const toggleMini = useCallback((mini: boolean) => setIsMini(mini), []);
     const toggleFloating = useCallback((floating: boolean) => {
         setIsFloating(floating);
-        if (floating) {
-            setIsMini(true);
-        }
+        if (floating) setIsMini(true);
     }, []);
-
     const toggleMinimize = useCallback((minimize: boolean) => {
         setIsMini(minimize);
         setIsFloating(minimize);
     }, []);
 
-    // Derived Permission States
     const isHost = sessionData?.hostId === userId || sessionData?.lecturerId === userId;
     const isCoHost = coHosts.some(ch => ch.userId === userId);
     const isModerator = isHost || isCoHost || sessionData?.backupModId === userId || userRole === 'admin';
 
-    // Real-time co-host subscription
     useEffect(() => {
         if (!sessionId) {
             setCoHosts([]);
@@ -262,14 +234,10 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         return () => unsub();
     }, [sessionId]);
 
-    // Heartbeat & Presence Logic (Unified)
     useEffect(() => {
         if (!sessionId || !userId) return;
-
         const heartbeatInterval = setInterval(async () => {
             const now = serverTimestamp();
-
-            // 1. Update Participant Heartbeat (Spec Requirement)
             try {
                 const participantRef = doc(db, 'sessions', sessionId, 'participants', userId);
                 await setDoc(participantRef, {
@@ -281,48 +249,30 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             } catch (err) {
                 console.error('[Classroom:Heartbeat:Participant] Failed:', err);
             }
-
-            // 2. Update Moderator Master Heartbeats
             if (isHost || isModerator) {
                 try {
                     const sessionRef = doc(db, 'sessions', sessionId);
                     const updateField = isHost ? 'hostLastSeen' : 'modLastSeen';
-
-                    // Construct the update object to satisfy Firestore rules
-                    const updates: any = {
-                        [updateField]: now
-                    };
-
-                    await updateDoc(sessionRef, updates);
+                    await updateDoc(sessionRef, { [updateField]: now });
                 } catch (err) {
                     console.error('[Classroom:Heartbeat:Session] Failed:', err);
                 }
             }
-        }, 30000); // 30 seconds as per spec
-
+        }, 30000);
         return () => clearInterval(heartbeatInterval);
-    }, [sessionId, userId, isHost, isModerator, sessionData?.status]);
+    }, [sessionId, userId, isHost, isModerator]);
 
-    // Listen to Session Data & Manage Auto-Alert (Client-Side Sentinel)
     useEffect(() => {
         if (!sessionId) return;
-
         const unsubscribe = onSnapshot(doc(db, 'sessions', sessionId), async (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data() as Session;
                 setSessionData(data);
-
-                // --- Detect session deletion: eject all participants ---
                 if (data.status === 'deleted' || data.isDeleted) {
-                    console.log('🗑️ Session deleted — ejecting participant');
-
-                    // Only show alert and redirect if we are currently in this session
                     if (sessionId === docSnap.id) {
-                        // Use a flag to prevent multiple alerts
                         const wasAlreadyDeleted = (window as any)._podium_session_deleted;
                         if (!wasAlreadyDeleted) {
                             (window as any)._podium_session_deleted = true;
-
                             showAlert('This class has been ended by the host.', 'warning').then(() => {
                                 leaveClass();
                                 router.push('/dashboard');
@@ -330,69 +280,42 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                             });
                         }
                     }
-                    return;
                 }
-
             }
         });
-
         return () => unsubscribe();
-    }, [sessionId, isHost, isModerator]);
+    }, [sessionId, router, showAlert, leaveClass]);
 
-    // Handle initial join mic preference & persistent lockdown
     useEffect(() => {
         if (!liveKitRoom || !sessionData) return;
-
         const handleInitialMic = async () => {
-            // Priority 1: Persistent Lockdown (Mute All)
             if (sessionData.isMutedAll && !isModerator) {
                 if (liveKitRoom.localParticipant.isMicrophoneEnabled) {
-                    console.log('🔇 [Lockdown] Muting local participant due to global lockdown');
                     await liveKitRoom.localParticipant.setMicrophoneEnabled(false);
                 }
                 return;
             }
-
-            // Priority 2: Individual Join Preference (Only on first connection)
-            // We use a ref to ensure this only runs once per session join
             if (!(window as any)._podium_joined_mic_set) {
                 (window as any)._podium_joined_mic_set = true;
                 if (!joinMicEnabled && !isModerator) {
-                    console.log('🔇 [Preference] Muting local participant by join choice');
                     await liveKitRoom.localParticipant.setMicrophoneEnabled(false);
                 }
             }
         };
-
         handleInitialMic();
     }, [liveKitRoom, sessionData?.isMutedAll, isModerator, joinMicEnabled]);
 
-    // Clear the joined_mic_set flag on leave
     useEffect(() => {
-        if (!sessionId) {
-            (window as any)._podium_joined_mic_set = false;
-        }
+        if (!sessionId) (window as any)._podium_joined_mic_set = false;
     }, [sessionId]);
 
-    // Moderation functions using LiveKit API
     const muteParticipant = useCallback((participantId: string) => {
         if (liveKitRoom && isModerator) {
-            const participant = Array.from(liveKitRoom.remoteParticipants.values()).find(
-                (p) => p.sid === participantId
+            const encoder = new TextEncoder();
+            liveKitRoom.localParticipant.publishData(
+                encoder.encode(JSON.stringify({ type: 'mute_request', targetId: participantId })),
+                { reliable: true }
             );
-            if (participant) {
-                // In LiveKit, muting remote participants requires server-side action
-                // We'll use the data channel to send a mute request
-                const encoder = new TextEncoder();
-                liveKitRoom.localParticipant.publishData(
-                    encoder.encode(JSON.stringify({
-                        type: 'mute_request',
-                        targetId: participantId,
-                    })),
-                    { reliable: true }
-                );
-                console.log('Mute request sent to:', participantId);
-            }
         }
     }, [liveKitRoom, isModerator]);
 
@@ -400,33 +323,21 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         if (liveKitRoom && isModerator) {
             const encoder = new TextEncoder();
             liveKitRoom.localParticipant.publishData(
-                encoder.encode(JSON.stringify({
-                    type: 'disable_video_request',
-                    targetId: participantId,
-                })),
+                encoder.encode(JSON.stringify({ type: 'disable_video_request', targetId: participantId })),
                 { reliable: true }
             );
-            console.log('Disable video request sent to:', participantId);
         }
     }, [liveKitRoom, isModerator]);
 
     const muteAllParticipants = useCallback(async () => {
         if (liveKitRoom && isModerator && sessionId) {
-            // 1. Send real-time signal
             const encoder = new TextEncoder();
             liveKitRoom.localParticipant.publishData(
-                encoder.encode(JSON.stringify({
-                    type: 'mute_all_request',
-                })),
+                encoder.encode(JSON.stringify({ type: 'mute_all_request' })),
                 { reliable: true }
             );
-            console.log('Mute all request sent');
-
-            // 2. Persist to Firestore (Lockdown Mode)
             try {
-                await updateDoc(doc(db, 'sessions', sessionId), {
-                    isMutedAll: true
-                });
+                await updateDoc(doc(db, 'sessions', sessionId), { isMutedAll: true });
             } catch (err) {
                 console.error('Failed to persist Mute All state:', err);
             }
@@ -435,20 +346,11 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
     const kickParticipant = useCallback((participantId: string) => {
         if (liveKitRoom && isModerator) {
-            // Kicking requires server-side API call
-            // For now, we'll use data channel to notify
             const encoder = new TextEncoder();
             liveKitRoom.localParticipant.publishData(
-                encoder.encode(JSON.stringify({
-                    type: 'kick_request',
-                    targetId: participantId,
-                })),
+                encoder.encode(JSON.stringify({ type: 'kick_request', targetId: participantId })),
                 { reliable: true }
             );
-            console.log('Kick request sent for:', participantId);
-
-            // TODO: Implement server-side kick via API
-            // This would require calling a backend API that uses livekit-server-sdk
         }
     }, [liveKitRoom, isModerator]);
 
@@ -456,42 +358,29 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         if (liveKitRoom && isModerator) {
             const encoder = new TextEncoder();
             liveKitRoom.localParticipant.publishData(
-                encoder.encode(JSON.stringify({
-                    type: 'unmute_request',
-                    targetId: participantId,
-                })),
+                encoder.encode(JSON.stringify({ type: 'unmute_request', targetId: participantId })),
                 { reliable: true }
             );
-            console.log('Unmute request sent to:', participantId);
         }
     }, [liveKitRoom, isModerator]);
 
     const grantModerator = useCallback(async (participantId: string) => {
         if (liveKitRoom && isHost) {
-            // Granting moderator (Backup Mod)
             const participant = participants.find(p => p.participantId === participantId);
             if (!participant || !sessionId) return;
-
             const targetUserId = participant.metadata?.userId;
             if (!targetUserId) return;
-
             try {
-                await setDoc(doc(db, 'sessions', sessionId), {
-                    backupModId: targetUserId
-                }, { merge: true });
+                await setDoc(doc(db, 'sessions', sessionId), { backupModId: targetUserId }, { merge: true });
                 showAlert(`Assigned ${participant.displayName} as Backup Moderator`, 'success');
             } catch (err) {
                 console.error('Failed to grant moderator:', err);
-                showAlert('Failed to assign backup moderator', 'error');
             }
         }
     }, [liveKitRoom, isHost, participants, sessionId, showAlert]);
 
     const assignCoHost = useCallback(async (targetUserId: string, targetUserName: string) => {
-        if (!sessionId || !userId || !isHost) {
-            showAlert('Only the host can assign co-hosts', 'error');
-            return;
-        }
+        if (!sessionId || !userId || !isHost) return;
         try {
             const res = await fetch('/api/moderators/assign-cohost', {
                 method: 'POST',
@@ -499,27 +388,18 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 body: JSON.stringify({ sessionId, hostUserId: userId, targetUserId, targetUserName }),
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.error);
-            // Broadcast over LiveKit data channel so everyone refreshes instantly
-            if (liveKitRoom) {
+            if (data.success && liveKitRoom) {
                 const encoder = new TextEncoder();
-                liveKitRoom.localParticipant.publishData(
-                    encoder.encode(JSON.stringify({ type: 'COHOST_ASSIGNED', coHostId: targetUserId })),
-                    { reliable: true }
-                );
+                liveKitRoom.localParticipant.publishData(encoder.encode(JSON.stringify({ type: 'COHOST_ASSIGNED', coHostId: targetUserId })), { reliable: true });
+                showAlert(`${targetUserName} is now a co-host`, 'success');
             }
-            showAlert(`${targetUserName} is now a co-host`, 'success');
-        } catch (err: any) {
+        } catch (err) {
             console.error('Failed to assign co-host:', err);
-            showAlert(err.message || 'Failed to assign co-host', 'error');
         }
     }, [sessionId, userId, isHost, liveKitRoom, showAlert]);
 
     const removeCoHost = useCallback(async (coHostUserId: string) => {
-        if (!sessionId || !userId || !isHost) {
-            showAlert('Only the host can remove co-hosts', 'error');
-            return;
-        }
+        if (!sessionId || !userId || !isHost) return;
         try {
             const res = await fetch('/api/moderators/remove-cohost', {
                 method: 'POST',
@@ -527,19 +407,13 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 body: JSON.stringify({ sessionId, hostUserId: userId, coHostUserId }),
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.error);
-            // Broadcast over LiveKit data channel
-            if (liveKitRoom) {
+            if (data.success && liveKitRoom) {
                 const encoder = new TextEncoder();
-                liveKitRoom.localParticipant.publishData(
-                    encoder.encode(JSON.stringify({ type: 'COHOST_REMOVED', coHostId: coHostUserId })),
-                    { reliable: true }
-                );
+                liveKitRoom.localParticipant.publishData(encoder.encode(JSON.stringify({ type: 'COHOST_REMOVED', coHostId: coHostUserId })), { reliable: true });
+                showAlert('Co-host removed', 'success');
             }
-            showAlert('Co-host removed', 'success');
-        } catch (err: any) {
+        } catch (err) {
             console.error('Failed to remove co-host:', err);
-            showAlert(err.message || 'Failed to remove co-host', 'error');
         }
     }, [sessionId, userId, isHost, liveKitRoom, showAlert]);
 
@@ -552,10 +426,9 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
 
     const sendMessage = useCallback(async (content: string) => {
         if (!liveKitRoom || !userName || !content.trim()) return;
-
         const messageData = {
             type: 'chat',
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // More unique ID
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             content,
             senderId: userId,
             senderName: userName,
@@ -564,69 +437,38 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             senderDisplayIcon: displayIcon,
             createdAt: Date.now()
         };
-
         try {
-            // Send via WebRTC Data Channel for immediate delivery (low latency)
             const encoder = new TextEncoder();
-            liveKitRoom.localParticipant.publishData(
-                encoder.encode(JSON.stringify(messageData)),
-                { reliable: true } // Ensures complete packet delivery
-            );
+            liveKitRoom.localParticipant.publishData(encoder.encode(JSON.stringify(messageData)), { reliable: true });
         } catch (e) {
-            console.warn('[ClassroomChat] WebRTC publish failed, falling back to Firestore', e);
+            console.warn('[ClassroomChat] WebRTC publish failed', e);
         }
-
-        // Add to local state immediately for instant feedback
         setLiveMessages(prev => [...prev, messageData]);
-
-        // Push to Firestore for persistence and reliable delivery to those who missed the UDP packet
         try {
-            await addDoc(collection(db, `sessions/${sessionId}/messages`), {
-                ...messageData,
-                createdAt: serverTimestamp() // Overwrite with server time
-            });
+            await addDoc(collection(db, `sessions/${sessionId}/messages`), { ...messageData, createdAt: serverTimestamp() });
         } catch (e) {
-            console.error('[ClassroomChat] Failed to sync message to Firestore:', e);
+            console.error('[ClassroomChat] Failed to sync to Firestore:', e);
         }
     }, [liveKitRoom, userName, userRole, userId, sessionId, photoURL, displayIcon]);
 
-    // Also reset unread count if becomes open through other means
     useEffect(() => {
-        if (isChatOpen) {
-            setUnreadChatCount(0);
-        }
+        if (isChatOpen) setUnreadChatCount(0);
     }, [isChatOpen]);
 
-    // Auto-detect mini mode based on route
     useEffect(() => {
         if (!sessionId) return;
-
         const isClassroomPage = pathname === `/classroom/${sessionId}`;
-
         if (!isClassroomPage) {
-            // User navigated away from the classroom
-            if (!isMini && !isFloating) {
-                // If not already in mini/floating mode, interpret navigation as "Leave Class"
-                leaveClass();
-            }
-            // If isMini/isFloating is true, we respect the user's intent to multitask and keep it open
-        } else {
-            // User returned to the classroom page
-            if (isMini) {
-                setIsMini(false);
-            }
+            if (!isMini && !isFloating) leaveClass();
+        } else if (isMini) {
+            setIsMini(false);
         }
     }, [pathname, sessionId, isMini, isFloating, leaveClass]);
 
-    // Listen to LiveKit participant events
-    // Moved here to avoid "leaveClass used before initialization" error
     useEffect(() => {
         if (!liveKitRoom) return;
-
         const updateParticipants = () => {
             const allParticipants: LiveKitParticipant[] = [];
-
-            // Add local participant
             const localParticipant = liveKitRoom.localParticipant;
             if (localParticipant) {
                 const metadata = localParticipant.metadata ? JSON.parse(localParticipant.metadata) : {};
@@ -642,8 +484,6 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     metadata,
                 });
             }
-
-            // Add remote participants
             liveKitRoom.remoteParticipants.forEach((participant) => {
                 const metadata = participant.metadata ? JSON.parse(participant.metadata) : {};
                 allParticipants.push({
@@ -658,14 +498,9 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     metadata,
                 });
             });
-
             setParticipants(allParticipants);
         };
-
-        // Initial load
         updateParticipants();
-
-        // Listen for participant changes
         liveKitRoom.on(RoomEvent.Connected, updateParticipants);
         liveKitRoom.on(RoomEvent.Reconnected, updateParticipants);
         liveKitRoom.on(RoomEvent.ParticipantConnected, updateParticipants);
@@ -676,276 +511,180 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
         liveKitRoom.on(RoomEvent.LocalTrackUnpublished, updateParticipants);
         liveKitRoom.on(RoomEvent.ParticipantMetadataChanged, updateParticipants);
         liveKitRoom.on(RoomEvent.ActiveSpeakersChanged, updateParticipants);
-
-        // Listen for data messages (Moderation)
         const handleDataReceived = (payload: Uint8Array, participant?: RemoteParticipant) => {
             try {
                 const decoder = new TextDecoder();
                 const strData = decoder.decode(payload);
                 const data = JSON.parse(strData);
-
-                // Verify sender is a moderator/lecturer
-                // Note: In production, verify this via signed tokens or server-side validation
-                // For now, we trust the role in metadata if available
                 const senderMetadata = participant?.metadata ? JSON.parse(participant?.metadata) : {};
-                const isModerator = senderMetadata.role === 'lecturer';
-
-                if (!isModerator) return;
-
-                console.log('Received moderation command:', data, 'from', participant?.identity);
-
+                const isMod = senderMetadata.role === 'lecturer';
+                if (!isMod && data.type !== 'chat') return;
                 if (data.type === 'mute_request' && data.targetId === liveKitRoom.localParticipant.sid) {
-                    // Lecturer requested to mute me
-                    console.log('Lecturer muted my audio/video');
                     liveKitRoom.localParticipant.setMicrophoneEnabled(false);
-                    // Optional: mute video too if desired, usually just audio is forced
-                    // liveKitRoom.localParticipant.setCameraEnabled(false);
                     showAlert('You have been muted by the lecturer.', 'info');
                 }
-
                 if (data.type === 'disable_video_request' && data.targetId === liveKitRoom.localParticipant.sid) {
-                    // Lecturer requested to disable my video
-                    console.log('Lecturer disabled my video');
                     liveKitRoom.localParticipant.setCameraEnabled(false);
                     showAlert('Your video has been turned off by the lecturer.', 'info');
                 }
-
-                if (data.type === 'mute_all_request') {
-                    // Everyone except moderator gets muted
-                    // Check if I am NOT a moderator
-                    if (!isModerator) {
-                        console.log('Moderator muted everyone');
-                        liveKitRoom.localParticipant.setMicrophoneEnabled(false);
-                        showAlert('A moderator has muted everyone.', 'info');
-                    }
+                if (data.type === 'mute_all_request' && !isMod) {
+                    liveKitRoom.localParticipant.setMicrophoneEnabled(false);
+                    showAlert('A moderator has muted everyone.', 'info');
                 }
-
                 if (data.type === 'unmute_request' && data.targetId === liveKitRoom.localParticipant.sid) {
-                    // Lecturer asked me to unmute
                     showConfirm('The lecturer is asking you to unmute your microphone. Allow?', () => {
                         liveKitRoom.localParticipant.setMicrophoneEnabled(true);
                     }, 'Unmute Request');
                 }
-
                 if (data.type === 'kick_request' && data.targetId === liveKitRoom.localParticipant.sid) {
-                    // Lecturer kicked me
-                    console.log('Lecturer kicked me out');
-                    showAlert('You have been removed from the class by the lecturer.', 'warning').then(() => {
-                        leaveClass();
-                    });
+                    showAlert('You have been removed from the class by the lecturer.', 'warning').then(() => leaveClass());
                 }
-
                 if (data.type === 'chat') {
                     setLiveMessages(prev => {
-                        // Strict check to prevent duplication from multiple paths (WebRTC vs Firestore)
                         if (prev.some(m => m.id === data.id)) return prev;
                         return [...prev, { ...data, isRemote: true }];
                     });
-                    if (!isChatOpen) {
-                        setUnreadChatCount(prev => prev + 1);
-                    }
+                    if (!isChatOpen) setUnreadChatCount(prev => prev + 1);
                 }
-
             } catch (e) {
                 console.error('Failed to parse data message', e);
             }
         };
-
         liveKitRoom.on(RoomEvent.DataReceived, handleDataReceived);
-
         return () => {
+            liveKitRoom.off(RoomEvent.Connected, updateParticipants);
+            liveKitRoom.off(RoomEvent.Reconnected, updateParticipants);
             liveKitRoom.off(RoomEvent.ParticipantConnected, updateParticipants);
             liveKitRoom.off(RoomEvent.ParticipantDisconnected, updateParticipants);
             liveKitRoom.off(RoomEvent.TrackMuted, updateParticipants);
             liveKitRoom.off(RoomEvent.TrackUnmuted, updateParticipants);
+            liveKitRoom.off(RoomEvent.LocalTrackPublished, updateParticipants);
+            liveKitRoom.off(RoomEvent.LocalTrackUnpublished, updateParticipants);
             liveKitRoom.off(RoomEvent.ParticipantMetadataChanged, updateParticipants);
             liveKitRoom.off(RoomEvent.ActiveSpeakersChanged, updateParticipants);
             liveKitRoom.off(RoomEvent.DataReceived, handleDataReceived);
         };
-    }, [liveKitRoom, userRole, leaveClass]);
+    }, [liveKitRoom, userRole, leaveClass, isChatOpen, showAlert, showConfirm]);
 
-    // Global Message Listener for Notifications
     useEffect(() => {
-        if (!sessionId || !db) {
+        if (!sessionId) {
             setUnreadChatCount(0);
             return;
         }
-
-        // Listen for RECENT messages to keep sync while live
-        const q = query(
-            collection(db, `sessions/${sessionId}/messages`),
-            orderBy('createdAt', 'asc') // Use ASC to get latest ones in order
-        );
-
+        const q = query(collection(db, `sessions/${sessionId}/messages`), orderBy('createdAt', 'asc'));
         let initialLoad = true;
         const unsubscribe = onSnapshot(q, (snapshot: any) => {
             if (initialLoad) {
                 initialLoad = false;
                 return;
             }
-
             snapshot.docChanges().forEach((change: any) => {
                 if (change.type === 'added') {
                     const data = change.doc.data() as any;
-
-                    // Ensure message is added to UI if WebRTC UDP packet dropped
                     setLiveMessages(prev => {
                         if (prev.some(m => m.id === data.id)) return prev;
-                        // Always keep the list sorted when merging from Firestore
-                        const newList = [...prev, data];
-                        return newList.sort((a, b) => {
+                        return [...prev, data].sort((a, b) => {
                             const timeA = a.createdAt?.toMillis?.() || a.createdAt || 0;
                             const timeB = b.createdAt?.toMillis?.() || b.createdAt || 0;
                             return timeA - timeB;
                         });
                     });
-
-                    // Update notification badge
-                    if (data.senderId !== userId && !isChatOpen && !initialLoad) {
-                        setUnreadChatCount(prev => prev + 1);
-                    }
+                    if (data.senderId !== userId && !isChatOpen) setUnreadChatCount(prev => prev + 1);
                 }
             });
-        }, (error) => {
-            console.error('[Classroom:Messages] Error listening for new messages:', error);
         });
-
         return () => unsubscribe();
     }, [sessionId, userId, isChatOpen]);
 
-    // Smart Chat Persistence: Snapshotting
     useEffect(() => {
         if (!sessionId || userRole !== 'lecturer' || liveMessages.length === 0) return;
-
-        // Sync to Firestore every 5 minutes or on meaningful message count changes
         const syncInterval = setInterval(async () => {
-            console.log('🔄 [ClassroomContext] Periodic chat snapshot sync starting...');
             try {
-                // We store the current liveMessages as a snapshot
-                // This allows late joiners to fetch the entire history in one read
                 await setDoc(doc(db, `sessions/${sessionId}/chat_history`, 'transcript'), {
                     messages: liveMessages,
                     lastUpdatedAt: serverTimestamp(),
                     sessionTitle: title
                 }, { merge: true });
-                console.log('✅ [ClassroomContext] Chat snapshot saved to Firestore');
             } catch (err) {
-                console.error('[Classroom:PeriodicSync] Periodic sync failed:', err);
+                console.error('[Classroom:PeriodicSync] Failed:', err);
             }
-        }, 5 * 60 * 1000); // 5 minutes
-
+        }, 5 * 60 * 1000);
         return () => clearInterval(syncInterval);
     }, [sessionId, userRole, liveMessages.length, liveMessages, title]);
 
-    // Restore chat history for late joiners
     useEffect(() => {
         if (!sessionId || liveMessages.length > 0) return;
-
         const restoreHistory = async () => {
-            try {
-                console.log('📖 [ClassroomContext] Checking for chat history snapshot...');
-                const historyRef = doc(db, `sessions/${sessionId}/chat_history`, 'transcript');
-                onSnapshot(historyRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        if (data.messages && data.messages.length > 0) {
-                            console.log('✅ [ClassroomContext] Syncing chat history from snapshot...');
-
-                            setLiveMessages(prev => {
-                                const historyMessages = data.messages.map((m: any) => ({ ...m, isRemote: true }));
-                                // Create a Map by ID to ensure uniqueness and fast lookup
-                                const messageMap = new Map();
-
-                                // Add history first
-                                historyMessages.forEach((m: any) => messageMap.set(m.id, m));
-                                // Add current live messages (allowing them to overwrite history if same ID, as they might be fresher)
-                                prev.forEach(m => messageMap.set(m.id, m));
-
-                                // Convert back to array and sort by createdAt
-                                return Array.from(messageMap.values()).sort((a, b) => {
-                                    const timeA = a.createdAt?.toMillis?.() || a.createdAt || 0;
-                                    const timeB = b.createdAt?.toMillis?.() || b.createdAt || 0;
-                                    return timeA - timeB;
-                                });
+            const historyRef = doc(db, `sessions/${sessionId}/chat_history`, 'transcript');
+            onSnapshot(historyRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.messages && data.messages.length > 0) {
+                        setLiveMessages(prev => {
+                            const historyMessages = data.messages.map((m: any) => ({ ...m, isRemote: true }));
+                            const messageMap = new Map();
+                            historyMessages.forEach((m: any) => messageMap.set(m.id, m));
+                            prev.forEach(m => messageMap.set(m.id, m));
+                            return Array.from(messageMap.values()).sort((a, b) => {
+                                const timeA = a.createdAt?.toMillis?.() || a.createdAt || 0;
+                                const timeB = b.createdAt?.toMillis?.() || b.createdAt || 0;
+                                return timeA - timeB;
                             });
-                        }
+                        });
                     }
-                }, (error) => {
-                    console.error('[Classroom:Transcript:Error] Error restoring chat history snapshot:', error);
-                });
-            } catch (err) {
-                console.error('[Classroom:RestoreHistory] Failed to restore history:', err);
-            }
+                }
+            });
         };
-
         restoreHistory();
-    }, [sessionId]); // Removed liveMessages.length check to allow live updates to transcript if needed
+    }, [sessionId]);
 
-    const contextValue = React.useMemo(() => ({
-        sessionId,
-        title,
-        userName,
-        userRole,
-        userId,
-        isModerator,
-        isHost,
-        sessionData,
-        photoURL,
-        displayIcon,
-        joinMicEnabled,
-        isMini,
-        isFloating,
-        isChatOpen,
-        unreadChatCount,
-        isActive: !!sessionId,
-        participants,
-        liveKitRoom,
-        jitsiApi: liveKitRoom,
-        joinClass,
-        leaveClass,
-        toggleMini,
-        toggleFloating,
-        toggleMinimize,
-        setLiveKitRoom,
-        setJitsiApi,
-        setToken,
-        token,
-        preWarmToken,
-        muteParticipant,
-        disableParticipantVideo,
-        muteAllParticipants,
-        kickParticipant,
-        askToUnmute,
-        grantModerator,
-        coHosts,
-        isCoHost,
-        assignCoHost,
-        removeCoHost,
-        toggleChat,
-        liveMessages,
-        sendMessage,
-        layout,
-        setLayout,
+    const stateValue = useMemo<ClassroomState>(() => ({
+        sessionId, title, userName, userRole, userId, isModerator, isHost, isCoHost, sessionData,
+        photoURL, displayIcon, isMini, isActive: !!sessionId, isFloating, isChatOpen,
+        unreadChatCount, participants, liveKitRoom, token, coHosts, liveMessages, layout, joinMicEnabled
     }), [
-        sessionId, title, userName, userRole, userId, isModerator, isHost, sessionData, photoURL, displayIcon, isMini, isFloating,
-        isChatOpen, unreadChatCount, participants, liveKitRoom,
-        joinClass, leaveClass, toggleMini, toggleFloating, toggleMinimize,
-        setLiveKitRoom, muteParticipant, disableParticipantVideo, muteAllParticipants, kickParticipant,
-        askToUnmute, grantModerator, coHosts, isCoHost, assignCoHost, removeCoHost,
-        toggleChat, layout, token, preWarmToken
+        sessionId, title, userName, userRole, userId, isModerator, isHost, isCoHost, sessionData,
+        photoURL, displayIcon, isMini, isFloating, isChatOpen, unreadChatCount, participants,
+        liveKitRoom, token, coHosts, liveMessages, layout, joinMicEnabled
+    ]);
+
+    const actionsValue = useMemo<ClassroomActions>(() => ({
+        joinClass, leaveClass, toggleMini, toggleFloating, toggleMinimize, setLiveKitRoom,
+        setJitsiApi, setToken, preWarmToken, muteParticipant, disableParticipantVideo,
+        muteAllParticipants, kickParticipant, askToUnmute, grantModerator, assignCoHost,
+        removeCoHost, sendMessage, toggleChat, setLayout
+    }), [
+        joinClass, leaveClass, toggleMini, toggleFloating, toggleMinimize, setLiveKitRoom,
+        setJitsiApi, preWarmToken, muteParticipant, disableParticipantVideo,
+        muteAllParticipants, kickParticipant, askToUnmute, grantModerator, assignCoHost,
+        removeCoHost, sendMessage, toggleChat, setLayout
     ]);
 
     return (
-        <ClassroomContext.Provider value={contextValue}>
-            {children}
-        </ClassroomContext.Provider>
+        <ClassroomStateContext.Provider value={stateValue}>
+            <ClassroomActionsContext.Provider value={actionsValue}>
+                {children}
+            </ClassroomActionsContext.Provider>
+        </ClassroomStateContext.Provider>
     );
 }
 
 export function useClassroom() {
-    const context = useContext(ClassroomContext);
-    if (context === undefined) {
-        throw new Error('useClassroom must be used within a ClassroomProvider');
-    }
+    const state = useContext(ClassroomStateContext);
+    const actions = useContext(ClassroomActionsContext);
+    if (!state || !actions) throw new Error('useClassroom must be used within ClassroomProvider');
+    return { ...state, ...actions };
+}
+
+export function useClassroomState() {
+    const context = useContext(ClassroomStateContext);
+    if (!context) throw new Error('useClassroomState must be used within ClassroomProvider');
     return context;
 }
+
+export function useClassroomActions() {
+    const context = useContext(ClassroomActionsContext);
+    if (!context) throw new Error('useClassroomActions must be used within ClassroomProvider');
+    return context;
+}
+

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podium - Virtual Learning Perfected</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        podium: {
+                            blue: '#1845D4',
+                            deep: '#0D0D1A',
+                            muted: '#8888A8',
+                            border: '#DDE0F0',
+                            bg: '#F5F6FA'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        serif: ['DM Serif Display', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+        .font-serif { font-family: 'DM Serif Display', serif; }
+        .text-metadata {
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-[#F5F6FA] text-[#0D0D1A] selection:bg-blue-100 selection:text-blue-900 transition-colors duration-200">
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-200 py-5">
+        <div class="max-w-6xl mx-auto px-6 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-[#1845D4] rounded-lg flex items-center justify-center">
+                    <i class="fas fa-graduation-cap text-white text-sm"></i>
+                </div>
+                <span class="text-lg font-sans font-black text-[#0D0D1A] tracking-tighter">Podium</span>
+            </a>
+
+            <div class="hidden md:flex items-center gap-8">
+                <div id="auth-buttons" class="flex items-center gap-4">
+                    <a href="./about.html" class="text-[9px] font-bold text-[#8888A8] hover:text-[#1845D4] uppercase tracking-widest transition-colors">About</a>
+                    <a href="./auth/login.html" class="text-[9px] font-bold text-[#8888A8] hover:text-[#1845D4] uppercase tracking-widest transition-colors">Sign In</a>
+                    <a href="./auth/signup.html" class="px-4 py-2 bg-[#0D0D1A] text-white text-[9px] font-bold uppercase tracking-widest rounded-md hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/5">Get Started</a>
+                </div>
+                <button id="theme-toggle" class="p-2 rounded-lg hover:bg-white transition-colors border border-transparent">
+                    <i id="theme-icon" class="fas fa-moon text-[#8888A8]"></i>
+                </button>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <div class="md:hidden flex items-center gap-4">
+                <button id="mobile-menu-btn" class="p-2 text-[#0D0D1A] bg-white rounded-md border border-[#DDE0F0]">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu" class="fixed inset-0 bg-white z-[60] flex flex-col p-8 transition-transform duration-300 translate-x-full md:hidden">
+        <div class="flex justify-between items-center mb-12">
+            <a href="/" class="font-serif font-black text-[#1845D4] text-lg tracking-tighter">Podium</a>
+            <button id="close-mobile-menu" class="p-2 text-[#0D0D1A] bg-[#F5F6FA] rounded-md">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="flex flex-col gap-6">
+            <a href="./about.html" class="text-[11px] font-bold text-[#0D0D1A] uppercase tracking-widest">About</a>
+            <a href="./auth/login.html" class="text-[11px] font-bold text-[#0D0D1A] uppercase tracking-widest">Sign In</a>
+            <a href="./auth/signup.html" class="w-full py-4 bg-[#1845D4] text-white text-[11px] font-bold uppercase tracking-widest rounded-xl text-center shadow-lg shadow-blue-600/10">Get Started</a>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <header class="relative pt-32 pb-16 lg:pt-48 lg:pb-24 overflow-hidden">
+        <div class="max-w-6xl mx-auto px-6 relative z-10">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="text-left space-y-6">
+                    <span class="inline-flex items-center gap-2 px-2.5 py-1 bg-blue-50 border border-blue-100 rounded-md">
+                        <span class="w-1.5 h-1.5 bg-[#1845D4] rounded-full"></span>
+                        <span class="text-[8px] font-black text-[#1845D4] uppercase tracking-widest">Academic Workbench</span>
+                    </span>
+                    <h1 class="text-5xl lg:text-7xl font-sans text-[#0D0D1A] leading-[0.95] tracking-tighter">
+                        Virtual Learning <br>
+                        <span class="text-[#1845D4]">Perfected.</span>
+                    </h1>
+                    <p class="text-base lg:text-lg text-[#444460] font-medium leading-relaxed max-w-md">
+                        The high-density platform for students and instructors to connect, learn, and document. Built for absolute record integrity.
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <a href="./auth/signup.html" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-[#1845D4] text-white font-bold text-[9px] uppercase tracking-[0.2em] rounded-lg hover:bg-[#0F2FA8] transition-all active:scale-95 shadow-xl shadow-blue-600/10">
+                            Enter Classroom
+                        </a>
+                        <a href="./auth/login.html" class="flex items-center gap-2 bg-white text-[#0D0D1A] border border-[#DDE0F0] font-bold text-[9px] uppercase tracking-[0.2em] px-8 py-3.5 rounded-lg hover:bg-[#F5F6FA] active:scale-95 transition-all shadow-sm">
+                            Join by Code
+                        </a>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <div class="absolute -top-10 -left-10 w-64 h-64 bg-blue-50 rounded-full blur-[80px]"></div>
+                    <div class="relative bg-white p-3 rounded-2xl shadow-xl border border-[#DDE0F0] overflow-hidden group">
+                        <div class="aspect-[4/3] bg-[#F5F6FA] rounded-xl border border-[#DDE0F0] flex items-center justify-center relative overflow-hidden">
+                            <i class="fas fa-play-circle text-5xl text-blue-100 group-hover:scale-110 transition-transform duration-500"></i>
+                            <div class="absolute bottom-4 left-4 bg-white p-4 rounded-xl shadow-lg border border-[#DDE0F0] flex items-center gap-4 translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+                                <div class="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center text-[#1845D4]"><i class="fas fa-chart-line text-sm"></i></div>
+                                <div>
+                                    <p class="text-[8px] font-black text-[#8888A8] uppercase tracking-widest">Registry Status</p>
+                                    <p class="text-base font-sans font-black text-[#0D0D1A]">Verified Presence</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features" class="py-24 bg-white border-y border-[#DDE0F0]">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="max-w-xl mb-16 space-y-3">
+                <h2 class="text-3xl font-sans text-[#0D0D1A] tracking-tight">Built for Real <span class="text-[#1845D4]">Academic Work.</span></h2>
+                <p class="text-sm text-[#444460] font-medium leading-relaxed">No fluff. Just the essential tools required to host professional classes and maintain accurate records.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-10">
+                <div class="space-y-4 group">
+                    <div class="w-12 h-12 bg-blue-50 text-[#1845D4] rounded-xl flex items-center justify-center group-hover:bg-[#1845D4] group-hover:text-white transition-all duration-300"><i class="fas fa-video text-xl"></i></div>
+                    <h3 class="text-lg font-sans font-black text-[#0D0D1A]">Live Classroom</h3>
+                    <p class="text-[#444460] font-medium leading-relaxed text-xs">Professional video conferencing with participant management and session control.</p>
+                </div>
+                <div class="space-y-4 group">
+                    <div class="w-12 h-12 bg-blue-50 text-[#1845D4] rounded-xl flex items-center justify-center group-hover:bg-[#1845D4] group-hover:text-white transition-all duration-300"><i class="fas fa-history text-xl"></i></div>
+                    <h3 class="text-lg font-sans font-black text-[#0D0D1A]">Attendance Registry</h3>
+                    <p class="text-[#444460] font-medium leading-relaxed text-xs">Automated tracking of join times and durations for every participant, archived automatically.</p>
+                </div>
+                <div class="space-y-4 group">
+                    <div class="w-12 h-12 bg-blue-50 text-[#1845D4] rounded-xl flex items-center justify-center group-hover:bg-[#1845D4] group-hover:text-white transition-all duration-300"><i class="fas fa-hdd text-xl"></i></div>
+                    <h3 class="text-lg font-sans font-black text-[#0D0D1A]">Media Archives</h3>
+                    <p class="text-[#444460] font-medium leading-relaxed text-xs">Centralized dashboard for all past session recordings, ensuring learning never stops.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Records Section -->
+    <section id="records" class="py-24 bg-[#F5F6FA]">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-6 h-auto md:h-[400px]">
+                <div class="md:col-span-2 md:row-span-2 bg-white rounded-2xl p-8 border border-[#DDE0F0] flex flex-col justify-between shadow-sm group">
+                    <div class="space-y-2">
+                        <h2 class="text-2xl font-sans font-black text-[#0D0D1A] leading-tight">Disciplined <br>History</h2>
+                        <p class="text-[#444460] font-medium text-xs">Your entire academic journey, documented with absolute clarity.</p>
+                    </div>
+                    <div class="mt-6 rounded-xl overflow-hidden bg-[#F5F6FA] h-40 border border-[#DDE0F0] flex items-center justify-center">
+                        <i class="fas fa-history text-5xl text-blue-100 group-hover:scale-110 transition-transform duration-500"></i>
+                    </div>
+                </div>
+                <div class="md:col-span-2 md:row-span-2 flex flex-col gap-6">
+                    <div class="flex-1 bg-[#1845D4] rounded-2xl p-8 text-white flex flex-col justify-between shadow-xl shadow-blue-600/10 group relative overflow-hidden">
+                        <div class="space-y-2 relative z-10">
+                            <h3 class="text-2xl font-sans font-black">Media <br>Archives</h3>
+                            <p class="text-blue-100 font-medium text-[10px] leading-relaxed max-w-[150px]">Centralized session recordings dashboard.</p>
+                        </div>
+                        <div class="relative h-20 bg-[#0F2FA8]/30 rounded-xl border border-white/10 flex items-center justify-center overflow-hidden">
+                            <i class="fas fa-play text-white/20 text-2xl group-hover:scale-110 transition-transform duration-500"></i>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6 h-20">
+                        <div class="bg-white rounded-2xl border border-[#DDE0F0] flex flex-col items-center justify-center text-center shadow-sm">
+                            <span class="text-xl font-sans font-black text-[#1845D4]">LOW</span>
+                            <p class="text-[7px] font-bold text-[#8888A8] uppercase tracking-widest">Data Usage</p>
+                        </div>
+                        <div class="bg-[#0D0D1A] rounded-2xl flex flex-col items-center justify-center text-center shadow-sm text-white">
+                            <span class="text-xl font-sans font-black">FAST</span>
+                            <p class="text-[7px] font-bold text-[#8888A8] uppercase tracking-widest">Performance</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="bg-[#1845D4] rounded-[32px] p-12 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-600/20">
+                <div class="relative z-10 space-y-8">
+                    <h2 class="text-4xl lg:text-5xl font-sans font-black leading-tight tracking-tighter">Ready to Start?</h2>
+                    <p class="text-blue-100 text-base font-medium max-w-xl mx-auto opacity-80">Join the students and instructors already hosting professional sessions on Podium.</p>
+                    <div class="flex flex-wrap justify-center gap-4 pt-2">
+                        <a href="./auth/signup.html" class="bg-white text-[#1845D4] font-bold px-10 py-3.5 rounded-xl hover:bg-blue-50 transition-all active:scale-95 shadow-xl text-[9px] uppercase tracking-[0.2em]">Get Started Now</a>
+                        <a href="./about.html" class="bg-[#0F2FA8] text-white border border-white/10 font-bold px-10 py-3.5 rounded-xl hover:bg-black transition-all active:scale-95 text-[9px] uppercase tracking-[0.2em]">Learn More</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-[#DDE0F0] pt-16 pb-10">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 border-b border-[#F5F6FA] pb-16">
+                <div class="col-span-1 md:col-span-2 space-y-6">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 bg-[#1845D4] rounded-lg flex items-center justify-center"><i class="fas fa-graduation-cap text-white text-xs"></i></div>
+                        <span class="text-base font-sans font-black text-[#0D0D1A] tracking-tighter">Podium</span>
+                    </div>
+                    <p class="text-xs text-[#444460] font-medium leading-relaxed max-w-xs">Podium is Ghana's premium digital classroom environment. Built for deep academic engagement and absolute record reliability.</p>
+                </div>
+                <div class="space-y-4">
+                    <h4 class="text-[9px] font-black text-[#0D0D1A] uppercase tracking-[0.2em]">Product</h4>
+                    <ul class="space-y-3 text-[9px] font-bold text-[#8888A8] uppercase tracking-widest"><li class="hover:text-[#1845D4] cursor-pointer transition-colors"><a href="./about.html">About</a></li><li class="hover:text-[#1845D4] cursor-pointer transition-colors">Classrooms</li><li class="hover:text-[#1845D4] cursor-pointer transition-colors">Registry</li></ul>
+                </div>
+                <div class="space-y-4">
+                    <h4 class="text-[9px] font-black text-[#0D0D1A] uppercase tracking-[0.2em]">Support</h4>
+                    <ul class="space-y-3 text-[9px] font-bold text-[#8888A8] uppercase tracking-widest"><li class="hover:text-[#1845D4] cursor-pointer transition-colors">Help Center</li><li class="hover:text-[#1845D4] cursor-pointer transition-colors">Contact Us</li></ul>
+                </div>
+            </div>
+            <div class="pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                <p class="text-[8px] font-black text-[#8888A8] uppercase tracking-[0.4em]">&copy; 2024 Podium Technologies. All Rights Reserved.</p>
+                <div class="flex gap-8 text-[8px] font-black text-[#8888A8] uppercase tracking-[0.4em]"><span class="hover:text-[#1845D4] cursor-pointer transition-colors">Privacy</span><span class="hover:text-[#1845D4] cursor-pointer transition-colors">Terms</span></div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Floating Support -->
+    <div class="fixed bottom-6 right-6 flex flex-col gap-2.5 z-50">
+        <a href="https://wa.me/233550599755" target="_blank" rel="noopener noreferrer" class="w-10 h-10 bg-white border border-[#DDE0F0] rounded-xl shadow-sm flex items-center justify-center text-[#8888A8] hover:text-[#25D366] transition-all active:scale-95 group relative">
+            <i class="fab fa-whatsapp text-lg"></i>
+            <span class="absolute right-full mr-3 px-2 py-1 bg-[#0D0D1A] text-white text-[7px] font-black uppercase tracking-widest rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">WhatsApp</span>
+        </a>
+        <a href="mailto:support@podium.com" class="w-10 h-10 bg-[#1845D4] text-white rounded-xl shadow-lg shadow-blue-600/10 flex items-center justify-center hover:bg-[#0F2FA8] transition-all active:scale-95 group relative">
+            <i class="fas fa-envelope text-sm"></i>
+            <span class="absolute right-full mr-3 px-2 py-1 bg-[#0D0D1A] text-white text-[7px] font-black uppercase tracking-widest rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">Email Support</span>
+        </a>
+    </div>
+
+    <!-- Firebase Logic -->
+    <script type="module">
+        import { auth } from './js/firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // Navbar Scroll Effect
+        const nav = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 20) {
+                nav.classList.add('bg-white', 'border-b', 'border-[#DDE0F0]', 'py-2', 'shadow-sm');
+                nav.classList.remove('bg-transparent', 'py-5');
+            } else {
+                nav.classList.remove('bg-white', 'border-b', 'border-[#DDE0F0]', 'py-2', 'shadow-sm');
+                nav.classList.add('bg-transparent', 'py-5');
+            }
+        });
+
+        // Auth State Check
+        onAuthStateChanged(auth, (user) => {
+            const authButtons = document.getElementById('auth-buttons');
+            if (user) {
+                authButtons.innerHTML = `
+                    <a href="/dashboard.html" class="px-4 py-2 bg-[#1845D4] text-white text-[9px] font-bold uppercase tracking-widest rounded-md hover:bg-[#0F2FA8] transition-all active:scale-95 shadow-lg shadow-blue-600/10">Dashboard</a>
+                `;
+            }
+        });
+
+        // Theme Toggle (Simplified for parity)
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            const icon = document.getElementById('theme-icon');
+            icon.classList.toggle('fa-moon');
+            icon.classList.toggle('fa-sun');
+        });
+
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const closeMobileMenu = document.getElementById('close-mobile-menu');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn?.addEventListener('click', () => {
+            mobileMenu.classList.remove('translate-x-full');
+            document.body.classList.add('overflow-hidden');
+        });
+
+        closeMobileMenu?.addEventListener('click', () => {
+            mobileMenu.classList.add('translate-x-full');
+            document.body.classList.remove('overflow-hidden');
+        });
+    </script>
+</body>
+</html>

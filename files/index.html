@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Podium — Learn Without Limits</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #1845D4;
+    --blue-dark: #0f2fa8;
+    --blue-light: #e8eeff;
+    --blue-mid: #3a60f7;
+    --white: #ffffff;
+    --gray: #f5f6fa;
+    --ink: #0d0d1a;
+    --ink-mid: #444460;
+    --ink-light: #8888a8;
+    --line: #dde0f0;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--white);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 60px;
+    height: 64px;
+    background: var(--white);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    color: var(--blue);
+    letter-spacing: -0.5px;
+    text-decoration: none;
+  }
+
+  .nav-links { display: flex; gap: 36px; list-style: none; }
+  .nav-links a {
+    font-size: 0.875rem; font-weight: 500;
+    color: var(--ink-mid); text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--blue); }
+
+  .nav-actions { display: flex; gap: 12px; align-items: center; }
+  .btn-ghost {
+    padding: 8px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem; font-weight: 500;
+    background: none; border: 1.5px solid var(--line);
+    color: var(--ink); border-radius: 6px;
+    cursor: pointer; text-decoration: none;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+  .btn-primary {
+    padding: 8px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem; font-weight: 500;
+    background: var(--blue); color: var(--white);
+    border: none; border-radius: 6px;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover { background: var(--blue-dark); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 120px 60px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-rule {
+    position: absolute; top: 64px; left: 0; right: 0;
+    height: 1px; background: var(--line);
+  }
+
+  /* Grid lines decoration */
+  .hero::before {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    width: 480px; height: 100%;
+    background:
+      repeating-linear-gradient(90deg, var(--line) 0, var(--line) 1px, transparent 1px, transparent 60px),
+      repeating-linear-gradient(180deg, var(--line) 0, var(--line) 1px, transparent 1px, transparent 60px);
+    opacity: 0.5;
+    z-index: 0;
+  }
+
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--blue);
+    margin-bottom: 28px;
+  }
+
+  .hero-tag span {
+    display: inline-block; width: 24px; height: 2px;
+    background: var(--blue);
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    line-height: 1.05;
+    letter-spacing: -2px;
+    color: var(--ink);
+    max-width: 700px;
+    position: relative; z-index: 1;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--blue);
+  }
+
+  .hero-sub {
+    margin-top: 28px;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: var(--ink-mid);
+    max-width: 480px;
+    line-height: 1.7;
+    position: relative; z-index: 1;
+  }
+
+  .hero-actions {
+    margin-top: 44px;
+    display: flex; gap: 16px; align-items: center;
+    position: relative; z-index: 1;
+  }
+
+  .btn-lg {
+    padding: 14px 32px;
+    font-size: 0.95rem; font-weight: 500;
+    border-radius: 6px; cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .btn-blue-lg {
+    background: var(--blue); color: var(--white); border: none;
+  }
+  .btn-blue-lg:hover { background: var(--blue-dark); }
+
+  .btn-outline-lg {
+    background: none; color: var(--ink);
+    border: 1.5px solid var(--line);
+  }
+  .btn-outline-lg:hover { border-color: var(--blue); color: var(--blue); }
+
+  .hero-stat-row {
+    display: flex; gap: 48px;
+    margin-top: 72px;
+    padding-top: 40px;
+    border-top: 1px solid var(--line);
+    position: relative; z-index: 1;
+  }
+
+  .stat-item { }
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.2rem; color: var(--ink);
+    letter-spacing: -1px;
+  }
+  .stat-label {
+    font-size: 0.8rem; color: var(--ink-light);
+    margin-top: 2px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  /* FEATURES */
+  .features {
+    padding: 100px 60px;
+    background: var(--gray);
+    border-top: 1px solid var(--line);
+  }
+
+  .section-header {
+    display: flex; justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 60px;
+  }
+
+  .section-label {
+    font-size: 0.75rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--blue); margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    letter-spacing: -1px; line-height: 1.1;
+    color: var(--ink);
+  }
+
+  .section-desc {
+    font-size: 0.95rem; color: var(--ink-mid);
+    max-width: 340px; line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .feature-card {
+    background: var(--white);
+    padding: 44px 36px;
+    transition: background 0.2s;
+  }
+
+  .feature-card:hover { background: var(--blue-light); }
+
+  .feature-icon {
+    width: 40px; height: 40px;
+    background: var(--blue);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 24px;
+  }
+
+  .feature-icon svg { width: 20px; height: 20px; }
+
+  .feature-card h3 {
+    font-size: 1.05rem; font-weight: 600;
+    margin-bottom: 10px; color: var(--ink);
+  }
+
+  .feature-card p {
+    font-size: 0.875rem; color: var(--ink-mid);
+    line-height: 1.7; font-weight: 300;
+  }
+
+  /* HOW IT WORKS */
+  .how {
+    padding: 100px 60px;
+    border-top: 1px solid var(--line);
+  }
+
+  .steps {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 60px;
+    border: 1px solid var(--line);
+  }
+
+  .step {
+    padding: 44px 36px;
+    border-right: 1px solid var(--line);
+    position: relative;
+  }
+  .step:last-child { border-right: none; }
+
+  .step-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 3rem; color: var(--blue-light);
+    line-height: 1; margin-bottom: 20px;
+  }
+
+  .step h4 {
+    font-size: 0.95rem; font-weight: 600;
+    margin-bottom: 8px; color: var(--ink);
+  }
+
+  .step p {
+    font-size: 0.85rem; color: var(--ink-mid);
+    line-height: 1.7; font-weight: 300;
+  }
+
+  /* CTA */
+  .cta-section {
+    background: var(--blue);
+    padding: 80px 60px;
+    display: flex;
+    align-items: center; justify-content: space-between;
+  }
+
+  .cta-section h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--white);
+    letter-spacing: -1px;
+    max-width: 500px;
+    line-height: 1.15;
+  }
+
+  .cta-section h2 em {
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  .btn-white {
+    padding: 14px 36px;
+    background: var(--white);
+    color: var(--blue);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem; font-weight: 600;
+    border: none; border-radius: 6px;
+    cursor: pointer; text-decoration: none;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+  .btn-white:hover { opacity: 0.9; }
+
+  /* FOOTER */
+  footer {
+    padding: 40px 60px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.2rem; color: var(--blue);
+  }
+
+  .footer-copy {
+    font-size: 0.8rem; color: var(--ink-light);
+  }
+
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a {
+    font-size: 0.8rem; color: var(--ink-light);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--blue); }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-tag  { animation: fadeUp 0.5s ease both; }
+  h1         { animation: fadeUp 0.5s 0.1s ease both; }
+  .hero-sub  { animation: fadeUp 0.5s 0.2s ease both; }
+  .hero-actions { animation: fadeUp 0.5s 0.3s ease both; }
+  .hero-stat-row { animation: fadeUp 0.5s 0.4s ease both; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Podium</a>
+  <ul class="nav-links">
+    <li><a href="#">Features</a></li>
+    <li><a href="#">Pricing</a></li>
+    <li><a href="#">For Educators</a></li>
+    <li><a href="#">Docs</a></li>
+  </ul>
+  <div class="nav-actions">
+    <a href="dashboard.html" class="btn-ghost">Log in</a>
+    <a href="dashboard.html" class="btn-primary">Get started</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag"><span></span>Online learning, redesigned</div>
+  <h1>The classroom<br>that <em>travels</em><br>with you.</h1>
+  <p class="hero-sub">Podium brings students and educators together in focused, distraction-free virtual classrooms — anywhere, on any device.</p>
+  <div class="hero-actions">
+    <a href="dashboard.html" class="btn-lg btn-blue-lg">Start for free</a>
+    <a href="#" class="btn-lg btn-outline-lg">Watch demo →</a>
+  </div>
+  <div class="hero-stat-row">
+    <div class="stat-item">
+      <div class="stat-num">40k+</div>
+      <div class="stat-label">Active students</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">1,200</div>
+      <div class="stat-label">Educators</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">98%</div>
+      <div class="stat-label">Satisfaction rate</div>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="section-header">
+    <div>
+      <div class="section-label">Why Podium</div>
+      <h2 class="section-title">Everything you need<br>to run a great class.</h2>
+    </div>
+    <p class="section-desc">From live sessions to async assignments, Podium covers the full learning lifecycle without the bloat.</p>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+      </div>
+      <h3>Structured Classrooms</h3>
+      <p>Organize content into modules, sections, and lessons. Students always know exactly where they are.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3>Live Collaboration</h3>
+      <p>Real-time whiteboards, polls, and Q&A tools keep sessions engaging and interactive.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <h3>Smart Assignments</h3>
+      <p>Auto-graded quizzes, file submissions, and peer review — all in one place.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <h3>Progress Tracking</h3>
+      <p>Dashboards for both students and instructors show completion rates and performance at a glance.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+      </div>
+      <h3>Async-First Design</h3>
+      <p>Recorded lectures, timestamped notes, and flexible deadlines respect different schedules.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h3>Secure & Private</h3>
+      <p>Role-based access, invite-only classes, and encrypted data keep your learning environment safe.</p>
+    </div>
+  </div>
+</section>
+
+<section class="how">
+  <div class="section-label">How it works</div>
+  <h2 class="section-title">Up and running<br>in minutes.</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <h4>Create an account</h4>
+      <p>Sign up with your email or institution SSO. No credit card required.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <h4>Create or join a class</h4>
+      <p>Educators set up a classroom in seconds. Students join with a simple code.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <h4>Add your content</h4>
+      <p>Upload slides, videos, and readings or build lessons directly in Podium.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <h4>Start learning</h4>
+      <p>Go live, assign work, track progress, and engage your students every session.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <h2>Ready to step up<br>to the <em>podium?</em></h2>
+  <a href="dashboard.html" class="btn-white">Create your free account →</a>
+</section>
+
+<footer>
+  <div class="footer-logo">Podium</div>
+  <div class="footer-links">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Support</a>
+    <a href="#">Status</a>
+  </div>
+  <div class="footer-copy">© 2026 Podium Technologies</div>
+</footer>
+
+</body>
+</html>

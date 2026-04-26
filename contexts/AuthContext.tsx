@@ -9,8 +9,6 @@ import {
     onAuthStateChanged,
     GoogleAuthProvider,
     signInWithPopup,
-    sendPasswordResetEmail,
-    sendEmailVerification,
 } from 'firebase/auth';
 import { auth, db, handleFirestoreError } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';

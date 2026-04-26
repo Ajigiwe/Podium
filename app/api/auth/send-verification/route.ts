@@ -16,7 +16,12 @@ export async function POST(request: Request) {
 
         const link = await adminAuth.generateEmailVerificationLink(email, actionCodeSettings);
 
-        await sendVerificationEmail(email, link);
+        const { data, error: sendError } = await sendVerificationEmail(email, link);
+
+        if (sendError) {
+            console.error('[API:SendVerification] Resend Error:', sendError);
+            return NextResponse.json({ error: sendError.message || 'Verification email failed' }, { status: 500 });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

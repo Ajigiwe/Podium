@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Podium - Modern Virtual Education</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="./css/index.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        podium: {
+                            blue: '#1845D4',
+                            deep: '#0D0D1A',
+                            muted: '#8888A8',
+                            border: '#DDE0F0',
+                            bg: '#F5F6FA',
+                            active: '#E8EEFF'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        serif: ['DM Serif Display', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-white text-[#0D0D1A] font-sans selection:bg-blue-100 transition-colors duration-200">
+    
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+        <div class="max-w-6xl mx-auto px-6 sm:px-8">
+            <div class="flex justify-between items-center h-20">
+                <a href="/" class="flex items-center gap-3 group">
+                    <div class="w-10 h-10 rounded-lg bg-[#1845D4] flex items-center justify-center border border-blue-600 shadow-lg shadow-blue-600/20 group-hover:scale-105 transition-transform">
+                        <i class="fas fa-graduation-cap text-white"></i>
+                    </div>
+                    <span class="text-2xl font-sans font-black text-[#0D0D1A] tracking-tighter">Podium</span>
+                </a>
+                <a href="/" class="text-[10px] font-black text-[#8888A8] hover:text-[#1845D4] uppercase tracking-[0.2em] flex items-center gap-2 transition-all">
+                    <i class="fas fa-chevron-left"></i> Back to Home
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="pt-40 pb-24 px-6 sm:px-8">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl sm:text-7xl font-sans font-black text-[#0D0D1A] mb-8 tracking-tighter leading-tight animate-fade-in">
+                Designed for the <span class="text-[#1845D4] italic">Modern Classroom.</span>
+            </h1>
+            <p class="text-lg text-[#444460] font-medium max-w-2xl mx-auto leading-relaxed opacity-80 animate-fade-in" style="animation-delay: 0.1s">
+                Podium is built from the ground up to solve the unique challenges of large-scale virtual education. We focus on reliability, engagement, and automated management.
+            </p>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="py-32 px-6 sm:px-8 bg-[#F5F6FA] border-y border-[#DDE0F0]">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-20">
+                <div class="space-y-6 group animate-fade-in" style="animation-delay: 0.2s">
+                    <div class="w-14 h-14 rounded-xl bg-white text-[#1845D4] flex items-center justify-center border border-[#DDE0F0] shadow-sm group-hover:border-[#1845D4] transition-all">
+                        <i class="fas fa-fingerprint text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-sans font-black text-[#0D0D1A] mb-3 tracking-tight">Smart Attendance</h3>
+                        <p class="text-[13px] text-[#444460] font-medium leading-relaxed opacity-80">Trigger 30-second verification prompts that ensure students are actually present and engaged during the session.</p>
+                    </div>
+                </div>
+                <div class="space-y-6 group animate-fade-in" style="animation-delay: 0.3s">
+                    <div class="w-14 h-14 rounded-xl bg-white text-[#1845D4] flex items-center justify-center border border-[#DDE0F0] shadow-sm group-hover:border-[#1845D4] transition-all">
+                        <i class="fas fa-smile text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-sans font-black text-[#0D0D1A] mb-3 tracking-tight">Live Reactions</h3>
+                        <p class="text-[13px] text-[#444460] font-medium leading-relaxed opacity-80">Real-time emoji reactions that float across the screen, allowing students to express themselves without interrupting.</p>
+                    </div>
+                </div>
+                <div class="space-y-6 group animate-fade-in" style="animation-delay: 0.4s">
+                    <div class="w-14 h-14 rounded-xl bg-white text-[#1845D4] flex items-center justify-center border border-[#DDE0F0] shadow-sm group-hover:border-[#1845D4] transition-all">
+                        <i class="fas fa-video text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-sans font-black text-[#0D0D1A] mb-3 tracking-tight">Dynamic Grid</h3>
+                        <p class="text-[13px] text-[#444460] font-medium leading-relaxed opacity-80">Optimized video layouts that handle up to 400+ participants with zero lag, perfect for large university lectures.</p>
+                    </div>
+                </div>
+                <div class="space-y-6 group animate-fade-in" style="animation-delay: 0.5s">
+                    <div class="w-14 h-14 rounded-xl bg-white text-[#1845D4] flex items-center justify-center border border-[#DDE0F0] shadow-sm group-hover:border-[#1845D4] transition-all">
+                        <i class="fas fa-bolt text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-sans font-black text-[#0D0D1A] mb-3 tracking-tight">Crystal Clear Sharing</h3>
+                        <p class="text-[13px] text-[#444460] font-medium leading-relaxed opacity-80">High-performance screen sharing at 1080p, ensuring slides and technical demos look sharp for every student.</p>
+                    </div>
+                </div>
+                <div class="space-y-6 group animate-fade-in" style="animation-delay: 0.6s">
+                    <div class="w-14 h-14 rounded-xl bg-white text-[#1845D4] flex items-center justify-center border border-[#DDE0F0] shadow-sm group-hover:border-[#1845D4] transition-all">
+                        <i class="fas fa-history text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-sans font-black text-[#0D0D1A] mb-3 tracking-tight">Detailed Session Logs</h3>
+                        <p class="text-[13px] text-[#444460] font-medium leading-relaxed opacity-80">Automated history of attendance, participation duration, and verification status for every student in the room.</p>
+                    </div>
+                </div>
+                <div class="space-y-6 group animate-fade-in" style="animation-delay: 0.7s">
+                    <div class="w-14 h-14 rounded-xl bg-white text-[#1845D4] flex items-center justify-center border border-[#DDE0F0] shadow-sm group-hover:border-[#1845D4] transition-all">
+                        <i class="fas fa-mobile-alt text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-sans font-black text-[#0D0D1A] mb-3 tracking-tight">Data Optimized</h3>
+                        <p class="text-[13px] text-[#444460] font-medium leading-relaxed opacity-80">Smart quality scaling that dynamically adjusts to save data for students using limited mobile bundles.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-32 px-6 sm:px-8">
+        <div class="max-w-3xl mx-auto text-center space-y-10">
+            <h2 class="text-4xl font-sans font-black text-[#0D0D1A] tracking-tighter">Ready to experience <span class="italic">Podium?</span></h2>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="./auth/login.html" class="w-full sm:w-auto px-12 py-5 rounded-xl bg-[#1845D4] text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 hover:bg-[#0F2FA8] transition-all active:scale-95">Get Started for Free</a>
+                <a href="/" class="w-full sm:w-auto px-12 py-5 rounded-xl bg-white text-[#0D0D1A] text-[11px] font-black uppercase tracking-[0.2em] border border-[#DDE0F0] hover:border-[#1845D4] transition-all">Back Home</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-10 border-t border-[#DDE0F0]">
+        <div class="max-w-6xl mx-auto px-6 text-center">
+            <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-[0.4em]">
+                PODIUM CLASSROOM &copy; 2026
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        window.onscroll = function() {
+            const navbar = document.getElementById('navbar');
+            if (window.pageYOffset > 20) {
+                navbar.classList.add('bg-white', 'border-b', 'border-[#DDE0F0]', 'h-16');
+                navbar.classList.remove('h-20');
+            } else {
+                navbar.classList.remove('bg-white', 'border-b', 'border-[#DDE0F0]', 'h-16');
+                navbar.classList.add('h-20');
+            }
+        };
+    </script>
+</body>
+</html>

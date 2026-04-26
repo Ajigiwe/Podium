@@ -37,7 +37,12 @@ export async function POST(request: Request) {
 
         const link = await adminAuth.generatePasswordResetLink(email, actionCodeSettings);
 
-        await sendPasswordResetEmail(email, link);
+        const { data, error: sendError } = await sendPasswordResetEmail(email, link);
+
+        if (sendError) {
+            console.error('[API:ResetPassword] Resend Error:', sendError);
+            return NextResponse.json({ error: sendError.message || 'Email delivery failed' }, { status: 500 });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

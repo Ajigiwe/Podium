@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — Podium</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --blue:#1845D4; --blue-dark:#0f2fa8; --blue-light:#e8eeff; --white:#ffffff;
+    --gray:#f5f6fa; --gray2:#eef0f8; --ink:#0d0d1a; --ink-mid:#444460;
+    --ink-light:#8888a8; --line:#dde0f0; --nav-width:240px; --header-h:60px;
+  }
+  body { font-family:'DM Sans',sans-serif; background:var(--gray); color:var(--ink); display:flex; min-height:100vh; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { width:var(--nav-width); background:var(--white); border-right:1px solid var(--line); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:50; }
+  .sidebar-logo { padding:0 24px; height:var(--header-h); display:flex; align-items:center; border-bottom:1px solid var(--line); font-family:'DM Serif Display',serif; font-size:1.3rem; color:var(--blue); text-decoration:none; flex-shrink:0; }
+  .nav-section { padding:20px 12px 8px; flex:1; overflow-y:auto; }
+  .nav-group-label { font-size:.65rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-light); padding:0 12px; margin-bottom:4px; margin-top:16px; }
+  .nav-group-label:first-child { margin-top:0; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:.875rem; font-weight:500; color:var(--ink-mid); text-decoration:none; transition:background .15s,color .15s; cursor:pointer; }
+  .nav-item:hover { background:var(--gray); color:var(--ink); }
+  .nav-item.active { background:var(--blue-light); color:var(--blue); }
+  .nav-item svg { width:16px; height:16px; flex-shrink:0; stroke:currentColor; }
+  .nav-item .badge { margin-left:auto; font-size:.7rem; font-weight:600; background:var(--blue); color:var(--white); padding:2px 7px; border-radius:20px; }
+  .sidebar-footer { padding:16px 12px; border-top:1px solid var(--line); flex-shrink:0; }
+  .profile-thumb { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:6px; text-decoration:none; transition:background .15s; cursor:pointer; }
+  .profile-thumb:hover { background:var(--gray); }
+  .avatar { width:32px; height:32px; background:var(--blue); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:600; color:var(--white); flex-shrink:0; }
+  .profile-info { flex:1; min-width:0; }
+  .profile-name { font-size:.8rem; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .profile-role { font-size:.7rem; color:var(--ink-light); }
+
+  /* ── LAYOUT ── */
+  .main-wrap { margin-left:var(--nav-width); flex:1; display:flex; flex-direction:column; min-height:100vh; }
+  .topbar { height:var(--header-h); background:var(--white); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:0 32px; position:sticky; top:0; z-index:40; }
+  .topbar-title { font-size:1rem; font-weight:600; color:var(--ink); }
+  .icon-btn { width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:6px; border:1px solid var(--line); background:none; cursor:pointer; transition:background .15s; }
+  .icon-btn:hover { background:var(--gray); }
+  .icon-btn svg { width:16px; height:16px; stroke:var(--ink-mid); }
+  .content { padding:36px 32px; flex:1; }
+
+  /* ── SETTINGS LAYOUT ── */
+  .settings-layout { display:grid; grid-template-columns:220px 1fr; gap:24px; }
+
+  .settings-nav { }
+  .settings-nav-label { font-size:.65rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-light); padding:0 12px; margin-bottom:4px; margin-top:20px; }
+  .settings-nav-label:first-child { margin-top:0; }
+  .s-nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; font-size:.85rem; font-weight:500; color:var(--ink-mid); cursor:pointer; transition:background .15s,color .15s; }
+  .s-nav-item:hover { background:var(--white); color:var(--ink); }
+  .s-nav-item.active { background:var(--white); color:var(--blue); border:1px solid var(--line); }
+  .s-nav-item svg { width:15px; height:15px; stroke:currentColor; flex-shrink:0; }
+
+  /* ── CARDS ── */
+  .settings-panels { display:flex; flex-direction:column; gap:20px; }
+
+  .card { background:var(--white); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .card-header { display:flex; align-items:flex-start; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--line); }
+  .card-header div h2 { font-size:.9rem; font-weight:600; color:var(--ink); }
+  .card-header div p { font-size:.8rem; color:var(--ink-light); margin-top:2px; }
+  .card-body { padding:24px; }
+  .card-footer { padding:16px 24px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px; }
+
+  .form-group { margin-bottom:18px; }
+  .form-group:last-child { margin-bottom:0; }
+  .form-label { display:block; font-size:.8rem; font-weight:600; color:var(--ink); margin-bottom:6px; }
+  .form-input { width:100%; padding:10px 14px; font-family:'DM Sans',sans-serif; font-size:.875rem; color:var(--ink); background:var(--white); border:1.5px solid var(--line); border-radius:6px; outline:none; transition:border-color .2s; }
+  .form-input:focus { border-color:var(--blue); }
+  .form-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238888a8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
+
+  .btn-primary { display:inline-flex; align-items:center; gap:8px; padding:9px 20px; background:var(--blue); color:var(--white); font-family:'DM Sans',sans-serif; font-size:.875rem; font-weight:500; border:none; border-radius:6px; cursor:pointer; transition:background .2s; }
+  .btn-primary:hover { background:var(--blue-dark); }
+  .btn-outline { display:inline-flex; align-items:center; gap:8px; padding:9px 20px; background:none; color:var(--ink); font-family:'DM Sans',sans-serif; font-size:.875rem; font-weight:500; border:1.5px solid var(--line); border-radius:6px; cursor:pointer; transition:all .2s; }
+  .btn-outline:hover { border-color:var(--blue); color:var(--blue); }
+  .btn-danger { display:inline-flex; align-items:center; gap:8px; padding:9px 20px; background:none; color:#d03a3a; font-family:'DM Sans',sans-serif; font-size:.875rem; font-weight:500; border:1.5px solid #f2cece; border-radius:6px; cursor:pointer; transition:all .2s; }
+  .btn-danger:hover { background:#fdf2f2; }
+
+  /* Toggle switch */
+  .toggle-row { display:flex; align-items:flex-start; justify-content:space-between; padding:16px 0; border-bottom:1px solid var(--line); }
+  .toggle-row:last-child { border-bottom:none; padding-bottom:0; }
+  .toggle-row:first-child { padding-top:0; }
+  .toggle-info h4 { font-size:.875rem; font-weight:500; color:var(--ink); }
+  .toggle-info p { font-size:.8rem; color:var(--ink-light); margin-top:2px; font-weight:300; }
+
+  .toggle { position:relative; width:44px; height:24px; flex-shrink:0; margin-top:2px; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .slider { position:absolute; cursor:pointer; inset:0; background:var(--line); border-radius:24px; transition:.25s; }
+  .slider::before { content:''; position:absolute; width:18px; height:18px; left:3px; bottom:3px; background:var(--white); border-radius:50%; transition:.25s; }
+  input:checked + .slider { background:var(--blue); }
+  input:checked + .slider::before { transform:translateX(20px); }
+
+  /* Danger zone */
+  .danger-zone { border-color:#f2cece; }
+  .danger-zone .card-header { border-bottom-color:#f2cece; }
+  .danger-zone .card-header div h2 { color:#d03a3a; }
+  .danger-zone .card-header div p { color:#c07070; }
+
+  .danger-row { display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid var(--line); }
+  .danger-row:last-child { border-bottom:none; padding-bottom:0; }
+  .danger-row:first-child { padding-top:0; }
+  .danger-row h4 { font-size:.875rem; font-weight:500; color:var(--ink); }
+  .danger-row p { font-size:.8rem; color:var(--ink-light); margin-top:2px; font-weight:300; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <a href="index.html" class="sidebar-logo">Podium</a>
+  <nav class="nav-section">
+    <div class="nav-group-label">Main</div>
+    <a href="dashboard.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      My Classes
+      <span class="badge">4</span>
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      Assignments
+    </a>
+    <a href="#" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+    </a>
+    <div class="nav-group-label">Account</div>
+    <a href="profile.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+    <a href="settings.html" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="profile.html" class="profile-thumb">
+      <div class="avatar">AO</div>
+      <div class="profile-info">
+        <div class="profile-name">Ama Owusu</div>
+        <div class="profile-role">Student</div>
+      </div>
+    </a>
+  </div>
+</aside>
+
+<div class="main-wrap">
+  <header class="topbar">
+    <div class="topbar-title">Settings</div>
+    <button class="icon-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </button>
+  </header>
+
+  <main class="content">
+    <div class="settings-layout">
+
+      <!-- Left nav -->
+      <div class="settings-nav">
+        <div class="settings-nav-label">Preferences</div>
+        <div class="s-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          General
+        </div>
+        <div class="s-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications
+        </div>
+        <div class="s-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Privacy
+        </div>
+        <div class="settings-nav-label">Integrations</div>
+        <div class="s-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Connected apps
+        </div>
+        <div class="settings-nav-label">Account</div>
+        <div class="s-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Billing
+        </div>
+        <div class="s-nav-item" style="color:#d03a3a">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Delete account
+        </div>
+      </div>
+
+      <!-- Right panels -->
+      <div class="settings-panels">
+
+        <!-- General -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>General</h2>
+              <p>Language, timezone, and display preferences.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Display name</label>
+              <input type="text" class="form-input" value="Ama Owusu">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Language</label>
+              <select class="form-input form-select">
+                <option>English (US)</option>
+                <option>French</option>
+                <option>Spanish</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Timezone</label>
+              <select class="form-input form-select">
+                <option>Africa/Accra (GMT+0)</option>
+                <option>Europe/London (GMT+1)</option>
+                <option>America/New_York (GMT-4)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date format</label>
+              <select class="form-input form-select">
+                <option>DD / MM / YYYY</option>
+                <option>MM / DD / YYYY</option>
+                <option>YYYY-MM-DD</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn-outline">Reset</button>
+            <button class="btn-primary">Save changes</button>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Notifications</h2>
+              <p>Choose what you're notified about and how.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <h4>Assignment reminders</h4>
+                <p>Get reminded 24 hours before an assignment is due.</p>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <h4>Class announcements</h4>
+                <p>Notify me when an instructor posts an announcement.</p>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <h4>Grade updates</h4>
+                <p>Receive a notification when an assignment is graded.</p>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <h4>New messages</h4>
+                <p>Notify me of new messages from instructors or classmates.</p>
+              </div>
+              <label class="toggle"><input type="checkbox"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <h4>Weekly digest</h4>
+                <p>A weekly summary of your classes and upcoming deadlines.</p>
+              </div>
+              <label class="toggle"><input type="checkbox"><span class="slider"></span></label>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn-primary">Save preferences</button>
+          </div>
+        </div>
+
+        <!-- Privacy -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Privacy</h2>
+              <p>Control who can see your information.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <h4>Public profile</h4>
+                <p>Let other Podium users find your profile by name or email.</p>
+              </div>
+              <label class="toggle"><input type="checkbox"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <h4>Show enrollment</h4>
+                <p>Show which classes you're enrolled in to other students.</p>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <h4>Activity status</h4>
+                <p>Let instructors see when you were last active.</p>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn-primary">Save preferences</button>
+          </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="card danger-zone">
+          <div class="card-header">
+            <div>
+              <h2>Danger zone</h2>
+              <p>Irreversible actions — proceed carefully.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="danger-row">
+              <div>
+                <h4>Deactivate account</h4>
+                <p>Temporarily disable your account. You can reactivate it anytime.</p>
+              </div>
+              <button class="btn-danger">Deactivate</button>
+            </div>
+            <div class="danger-row">
+              <div>
+                <h4>Delete account</h4>
+                <p>Permanently delete your account and all associated data. This cannot be undone.</p>
+              </div>
+              <button class="btn-danger">Delete account</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

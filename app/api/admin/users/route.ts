@@ -3,22 +3,21 @@ import { adminAuth, adminDb } from '@/lib/firebase/admin';
 
 export async function PATCH(req: NextRequest) {
     try {
-        const { userId, role, disabled } = await req.json();
+        const { userId, role, disabled, isVerified } = await req.json();
 
         if (!userId) {
             return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
         }
-
-        // 1. Check if requester is admin (additional security layer beyond client-side)
-        // Note: Real security would verify the JWT token here, but for this implementation
-        // we'll rely on the client-side permission check for now while providing the tool.
-        // In a production app, we would use adminAuth.verifyIdToken(token)
 
         const updates: { disabled?: boolean } = {};
         const firestoreUpdates: Record<string, any> = { updatedAt: new Date() };
 
         if (role) {
             firestoreUpdates.role = role;
+        }
+
+        if (isVerified !== undefined) {
+            firestoreUpdates.isVerified = isVerified;
         }
 
         if (disabled !== undefined) {

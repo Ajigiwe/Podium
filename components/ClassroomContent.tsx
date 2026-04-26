@@ -293,7 +293,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
 
     const handleLeave = () => {
         leaveClass();
-        router.push('/dashboard');
+        window.location.href = '/dashboard.html';
     };
 
     return (
@@ -362,7 +362,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 )}
                             </button>
                             <button
-                                onClick={() => router.push('/')}
+                                onClick={() => window.location.href = '/'}
                                 className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition-colors"
                                 title="Home"
                             >

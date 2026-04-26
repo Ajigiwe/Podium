@@ -1,0 +1,302 @@
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { 
+    collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// DOM Elements
+const userName = document.getElementById('user-name');
+const userRole = document.getElementById('user-role');
+const userAvatar = document.getElementById('user-avatar');
+const historyList = document.getElementById('history-list');
+const historyTotal = document.getElementById('history-total');
+
+// State
+let activeTab = 'joined';
+let currentUserId = null;
+let joinedHistory = [];
+let hostedHistory = [];
+
+// Auth Listener
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        window.location.href = './auth/login.html';
+        return;
+    }
+    currentUserId = user.uid;
+    
+    // Fetch Profile
+    const profileSnap = await getDoc(doc(db, 'profiles', user.uid));
+    const profile = profileSnap.data() || {};
+    
+    // Update UI
+    userName.innerText = profile.fullName?.split(' ')[0] || user.email.split('@')[0];
+    userRole.innerText = profile.role || 'Student';
+    if (profile.photoURL) {
+        userAvatar.innerHTML = `<img src="${profile.photoURL}" class="w-full h-full object-cover">`;
+    }
+
+    // Start Listeners
+    setLoading(true);
+    fetchJoinHistory();
+    fetchHostedHistory();
+    setTimeout(() => setLoading(false), 800);
+});
+
+// UI Helpers
+const loadingBar = document.getElementById('top-loading-bar');
+function setLoading(isLoading) {
+    if (!loadingBar) return;
+    loadingBar.style.width = isLoading ? '30%' : '100%';
+    if (!isLoading) setTimeout(() => loadingBar.style.width = '0%', 400);
+}
+
+function fetchJoinHistory() {
+    const q = query(collection(db, 'attendance_logs'), where('userId', '==', auth.currentUser.uid), orderBy('joinedAt', 'desc'));
+    onSnapshot(q, (snap) => {
+        joinedHistory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (activeTab === 'joined') render();
+    });
+}
+
+async function fetchHostedHistory() {
+    const logsQuery = query(collection(db, 'attendance_logs'), where('lecturerId', '==', auth.currentUser.uid), orderBy('joinedAt', 'desc'));
+    
+    onSnapshot(logsQuery, async (snap) => {
+        const logs = snap.docs.map(d => d.data());
+        const sessionsMap = new Map();
+
+        // 1. Process Attendance Logs
+        logs.forEach(log => {
+            if (!sessionsMap.has(log.sessionId)) {
+                sessionsMap.set(log.sessionId, {
+                    id: log.sessionId,
+                    title: log.sessionTitle || 'Untitled Session',
+                    createdAt: log.joinedAt, // Use first join as fallback date
+                    participantCount: 0,
+                    participants: new Set(),
+                    type: 'hosted'
+                });
+            }
+            const s = sessionsMap.get(log.sessionId);
+            s.participants.add(log.userId);
+            s.participantCount = s.participants.size;
+            // Keep the earliest date
+            if (log.joinedAt && (!s.createdAt || log.joinedAt.toMillis() < s.createdAt.toMillis())) {
+                s.createdAt = log.joinedAt;
+            }
+        });
+
+        // 2. Process Recordings (Merge if they exist)
+        try {
+            const response = await fetch(`/api/recordings/lecturer/${currentUserId}`);
+            const recData = await response.json();
+            if (recData.success) {
+                recData.recordings.forEach(rec => {
+                    const sid = rec.roomId;
+                    if (!sessionsMap.has(sid)) {
+                        sessionsMap.set(sid, {
+                            id: sid,
+                            title: rec.classTitle || 'Recorded Session',
+                            createdAt: Timestamp.fromDate(new Date(rec.startedAt)),
+                            participantCount: 0,
+                            type: 'hosted',
+                            hasRecording: true,
+                            recordingId: rec.id
+                        });
+                    } else {
+                        const s = sessionsMap.get(sid);
+                        s.hasRecording = true;
+                        s.recordingId = rec.id;
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Recordings fetch error:', err);
+        }
+
+        hostedHistory = Array.from(sessionsMap.values()).sort((a, b) => {
+            const timeA = a.createdAt?.toMillis?.() || 0;
+            const timeB = b.createdAt?.toMillis?.() || 0;
+            return timeB - timeA;
+        });
+
+        if (activeTab === 'hosted') render();
+    });
+}
+
+window.switchTab = (tab) => {
+    activeTab = tab;
+    const tabJoined = document.getElementById('tab-joined');
+    const tabHosted = document.getElementById('tab-hosted');
+    
+    if (tab === 'joined') {
+        tabJoined.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all bg-[#1845D4] text-white';
+        tabHosted.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all text-[#8888A8] hover:text-[#0D0D1A]';
+    } else {
+        tabHosted.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all bg-[#1845D4] text-white';
+        tabJoined.className = 'flex-1 md:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-[0.15em] rounded transition-all text-[#8888A8] hover:text-[#0D0D1A]';
+    }
+    render();
+};
+
+function render() {
+    const data = activeTab === 'joined' ? joinedHistory : hostedHistory;
+    historyTotal.innerText = data.length;
+    historyList.innerHTML = '';
+
+    if (data.length === 0) {
+        historyList.innerHTML = `<div class="py-16 text-center text-[#8888A8] text-[11px] font-bold uppercase tracking-widest italic animate-fade-in">No records found.</div>`;
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    data.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-5 sm:py-4 hover:bg-[#F5F6FA] transition-all group animate-fade-in border-b border-[#F5F6FA] sm:border-none';
+        div.style.animationDelay = `${index * 0.05}s`;
+        
+        const date = item.joinedAt?.toDate() || item.createdAt?.toDate() || new Date();
+        const icon = activeTab === 'joined' ? 'fa-graduation-cap' : 'fa-video';
+
+        div.innerHTML = `
+            <div class="flex items-center gap-4 flex-1 min-w-0">
+                <div class="w-8 h-8 bg-[#F5F6FA] rounded-lg flex-shrink-0 flex items-center justify-center text-[#1845D4] border border-[#DDE0F0] group-hover:bg-[#1845D4] group-hover:text-white transition-all">
+                    <i class="fas ${icon} text-xs"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[14px] font-medium text-[#0D0D1A] truncate">${item.sessionTitle || item.title || 'Untitled Session'}</div>
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-[#8888A8] uppercase tracking-widest mt-1">
+                        <span class="flex items-center gap-1"><i class="far fa-calendar text-[10px]"></i> ${date.toLocaleDateString('en-GB')}</span>
+                        ${activeTab === 'joined' 
+                            ? `<span class="flex items-center gap-1"><i class="far fa-clock text-[10px]"></i> ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`
+                            : `<span class="flex items-center gap-1 text-[#1845D4]"><i class="fas fa-users text-[10px]"></i> ${item.participantCount || 0} Learners</span>`
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:ml-auto">
+                ${activeTab === 'joined' 
+                    ? `<button onclick="window.deleteRecord('${item.id}', event)" class="p-2 text-[#DDE0F0] hover:text-red-600 transition-colors sm:opacity-0 sm:group-hover:opacity-100"><i class="fas fa-trash-alt"></i></button>`
+                    : `
+                        <button onclick="window.viewLogs('${item.id}', '${item.title.replace(/'/g, "\\'")}')" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-[#DDE0F0] text-[#0D0D1A] text-[10px] font-bold uppercase tracking-widest rounded hover:border-[#1845D4] transition-all">Logs</button>
+                        ${item.hasRecording 
+                            ? `<button onclick="window.downloadMedia('${item.recordingId}')" class="flex-1 sm:flex-none px-4 py-2 bg-[#1845D4] text-white text-[10px] font-bold uppercase tracking-widest rounded shadow-lg shadow-blue-600/10 hover:bg-[#0F2FA8] transition-all">Media</button>`
+                            : `<button disabled class="flex-1 sm:flex-none px-4 py-2 bg-[#F5F6FA] text-[#8888A8] text-[10px] font-bold uppercase tracking-widest rounded cursor-not-allowed border border-[#DDE0F0]">No Media</button>`
+                        }
+                    `
+                }
+            </div>
+        `;
+        fragment.appendChild(div);
+    });
+    historyList.appendChild(fragment);
+}
+
+window.deleteRecord = async (id, e) => {
+    if (e) e.stopPropagation();
+    if (confirm('Permanently remove this entry?')) {
+        await deleteDoc(doc(db, 'attendance_logs', id));
+    }
+};
+
+window.viewLogs = async (sessionId, title) => {
+    const modal = document.getElementById('modal-attendance');
+    const content = document.getElementById('attendance-logs-content');
+    const downloadBtn = document.getElementById('download-attendance-btn');
+    
+    modal.querySelector('h2').innerText = `Logs: ${title}`;
+    content.innerHTML = `<div class="py-10 text-center animate-pulse"><i class="fas fa-circle-notch fa-spin text-[#1845D4]"></i></div>`;
+    downloadBtn.classList.add('hidden');
+    modal.classList.remove('hidden');
+
+    try {
+        const q = query(collection(db, 'attendance_logs'), where('sessionId', '==', sessionId));
+        const snap = await getDocs(q);
+        
+        if (snap.empty) {
+            content.innerHTML = `<p class="py-10 text-center text-[#8888A8] text-[11px] font-bold uppercase tracking-widest italic">No participants recorded.</p>`;
+            return;
+        }
+
+        const logs = snap.docs
+            .map(d => d.data())
+            .sort((a, b) => (a.joinedAt?.toMillis?.() || 0) - (b.joinedAt?.toMillis?.() || 0));
+
+        // Prepare for download
+        window.currentLogs = logs;
+        window.currentLogTitle = title;
+        downloadBtn.classList.remove('hidden');
+        downloadBtn.onclick = () => window.downloadLogs();
+
+        content.innerHTML = `
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-[10px] font-black text-[#8888A8] uppercase tracking-widest border-b border-[#F5F6FA]">
+                        <th class="py-3">Student</th>
+                        <th class="py-3">Index</th>
+                        <th class="py-3">Check-ins</th>
+                        <th class="py-3">Joined</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#F5F6FA]">
+                    ${logs.map(data => {
+                        const time = data.joinedAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '--:--';
+                        const checkins = `${data.totalVerificationsCompleted || 0}/${data.totalVerificationsSent || 0}`;
+                        const percentage = data.verificationPercentage || 0;
+                        return `
+                            <tr>
+                                <td class="py-3 text-[13px] font-medium text-[#0D0D1A]">${data.userName || 'Anonymous'}</td>
+                                <td class="py-3 text-[11px] font-bold text-[#8888A8] uppercase">${data.userIndexNumber || 'N/A'}</td>
+                                <td class="py-3 text-[11px] font-bold text-[#1845D4]">
+                                    ${checkins} 
+                                    <span class="ml-1 text-[9px] text-[#8888A8]">(${percentage}%)</span>
+                                </td>
+                                <td class="py-3 text-[11px] font-bold text-[#8888A8] uppercase">${time}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (err) {
+        console.error('Logs fetch error:', err);
+        content.innerHTML = `<p class="py-10 text-center text-red-500 text-[11px] font-bold uppercase tracking-widest">Failed to load logs.</p>`;
+    }
+};
+
+window.downloadMedia = (recordingId) => {
+    const link = document.createElement('a');
+    link.href = `/api/recordings/download/${recordingId}`;
+    link.download = `recording_${recordingId}.mp4`;
+    link.click();
+};
+
+window.downloadLogs = () => {
+    if (!window.currentLogs || window.currentLogs.length === 0) return;
+    
+    const headers = ['Student Name', 'Index Number', 'Checks Completed', 'Total Checks', 'Percentage', 'Join Time'];
+    const rows = window.currentLogs.map(log => [
+        `"${log.userName || 'Anonymous'}"`,
+        `"${log.userIndexNumber || 'N/A'}"`,
+        log.totalVerificationsCompleted || 0,
+        log.totalVerificationsSent || 0,
+        `"${(log.verificationPercentage || 0)}%"`,
+        `"${log.joinedAt?.toDate().toLocaleString() || 'N/A'}"`
+    ]);
+    
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `attendance_${window.currentLogTitle.replace(/\s+/g, '_').toLowerCase()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+// Logout
+document.getElementById('logout-btn').onclick = () => signOut(auth);
