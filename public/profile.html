@@ -96,53 +96,53 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
                     <!-- Left Sidebar (Profile Overview) -->
                     <div class="space-y-6">
-                        <div class="bg-white border border-[#DDE0F0] rounded-xl p-10 text-center space-y-8 shadow-sm">
+                        <div class="bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-10 text-center space-y-8 shadow-sm">
                             <div class="relative inline-block group">
                                 <div id="profile-photo-container" class="w-24 h-24 bg-[#1845D4] rounded-full flex items-center justify-center text-white text-4xl font-bold overflow-hidden shadow-xl shadow-blue-600/10 transition-transform group-hover:scale-105">
                                     U
                                 </div>
-                                <label class="absolute bottom-0 right-0 bg-white border border-[#DDE0F0] text-[#444460] w-8 h-8 flex items-center justify-center rounded-full shadow-lg cursor-pointer hover:border-[#1845D4] hover:text-[#1845D4] transition-all">
+                                <label class="absolute bottom-0 right-0 bg-white dark:bg-slate-950 border border-[#DDE0F0] dark:border-slate-800 text-[#444460] dark:text-slate-400 w-8 h-8 flex items-center justify-center rounded-full shadow-lg cursor-pointer hover:border-[#1845D4] hover:text-[#1845D4] transition-all">
                                     <i class="fas fa-camera text-xs"></i>
                                     <input type="file" id="photo-upload" class="hidden" accept="image/*">
                                 </label>
                             </div>
                             
                             <div>
-                                <h2 id="profile-name" class="text-xl font-bold text-[#0D0D1A] tracking-tight leading-none mb-3">Identity Pending</h2>
-                                <div id="profile-role-badge" class="inline-block text-[9px] font-black text-[#1845D4] uppercase tracking-[0.2em] bg-[#E8EEFF] px-4 py-1.5 rounded-full">Student</div>
+                                <h2 id="profile-name" class="text-xl font-bold text-[#0D0D1A] dark:text-white tracking-tight leading-none mb-3">Identity Pending</h2>
+                                <div id="profile-role-badge" class="inline-block text-[9px] font-black text-[#1845D4] dark:text-blue-400 uppercase tracking-[0.2em] bg-[#E8EEFF] dark:bg-blue-900/20 px-4 py-1.5 rounded-full">Student</div>
                                 <p id="profile-email" class="text-[13px] text-[#8888A8] font-medium mt-3">user@example.com</p>
                             </div>
 
-                            <div class="grid grid-cols-2 bg-[#DDE0F0] gap-[1px] border border-[#DDE0F0] rounded-xl overflow-hidden">
-                                <div class="bg-white p-6">
-                                    <div id="stat-classes" class="text-2xl font-bold text-[#0D0D1A]">0</div>
+                            <div class="grid grid-cols-2 bg-[#DDE0F0] dark:bg-slate-800 gap-[1px] border border-[#DDE0F0] dark:border-slate-800 rounded-xl overflow-hidden">
+                                <div class="bg-white dark:bg-slate-900 p-6">
+                                    <div id="stat-classes" class="text-2xl font-bold text-[#0D0D1A] dark:text-white">0</div>
                                     <div class="text-[8px] font-black text-[#8888A8] uppercase tracking-[0.2em] mt-1.5">Classes</div>
                                 </div>
-                                <div class="bg-white p-6">
-                                    <div id="stat-secondary" class="text-2xl font-bold text-[#0D0D1A]">0</div>
+                                <div class="bg-white dark:bg-slate-900 p-6">
+                                    <div id="stat-secondary" class="text-2xl font-bold text-[#0D0D1A] dark:text-white">0</div>
                                     <div id="stat-secondary-label" class="text-[8px] font-black text-[#8888A8] uppercase tracking-[0.2em] mt-1.5">Engagement</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div id="verification-card" class="bg-white border border-[#DDE0F0] rounded-xl p-8 space-y-4 shadow-sm">
+                        <div id="verification-card" class="bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-8 space-y-4 shadow-sm">
                             <div class="flex items-center justify-between">
-                                <h3 class="text-[10px] font-black text-[#0D0D1A] uppercase tracking-[0.2em]">Verification</h3>
+                                <h3 class="text-[10px] font-black text-[#0D0D1A] dark:text-slate-100 uppercase tracking-[0.2em]">Verification</h3>
                                 <div id="verification-status" class="text-[8px] font-black uppercase tracking-widest text-[#8888A8]">Unverified</div>
                             </div>
-                            <p class="text-[12px] text-[#444460] font-medium leading-relaxed">Verified students can create communities and manage records.</p>
-                            <button id="request-verification-btn" class="w-full py-3 bg-[#F5F6FA] text-[#0D0D1A] border border-[#DDE0F0] rounded-lg text-[9px] font-black uppercase tracking-[0.2em] hover:bg-[#1845D4] hover:text-white transition-all">Request Badge</button>
+                            <p class="text-[12px] text-[#444460] dark:text-slate-400 font-medium leading-relaxed">Verified students can create communities and manage records.</p>
+                            <button id="request-verification-btn" class="w-full py-3 bg-[#F5F6FA] dark:bg-slate-950 text-[#0D0D1A] dark:text-slate-100 border border-[#DDE0F0] dark:border-slate-800 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] hover:bg-[#1845D4] hover:text-white transition-all">Request Badge</button>
                         </div>
                     </div>
 
                     <!-- Right Main Content -->
                     <div class="md:col-span-2 space-y-8">
-                        <div class="bg-white border border-[#DDE0F0] rounded-xl overflow-hidden shadow-sm">
-                            <div class="px-8 py-6 border-b border-[#DDE0F0]">
+                        <div class="bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                            <div class="px-8 py-6 border-b border-[#DDE0F0] dark:border-slate-800">
                                 <nav class="flex gap-10">
                                     <button onclick="switchProfileTab('personal')" id="tab-personal" class="text-[11px] font-black uppercase tracking-[0.2em] transition-all py-2 border-b-2 border-[#1845D4] text-[#1845D4]">Profile Details</button>
-                                    <button onclick="switchProfileTab('security')" id="tab-security" class="text-[11px] font-black uppercase tracking-[0.2em] transition-all py-2 border-b-2 border-transparent text-[#8888A8] hover:text-[#0D0D1A]">Security</button>
-                                    <button onclick="switchProfileTab('recordings')" id="tab-recordings" class="hidden text-[11px] font-black uppercase tracking-[0.2em] transition-all py-2 border-b-2 border-transparent text-[#8888A8] hover:text-[#0D0D1A]">Recordings</button>
+                                    <button onclick="switchProfileTab('security')" id="tab-security" class="text-[11px] font-black uppercase tracking-[0.2em] transition-all py-2 border-b-2 border-transparent text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white">Security</button>
+                                    <button onclick="switchProfileTab('recordings')" id="tab-recordings" class="hidden text-[11px] font-black uppercase tracking-[0.2em] transition-all py-2 border-b-2 border-transparent text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white">Recordings</button>
                                 </nav>
                             </div>
 
@@ -151,17 +151,17 @@
                                 <div id="view-personal" class="space-y-8 animate-fade-in">
                                     <form id="profile-form" class="space-y-8">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div class="space-y-2">
-                                                <label class="text-[10px] font-black text-[#8888A8] uppercase tracking-[0.2em]">Full Legal Name</label>
-                                                <input type="text" id="input-fullname" required class="w-full px-5 py-3.5 bg-white border-2 border-[#DDE0F0] focus:border-[#1845D4] rounded-lg outline-none text-[14px] font-medium transition-all">
+                                            <div class="space-y-1.5">
+                                                <label class="text-[13px] font-bold text-[#0D0D1A] dark:text-slate-100">Full Name</label>
+                                                <input type="text" id="input-name" class="w-full px-4 py-2.5 bg-[#F5F6FA] dark:bg-slate-950 border border-[#DDE0F0] dark:border-slate-800 rounded-md outline-none text-[14px] font-medium focus:border-[#1845D4] transition-all">
                                             </div>
-                                            <div class="space-y-2">
-                                                <label class="text-[10px] font-black text-[#8888A8] uppercase tracking-[0.2em]">Academic Bio</label>
-                                                <input type="text" id="input-bio" placeholder="Briefly describe your focus..." class="w-full px-5 py-3.5 bg-white border-2 border-[#DDE0F0] focus:border-[#1845D4] rounded-lg outline-none text-[14px] font-medium transition-all">
+                                            <div class="space-y-1.5">
+                                                <label class="text-[13px] font-bold text-[#0D0D1A] dark:text-slate-100">Primary Email</label>
+                                                <input type="email" id="input-email" disabled class="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-md outline-none text-[14px] font-medium opacity-50 cursor-not-allowed">
                                             </div>
                                         </div>
-                                        <div class="flex justify-end">
-                                            <button type="submit" class="px-10 py-4 bg-[#1845D4] text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-600/10 hover:bg-[#0F2FA8] transition-all active:scale-95">Save Changes</button>
+                                        <div class="flex justify-end pt-6">
+                                            <button id="save-profile-btn" class="px-8 py-2.5 bg-[#1845D4] text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-md hover:bg-[#0F2FA8] transition-all active:scale-95 shadow-lg shadow-blue-600/10">Update Profile</button>
                                         </div>
                                     </form>
                                 </div>

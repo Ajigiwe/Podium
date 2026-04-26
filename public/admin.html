@@ -174,12 +174,12 @@
     <!-- Role Menu (floating) -->
     <div id="role-menu" class="hidden fixed bg-white dark:bg-slate-900 rounded-lg shadow-2xl border border-[#DDE0F0] dark:border-slate-800 py-2 z-[100] w-44">
         <div class="px-3 pb-2 text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Actions</div>
-        <button onclick="openHistoryDrawer()" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#E8EEFF] text-[#1845D4] flex items-center gap-2"><i class="fas fa-history text-xs"></i> View History</button>
-        <div class="h-px bg-[#F5F6FA] my-1 mx-3"></div>
-        <div class="px-3 pb-1 text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Change Role</div>
-        <button onclick="setRole('admin')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] text-[#8888A8]">Admin</button>
-        <button onclick="setRole('lecturer')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] text-[#8888A8]">Lecturer</button>
-        <button onclick="setRole('student')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] text-[#8888A8]">Student</button>
+        <button onclick="openHistoryDrawer()" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-[#1845D4] dark:text-blue-400 flex items-center gap-2"><i class="fas fa-history text-xs"></i> View History</button>
+        <div class="h-px bg-[#F5F6FA] dark:bg-slate-800 my-1 mx-3"></div>
+        <div class="px-3 py-1 text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Change Role</div>
+        <button onclick="setRole('student')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-[#444460] dark:text-slate-300">Student</button>
+        <button onclick="setRole('lecturer')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-[#444460] dark:text-slate-300">Lecturer</button>
+        <button onclick="setRole('admin')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-red-600">Admin</button>
         <div class="h-px bg-[#F5F6FA] my-1 mx-3"></div>
         <button onclick="deleteUser()" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-red-600 hover:bg-red-50">Purge User</button>
     </div>
