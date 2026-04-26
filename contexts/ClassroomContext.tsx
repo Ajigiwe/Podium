@@ -268,14 +268,18 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             if (docSnap.exists()) {
                 const data = docSnap.data() as Session;
                 setSessionData(data);
-                if (data.status === 'deleted' || data.isDeleted) {
+                if (data.status === 'deleted' || data.isDeleted || data.isActive === false || data.status === 'ended') {
                     if (sessionId === docSnap.id) {
                         const wasAlreadyDeleted = (window as any)._podium_session_deleted;
                         if (!wasAlreadyDeleted) {
                             (window as any)._podium_session_deleted = true;
-                            showAlert('This class has been ended by the host.', 'warning').then(() => {
+                            const message = (data.status === 'ended' || data.isActive === false) 
+                                ? 'This class has been ended by the host.' 
+                                : 'This class has been deleted.';
+                            
+                            showAlert(message, 'warning').then(() => {
                                 leaveClass();
-                                router.push('/dashboard');
+                                router.push('/dashboard.html');
                                 (window as any)._podium_session_deleted = false;
                             });
                         }

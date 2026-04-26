@@ -4,14 +4,14 @@ import { useRouter } from 'next/navigation';
 import { Session } from '@/lib/firebase/types';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
-import { Users, User, MicOff, VideoOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X, Mic, VideoIcon, ArrowLeft, MoreVertical, ShieldAlert, Trash2, Crown, Shield, Folder } from 'lucide-react';
+import { Users, User, MicOff, VideoOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X, Mic, VideoIcon, ArrowLeft, MoreVertical, ShieldAlert, Trash2, Crown, Shield, Folder, Power } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 
 import { JitsiParticipant } from '@/contexts/ClassroomContext';
 import { generateMeetingCode } from '@/lib/meetingCode';
 import { db, handleFirestoreError } from '@/lib/firebase/config';
 import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
-import { deleteSession } from '@/lib/firebase/session-utils';
+import { deleteSession, endSession } from '@/lib/firebase/session-utils';
 import dynamic from 'next/dynamic';
 import { MaterialsModal } from './classroom/MaterialsModal';
 
@@ -262,6 +262,18 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         setTimeout(() => setCopiedLink(false), 2000);
     };
 
+    const handleEndSession = () => {
+        showConfirm('End this class session? All students will be removed instantly.', async () => {
+            try {
+                await endSession(sessionId);
+                showAlert('Class session ended.', 'success');
+                // The listener in ClassroomContext will handle the redirect
+            } catch (error) {
+                showAlert('Failed to end session.', 'error');
+            }
+        });
+    };
+
     const handleLeave = () => {
         leaveClass();
         window.location.href = '/dashboard.html';
@@ -311,6 +323,14 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                         <>
                                             <div className="w-px h-6 bg-white/10 mx-1" />
                                             <CoHostManagementPanel sessionId={sessionId} />
+                                            <div className="w-px h-6 bg-white/10 mx-1" />
+                                            <button
+                                                onClick={handleEndSession}
+                                                className="h-8 w-8 flex items-center justify-center text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                title="End Session (Kick All)"
+                                            >
+                                                <Power className="w-4 h-4" />
+                                            </button>
                                         </>
                                     )}
                                 </div>
@@ -462,6 +482,14 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                                 <>
                                                     <div className="w-full h-px bg-white/5" />
                                                     <CoHostManagementPanel sessionId={sessionId} />
+                                                    <div className="w-full h-px bg-white/5" />
+                                                    <button
+                                                        onClick={handleEndSession}
+                                                        className="w-full flex items-center justify-center gap-3 py-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                                    >
+                                                        <Power className="w-4 h-4" />
+                                                        End Session (Kick All)
+                                                    </button>
                                                 </>
                                             )}
                                         </div>
