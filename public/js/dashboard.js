@@ -66,7 +66,7 @@ onAuthStateChanged(auth, async (user) => {
     setTimeout(() => setLoading(false), 800);
 
     // Show admin nav section if admin
-    if (userProfile.role === 'admin' || userProfile.role === 'lecturer' || userProfile.role === 'rep') {
+    if (userProfile.role === 'admin' || userProfile.role === 'lecturer' || userProfile.role === 'rep' || userProfile.isVerified) {
         const adminSection = document.getElementById('admin-nav-section');
         if (adminSection && userProfile.role === 'admin') adminSection.classList.remove('hidden');
         
