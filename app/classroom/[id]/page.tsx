@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/config';
-import { doc, getDoc, addDoc, updateDoc, collection, Timestamp, query, where, getDocs, increment, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, collection, Timestamp, query, where, getDocs, increment, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Session } from '@/lib/firebase/types';
 import ClassroomContent from '@/components/ClassroomContent';
 import { useClassroom } from '@/contexts/ClassroomContext';

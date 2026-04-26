@@ -61,7 +61,7 @@ onAuthStateChanged(auth, async (user) => {
     setLoading(true);
     setupHostedSessions();
     setupEnrolledSessions();
-    initCommunities(user, userProfile);
+    if (typeof initCommunities === 'function') initCommunities(user, userProfile);
     setupGroupOptions();
     setTimeout(() => setLoading(false), 800);
 
@@ -76,11 +76,14 @@ onAuthStateChanged(auth, async (user) => {
         const attendanceNav = document.getElementById('nav-attendance');
         if (attendanceNav) attendanceNav.classList.add('hidden');
     }
+    
+    console.log('[Dashboard] Initialized for:', user.email);
 });
 
 // UI Helpers
 const loadingBar = document.getElementById('top-loading-bar');
 function setLoading(isLoading) {
+    if (!loadingBar) return;
     loadingBar.style.width = isLoading ? '30%' : '100%';
     if (!isLoading) setTimeout(() => loadingBar.style.width = '0%', 400);
 }
@@ -89,14 +92,18 @@ function setLoading(isLoading) {
 window.switchTab = (tab) => {
     activeWorkspace = tab;
     Object.keys(sidebarLinks).forEach(key => {
+        const link = sidebarLinks[key];
+        const section = contentSections[key];
+        if (!link || !section) return;
+
         if (key === tab) {
-            sidebarLinks[key].classList.add('sidebar-active');
-            sidebarLinks[key].classList.remove('text-[#444460]', 'dark:text-slate-400', 'hover:bg-[#F5F6FA]', 'dark:hover:bg-slate-800', 'hover:text-[#0D0D1A]', 'dark:hover:text-white');
-            contentSections[key].classList.remove('hidden');
+            link.classList.add('sidebar-active');
+            link.classList.remove('text-[#444460]', 'dark:text-slate-400', 'hover:bg-[#F5F6FA]', 'dark:hover:bg-slate-800', 'hover:text-[#0D0D1A]', 'dark:hover:text-white');
+            section.classList.remove('hidden');
         } else {
-            sidebarLinks[key].classList.remove('sidebar-active');
-            sidebarLinks[key].classList.add('text-[#444460]', 'dark:text-slate-400', 'hover:bg-[#F5F6FA]', 'dark:hover:bg-slate-800', 'hover:text-[#0D0D1A]', 'dark:hover:text-white');
-            contentSections[key].classList.add('hidden');
+            link.classList.remove('sidebar-active');
+            link.classList.add('text-[#444460]', 'dark:text-slate-400', 'hover:bg-[#F5F6FA]', 'dark:hover:bg-slate-800', 'hover:text-[#0D0D1A]', 'dark:hover:text-white');
+            section.classList.add('hidden');
         }
     });
 };
@@ -188,7 +195,10 @@ function renderQuickAccess() {
     .sort((a, b) => {
         if (a.isActive && !b.isActive) return -1;
         if (!a.isActive && b.isActive) return 1;
-        return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+        
+        const timeA = a.createdAt?.toMillis?.() || (a.createdAt instanceof Date ? a.createdAt.getTime() : (typeof a.createdAt === 'number' ? a.createdAt : 0));
+        const timeB = b.createdAt?.toMillis?.() || (b.createdAt instanceof Date ? b.createdAt.getTime() : (typeof b.createdAt === 'number' ? b.createdAt : 0));
+        return timeB - timeA;
     });
 
     const displayData = combined.slice(0, 4);
@@ -348,11 +358,18 @@ const createForm = document.getElementById('create-class-form');
 const groupSelect = document.getElementById('class-group-id');
 const groupContainer = document.getElementById('group-link-container');
 
+// Modal Helpers
+window.openModal = (id) => {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('hidden');
+    else console.warn(`[Modal] Element not found: ${id}`);
+};
+
 const openCreateBtn = document.getElementById('open-create-modal');
 const openCreateCardBtn = document.getElementById('open-create-modal-card');
 
-if (openCreateBtn) openCreateBtn.addEventListener('click', () => createModal.classList.remove('hidden'));
-if (openCreateCardBtn) openCreateCardBtn.addEventListener('click', () => createModal.classList.remove('hidden'));
+if (openCreateBtn) openCreateBtn.onclick = () => openModal('modal-create-class');
+if (openCreateCardBtn) openCreateCardBtn.onclick = () => openModal('modal-create-class');
 
 document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -384,6 +401,8 @@ if (createForm) {
         const title = document.getElementById('class-title').value;
         const course = document.getElementById('class-course').value;
         const program = document.getElementById('class-program').value;
+        const durationMinutes = parseInt(document.getElementById('class-duration').value) || 60;
+        const verificationCount = parseInt(document.getElementById('class-checks').value) || 3;
         const groupId = groupSelect.value;
         const submitBtn = createForm.querySelector('button[type="submit"]');
 
@@ -399,6 +418,8 @@ if (createForm) {
                 title,
                 course,
                 program,
+                durationMinutes,
+                verificationCount,
                 groupId: groupId || null,
                 lecturerId: currentUserId,
                 lecturerName: userProfile.fullName || 'Faculty',
@@ -488,8 +509,11 @@ confirmJoinBtn.onclick = async () => {
 };
 
 // Communities UI Connectors
-document.getElementById('open-create-community-modal').onclick = () => document.getElementById('modal-create-community').classList.remove('hidden');
-document.getElementById('open-join-community-modal').onclick = () => document.getElementById('modal-join-community').classList.remove('hidden');
+const openCreateCommBtn = document.getElementById('open-create-community-modal');
+const openJoinCommBtn = document.getElementById('open-join-community-modal');
+
+if (openCreateCommBtn) openCreateCommBtn.onclick = () => openModal('modal-create-community');
+if (openJoinCommBtn) openJoinCommBtn.onclick = () => openModal('modal-join-community');
 
 // Toast Helper
 function showToast(msg, type = 'success') {

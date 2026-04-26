@@ -109,6 +109,7 @@ interface CustomControlBarProps {
     onToggleHand: () => void;
     isHandRaised: boolean;
     unreadChatCount: number;
+    isActive: boolean;
     showAlert: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
     customAlert: (options: any) => void;
 }
@@ -123,6 +124,7 @@ export default function CustomControlBar({
     onToggleHand,
     isHandRaised,
     unreadChatCount,
+    isActive,
     showAlert,
     customAlert
 }: CustomControlBarProps) {
@@ -171,14 +173,17 @@ export default function CustomControlBar({
         }
         setIsTogglingMic(true);
         try {
-            const newState = !isMicrophoneEnabled;
+            const currentState = localParticipant.isMicrophoneEnabled;
+            const newState = !currentState;
+            console.log(`[CustomControlBar] Toggling mic from ${currentState} to ${newState}`);
             await localParticipant.setMicrophoneEnabled(newState);
             if (saveAudioInputEnabled) saveAudioInputEnabled(newState);
         } catch (error: any) {
-            console.error('Failed to toggle microphone:', error);
+            console.error('[CustomControlBar] Failed to toggle microphone:', error);
             showAlert(`Failed to toggle microphone: ${error.message || 'Unknown error'}`, 'error');
+        } finally {
+            setIsTogglingMic(false);
         }
-        setIsTogglingMic(false);
     };
 
     const toggleVideo = async () => {
@@ -192,14 +197,17 @@ export default function CustomControlBar({
         }
         setIsTogglingVideo(true);
         try {
-            const newState = !isCameraEnabled;
+            const currentState = localParticipant.isCameraEnabled;
+            const newState = !currentState;
+            console.log(`[CustomControlBar] Toggling camera from ${currentState} to ${newState}`);
             await localParticipant.setCameraEnabled(newState);
             if (saveVideoInputEnabled) saveVideoInputEnabled(newState);
         } catch (error: any) {
-            console.error('Failed to toggle camera:', error);
+            console.error('[CustomControlBar] Failed to toggle camera:', error);
             showAlert(`Failed to toggle camera: ${error.message || 'Unknown error'}`, 'error');
+        } finally {
+            setIsTogglingVideo(false);
         }
-        setIsTogglingVideo(false);
     };
 
     const toggleScreenShare = async () => {
@@ -218,83 +226,82 @@ export default function CustomControlBar({
     };
 
     return (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1 p-1 bg-slate-900/80 backdrop-blur-2xl border border-white/5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 duration-700 max-w-[95vw] sm:max-w-none">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-0.5 sm:gap-1 p-1 sm:p-1.5 bg-slate-900/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 duration-700 max-w-[98vw]">
             {/* Audio Section */}
             <div className="flex items-center" ref={micRef}>
                 <button
                     onClick={toggleMic}
                     disabled={isTogglingMic || !isConnected}
-                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 relative ${
+                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 relative ${
                         isMicrophoneEnabled 
                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
                         : 'text-slate-400 hover:bg-white/5'
                     } ${(!isConnected || isTogglingMic) ? 'opacity-50' : ''}`}
                     title={isMicrophoneEnabled ? 'Mute' : 'Unmute'}
                 >
-                    {isMicrophoneEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5 text-red-400" />}
-                    {!permissions.mic && <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center border-2 border-slate-900"><Lock className="w-2 h-2 text-white scale-75" /></div>}
+                    {isMicrophoneEnabled ? <Mic className="w-4 h-4 sm:w-5 sm:h-5" /> : <MicOff className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />}
+                    {!permissions.mic && <div className="absolute top-0.5 right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-red-500 rounded-full flex items-center justify-center border border-slate-900"><Lock className="w-1 h-1 sm:w-1.5 sm:h-1.5 text-white" /></div>}
                 </button>
                 <button
                     onClick={(e) => toggleMenu('mic', e)}
-                    className={`device-menu-toggle h-10 w-4 sm:h-12 sm:w-5 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'mic' ? 'text-indigo-400' : 'text-slate-500'}`}
+                    className={`device-menu-toggle h-9 w-3 sm:h-11 sm:w-4 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'mic' ? 'text-indigo-400' : 'text-slate-500'}`}
                 >
-                    <ChevronUp className={`w-3 h-3 transition-transform duration-300 ${activeMenu === 'mic' ? 'rotate-180' : ''}`} />
+                    <ChevronUp className={`w-2.5 h-2.5 transition-transform duration-300 ${activeMenu === 'mic' ? 'rotate-180' : ''}`} />
                 </button>
                 <DeviceMenu kind="audioinput" isOpen={activeMenu === 'mic'} onClose={() => setActiveMenu(null)} triggerRef={micRef} />
             </div>
 
-            <div className="w-px h-6 bg-white/5 mx-1" />
+            <div className="w-px h-5 bg-white/10 mx-0.5 sm:mx-1" />
 
             {/* Video Section */}
             <div className="flex items-center" ref={cameraRef}>
                 <button
                     onClick={toggleVideo}
                     disabled={isTogglingVideo || !isConnected}
-                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 relative ${
+                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 relative ${
                         isCameraEnabled 
                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
                         : 'text-slate-400 hover:bg-white/5'
                     } ${(!isConnected || isTogglingVideo) ? 'opacity-50' : ''}`}
                     title={isCameraEnabled ? 'Stop Video' : 'Start Video'}
                 >
-                    {isCameraEnabled ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5 text-red-400" />}
-                    {!permissions.camera && <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center border-2 border-slate-900"><Lock className="w-2 h-2 text-white scale-75" /></div>}
+                    {isCameraEnabled ? <VideoIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <VideoOff className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />}
+                    {!permissions.camera && <div className="absolute top-0.5 right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-red-500 rounded-full flex items-center justify-center border border-slate-900"><Lock className="w-1 h-1 sm:w-1.5 sm:h-1.5 text-white" /></div>}
                 </button>
                 <button
                     onClick={(e) => toggleMenu('camera', e)}
-                    className={`device-menu-toggle h-10 w-4 sm:h-12 sm:w-5 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'camera' ? 'text-indigo-400' : 'text-slate-500'}`}
+                    className={`device-menu-toggle h-9 w-3 sm:h-11 sm:w-4 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'camera' ? 'text-indigo-400' : 'text-slate-500'}`}
                 >
-                    <ChevronUp className={`w-3 h-3 transition-transform duration-300 ${activeMenu === 'camera' ? 'rotate-180' : ''}`} />
+                    <ChevronUp className={`w-2.5 h-2.5 transition-transform duration-300 ${activeMenu === 'camera' ? 'rotate-180' : ''}`} />
                 </button>
                 <DeviceMenu kind="videoinput" isOpen={activeMenu === 'camera'} onClose={() => setActiveMenu(null)} triggerRef={cameraRef} />
             </div>
 
-            <div className="w-px h-6 bg-white/5 mx-1" />
+            <div className="w-px h-5 bg-white/10 mx-0.5 sm:mx-1" />
 
             {/* Interaction Section */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1">
                 <button
                     onClick={toggleScreenShare}
                     disabled={isTogglingScreen || !isConnected}
-                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 ${
+                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 ${
                         isScreenShareEnabled ? 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:bg-white/5'
                     }`}
                     title="Share Screen"
                 >
-                    <MonitorUp className="w-5 h-5" />
+                    <MonitorUp className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 
                 <button
                     onClick={onToggleChat}
-                    className={`h-10 px-3 sm:h-12 sm:px-4 flex items-center gap-2 rounded-xl transition-all duration-300 relative ${
+                    className={`h-9 px-2 sm:h-11 sm:px-3 flex items-center gap-1.5 rounded-xl transition-all duration-300 relative ${
                         isChatOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:bg-white/5'
                     }`}
                     title="Toggle Chat"
                 >
-                    <MessageSquare className="w-5 h-5" />
-                    <span className="hidden md:inline text-xs font-black uppercase tracking-widest">Chat</span>
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
                     {unreadChatCount > 0 && !isChatOpen && (
-                        <span className="absolute top-1 right-1 bg-red-600 text-white text-[9px] font-black min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-900 animate-bounce">
+                        <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] font-black min-w-[16px] h-[16px] flex items-center justify-center rounded-full border border-slate-900 animate-bounce">
                             {unreadChatCount > 9 ? '9+' : unreadChatCount}
                         </span>
                     )}
@@ -302,35 +309,36 @@ export default function CustomControlBar({
 
                 <button
                     onClick={onToggleHand}
-                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 ${
+                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 ${
                         isHandRaised ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-white/5'
                     }`}
                     title="Raise Hand"
                 >
-                    <Hand className={`w-5 h-5 ${isHandRaised ? 'animate-bounce' : ''}`} />
+                    <Hand className={`w-4 h-4 sm:w-5 sm:h-5 ${isHandRaised ? 'animate-bounce' : ''}`} />
                 </button>
 
                 <button
                     ref={reactionBtnRef}
                     onClick={() => setShowReactions(!showReactions)}
-                    className={`h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-xl transition-all duration-300 ${
+                    className={`h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl transition-all duration-300 ${
                         showReactions ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-white/5'
                     }`}
                     title="Reactions"
                 >
-                    <Smile className="w-5 h-5" />
+                    <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
             </div>
 
-            <div className="w-px h-6 bg-white/5 mx-1" />
+            <div className="w-px h-5 bg-white/10 mx-0.5 sm:mx-1" />
 
             {/* Leave Section */}
             <button
                 onClick={onLeave}
-                className="group h-10 px-4 sm:h-12 sm:px-6 flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all duration-300 border border-red-500/20 hover:border-red-600"
+                className="group h-9 w-9 sm:h-11 sm:w-20 flex items-center justify-center sm:gap-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all duration-300 border border-red-500/20 hover:border-red-600"
+                title="Leave Classroom"
             >
                 <PhoneOff className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-rotate-[135deg]" />
-                <span className="hidden sm:inline text-xs font-black uppercase tracking-widest">Leave</span>
+                <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Leave</span>
             </button>
 
             {/* Reaction Modal Portal */}
@@ -344,5 +352,6 @@ export default function CustomControlBar({
                 document.body
             )}
         </div>
+
     );
 }

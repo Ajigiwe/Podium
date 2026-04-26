@@ -289,17 +289,21 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (!liveKitRoom || !sessionData) return;
         const handleInitialMic = async () => {
+            // Priority 1: Mute All (Global Room State)
             if (sessionData.isMutedAll && !isModerator) {
                 if (liveKitRoom.localParticipant.isMicrophoneEnabled) {
+                    console.log('[ClassroomContext] Forcing initial mute due to isMutedAll');
                     await liveKitRoom.localParticipant.setMicrophoneEnabled(false);
                 }
                 return;
             }
+
+            // Priority 2: User Preference (One-time join setting)
             if (!(window as any)._podium_joined_mic_set) {
                 (window as any)._podium_joined_mic_set = true;
-                if (!joinMicEnabled && !isModerator) {
-                    await liveKitRoom.localParticipant.setMicrophoneEnabled(false);
-                }
+                const shouldEnable = joinMicEnabled; // Default to user choice
+                console.log(`[ClassroomContext] Setting initial mic state to: ${shouldEnable}`);
+                await liveKitRoom.localParticipant.setMicrophoneEnabled(shouldEnable);
             }
         };
         handleInitialMic();
@@ -527,7 +531,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                     liveKitRoom.localParticipant.setCameraEnabled(false);
                     showAlert('Your video has been turned off by the lecturer.', 'info');
                 }
-                if (data.type === 'mute_all_request' && !isMod) {
+                if (data.type === 'mute_all_request' && isMod) {
                     liveKitRoom.localParticipant.setMicrophoneEnabled(false);
                     showAlert('A moderator has muted everyone.', 'info');
                 }

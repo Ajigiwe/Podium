@@ -16,13 +16,13 @@ interface VerificationPayload {
 export const useAttendanceVerification = (sessionId: string) => {
     const room = useRoomContext();
     const { user, profile } = useAuth();
-    const { userRole } = useClassroom();
+    const { userRole, isHost } = useClassroom();
     const [activeVerification, setActiveVerification] = useState<VerificationPayload | null>(null);
     const [isResponding, setIsResponding] = useState(false);
     const [isJoined, setIsJoined] = useState(false);
 
     const joinAttendance = useCallback(async () => {
-        if (!sessionId || !user || !userRole || userRole !== 'student' || isJoined) return;
+        if (!sessionId || !user || isHost || isJoined) return;
 
         try {
             const response = await fetch('/api/attendance/join', {
@@ -31,8 +31,8 @@ export const useAttendanceVerification = (sessionId: string) => {
                 body: JSON.stringify({
                     sessionId,
                     studentId: user.uid,
-                    studentName: profile.fullName || 'Student',
-                    studentIndexNumber: profile.indexNumber || ''
+                    studentName: profile?.fullName || 'Student',
+                    studentIndexNumber: profile?.indexNumber || ''
                 })
             });
 
@@ -47,7 +47,7 @@ export const useAttendanceVerification = (sessionId: string) => {
 
     // Join when room is connected and role is student
     useEffect(() => {
-        if (room?.state === 'connected' && userRole === 'student') {
+        if (room?.state === 'connected' && !isHost) {
             joinAttendance();
         }
     }, [room?.state, userRole, joinAttendance]);
@@ -57,7 +57,7 @@ export const useAttendanceVerification = (sessionId: string) => {
             const decoder = new TextDecoder();
             const data = JSON.parse(decoder.decode(payload));
 
-            if (data.type === 'VERIFICATION_TRIGGERED' && userRole === 'student') {
+            if (data.type === 'VERIFICATION_TRIGGERED' && !isHost) {
                 console.log('Attendance verification triggered:', data.payload);
                 setActiveVerification(data.payload);
 

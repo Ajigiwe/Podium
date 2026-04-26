@@ -23,13 +23,10 @@ export async function POST(request: NextRequest) {
 
         const sessionData = sessionSnap.data();
 
-        // Fallback to session data if not provided
-        durationMinutes = durationMinutes || sessionData?.durationMinutes;
-        verificationCount = verificationCount || sessionData?.verificationCount;
+        // Fallback to session data if not provided, and then to defaults
+        durationMinutes = durationMinutes || sessionData?.durationMinutes || 60;
+        verificationCount = verificationCount || sessionData?.verificationCount || 3;
 
-        if (!durationMinutes || !verificationCount) {
-            return NextResponse.json({ error: 'Attendance settings (duration/checks) not found' }, { status: 400 });
-        }
         if (sessionData?.lecturerId !== lecturerId) {
             return NextResponse.json({ error: 'Unauthorized: Only the lecturer can start attendance' }, { status: 403 });
         }

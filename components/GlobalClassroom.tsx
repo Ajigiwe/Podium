@@ -120,7 +120,7 @@ export default function GlobalClassroom() {
         sessionId, title, userName, userRole, userId, isActive,
         isMini, isFloating, toggleMinimize, leaveClass,
         setLiveKitRoom, toggleChat, isChatOpen, unreadChatCount,
-        token, setToken,
+        token, setToken, isHost,
     } = useClassroom();
     const { showAlert, customAlert } = useAlert();
 
@@ -254,7 +254,7 @@ export default function GlobalClassroom() {
             <InstantPiPManager />
             <ConnectionRecoveryStatus />
             <DeviceFailureHandler />
-            {userRole !== 'lecturer' && <StudentVerificationModal sessionId={sessionId!} />}
+            {isActive && !isHost && <StudentVerificationModal sessionId={sessionId!} />}
             <VideoLayout
                 onReaction={handleReaction}
                 onLeave={handleLeave}

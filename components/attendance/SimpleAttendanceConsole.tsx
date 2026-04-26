@@ -12,6 +12,7 @@ import {
     ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { db } from '@/lib/firebase/config';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 
@@ -22,6 +23,7 @@ interface SimpleAttendanceConsoleProps {
 
 export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanceConsoleProps) => {
     const { user } = useAuth();
+    const { showAlert } = useAlert();
     const [isStarting, setIsStarting] = useState(false);
     const [isTriggering, setIsTriggering] = useState(false);
     const [stats, setStats] = useState<{
@@ -37,6 +39,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
     const [showSettings, setShowSettings] = useState(false);
     const [autoVerify, setAutoVerify] = useState(false);
     const [frequency, setFrequency] = useState(15); // Default 15 mins
+    const [verificationDuration, setVerificationDuration] = useState(30); // Default 30s
     const [lastAutoTrigger, setLastAutoTrigger] = useState(0);
 
     const fetchStatus = useCallback(async () => {
@@ -73,6 +76,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
             if (data?.autoAttendanceSettings) {
                 setAutoVerify(!!data.autoAttendanceSettings.isEnabled);
                 setFrequency(data.autoAttendanceSettings.frequencyMinutes ?? 15);
+                setVerificationDuration(data.autoAttendanceSettings.durationSeconds ?? 30);
                 setLastAutoTrigger(data.autoAttendanceSettings.lastTriggeredAt?.toMillis() || 0);
             }
         }, (error) => {
@@ -98,15 +102,13 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                 if (now >= nextTrigger && !isTriggering) {
                     console.log(`Auto-triggering verification at ${elapsed}m`);
                     triggerManualCheck('automatic');
-                    // We update lastAutoTrigger in Firestore inside triggerManualCheck logic if possible,
-                    // or here locally then Firestore.
                 }
             }
         };
         updateElapsed();
         const interval = setInterval(updateElapsed, 10000); // Check more frequently for auto-trigger
         return () => clearInterval(interval);
-    }, [stats?.startedAt, autoVerify, frequency, lastAutoTrigger, isTriggering]);
+    }, [stats?.startedAt, autoVerify, frequency, lastAutoTrigger, isTriggering, verificationDuration]);
 
     const handleStartAttendance = async () => {
         if (!user) return;
@@ -119,10 +121,15 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
             });
 
             if (response.ok) {
+                showAlert('Attendance session initialized successfully.', 'success');
                 await fetchStatus();
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Failed to start attendance.', 'error');
             }
         } catch (error) {
             console.error('Error starting attendance:', error);
+            showAlert('A network error occurred. Please try again.', 'error');
         } finally {
             setIsStarting(false);
         }
@@ -134,18 +141,27 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
             const response = await fetch('/api/attendance/verification/trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId, triggeredBy: type })
+                body: JSON.stringify({ 
+                    sessionId, 
+                    triggeredBy: type,
+                    timeLimitSeconds: verificationDuration 
+                })
             });
             if (response.ok) {
+                showAlert(`${type === 'manual' ? 'Manual' : 'Automatic'} verification triggered.`, 'success');
                 // Update persistent last trigger time
                 const sessionRef = doc(db, 'sessions', sessionId);
                 await updateDoc(sessionRef, {
                     'autoAttendanceSettings.lastTriggeredAt': new Date()
                 });
                 await fetchStatus();
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Failed to trigger verification.', 'error');
             }
         } catch (error) {
             console.error('[Attendance:Console:Trigger] Error triggering check:', error);
+            showAlert('Failed to reach verification server.', 'error');
         } finally {
             setIsTriggering(false);
         }
@@ -158,7 +174,8 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
             const sessionRef = doc(db, 'sessions', sessionId);
             await updateDoc(sessionRef, {
                 'autoAttendanceSettings.isEnabled': newState,
-                'autoAttendanceSettings.frequencyMinutes': frequency
+                'autoAttendanceSettings.frequencyMinutes': frequency,
+                'autoAttendanceSettings.durationSeconds': verificationDuration
             });
         } catch (error) {
             console.error('[Attendance:Console:ToggleAuto] Error updating auto-attendance:', error);
@@ -174,6 +191,18 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
             });
         } catch (error) {
             console.error('[Attendance:Console:UpdateFreq] Error updating frequency:', error);
+        }
+    };
+
+    const updateDuration = async (val: number) => {
+        setVerificationDuration(val);
+        try {
+            const sessionRef = doc(db, 'sessions', sessionId);
+            await updateDoc(sessionRef, {
+                'autoAttendanceSettings.durationSeconds': val
+            });
+        } catch (error) {
+            console.error('[Attendance:Console:UpdateDuration] Error updating duration:', error);
         }
     };
 
@@ -234,7 +263,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                             </button>
 
                             {showSettings && (
-                                <div className="absolute bottom-full right-0 mb-3 w-48 bg-gray-900 border border-white/10 rounded-lg p-4 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="absolute top-full right-0 mt-3 w-56 bg-gray-900 border border-white/10 rounded-lg p-4 animate-in fade-in slide-in-from-top-2 shadow-2xl z-50">
                                     <div className="flex items-center justify-between mb-4">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Auto-Verify</span>
                                         <label className="relative inline-flex items-center cursor-pointer">
@@ -243,25 +272,47 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                                         </label>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-[9px] font-bold text-gray-500 uppercase">
-                                            <span>Frequency</span>
-                                            <span className="text-blue-400">{frequency}m</span>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-[9px] font-bold text-gray-500 uppercase">
+                                                <span>Check Frequency</span>
+                                                <span className="text-blue-400 font-black">{frequency}m</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="5"
+                                                max="60"
+                                                step="5"
+                                                value={frequency ?? 15}
+                                                onChange={(e) => updateFrequency(parseInt(e.target.value))}
+                                                className="w-full h-1 bg-gray-700 rounded appearance-none cursor-pointer accent-blue-600"
+                                            />
                                         </div>
-                                        <input
-                                            type="range"
-                                            min="5"
-                                            max="60"
-                                            step="5"
-                                            value={frequency ?? 15}
-                                            onChange={(e) => updateFrequency(parseInt(e.target.value))}
-                                            className="w-full h-1 bg-gray-700 rounded appearance-none cursor-pointer accent-blue-600"
-                                        />
+
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-[9px] font-bold text-gray-500 uppercase mb-2">
+                                                <span>Popup Duration</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {[30, 45, 60].map((sec) => (
+                                                    <button
+                                                        key={sec}
+                                                        onClick={() => updateDuration(sec)}
+                                                        className={`flex-1 py-1.5 rounded-md text-[10px] font-black transition-all ${verificationDuration === sec
+                                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                                                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                                            }`}
+                                                    >
+                                                        {sec}S
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="mt-4 pt-4 border-t border-white/5">
-                                        <p className="text-[8px] text-gray-500 leading-tight">
-                                            Verification will pop up for students automatically every {frequency} minutes.
+                                        <p className="text-[8px] text-gray-500 leading-tight uppercase font-black tracking-tighter">
+                                            Verification will pop up for {verificationDuration}s every {frequency}m.
                                         </p>
                                     </div>
                                 </div>

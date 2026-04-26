@@ -155,10 +155,10 @@
                     </div>
 
                     <!-- Quick Access Section -->
-                    <div id="quick-access-section" class="hidden space-y-4">
-                        <div class="flex items-center justify-between">
-                            <h2 class="text-[10px] font-black text-[#8888A8] uppercase tracking-[0.4em]">Quick Access</h2>
-                            <div class="h-px flex-1 bg-[#DDE0F0] dark:bg-slate-800 ml-6"></div>
+                    <div id="quick-access-section" class="hidden space-y-5">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-[10px] font-black text-indigo-600 dark:text-blue-400 uppercase tracking-[0.4em] whitespace-nowrap">Jump Back In</h2>
+                            <div class="h-px w-full bg-gradient-to-r from-indigo-500/20 to-transparent"></div>
                         </div>
                         <div id="quick-access-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <!-- Dynamically filled -->
@@ -383,7 +383,9 @@
                     <h2 class="text-2xl font-sans text-[#0D0D1A] dark:text-white tracking-tighter">New Classroom</h2>
                     <p class="text-[13px] text-[#8888A8] font-light mt-1">Configure your session parameters.</p>
                 </div>
-                <button class="close-modal w-8 h-8 flex items-center justify-center border border-[#DDE0F0] dark:border-slate-800 rounded-md text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-950">✕</button>
+                <button class="close-modal w-8 h-8 flex items-center justify-center border border-[#DDE0F0] dark:border-slate-800 rounded-md text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-950 transition-colors">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
             </div>
             <form id="create-class-form" class="space-y-5">
                 <div class="space-y-1.5">
@@ -398,6 +400,16 @@
                     <div class="space-y-1.5">
                         <label class="text-[13px] font-bold text-[#0D0D1A] dark:text-slate-100">Program</label>
                         <input type="text" id="class-program" placeholder="BSc" class="w-full px-4 py-2.5 bg-white dark:bg-slate-950 border-2 border-[#DDE0F0] dark:border-slate-800 focus:border-[#1845D4] rounded-md outline-none text-[14px] transition-all">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[13px] font-bold text-[#0D0D1A] dark:text-slate-100">Duration (Mins)</label>
+                        <input type="number" id="class-duration" required value="60" min="15" max="480" class="w-full px-4 py-2.5 bg-white dark:bg-slate-950 border-2 border-[#DDE0F0] dark:border-slate-800 focus:border-[#1845D4] rounded-md outline-none text-[14px] transition-all">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[13px] font-bold text-[#0D0D1A] dark:text-slate-100">Attendance Checks</label>
+                        <input type="number" id="class-checks" required value="3" min="1" max="10" class="w-full px-4 py-2.5 bg-white dark:bg-slate-950 border-2 border-[#DDE0F0] dark:border-slate-800 focus:border-[#1845D4] rounded-md outline-none text-[14px] transition-all">
                     </div>
                 </div>
                 <div class="space-y-1.5" id="group-link-container" style="display: none;">
@@ -436,7 +448,9 @@
         <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-lg p-10 relative shadow-2xl animate-in zoom-in-95 duration-200">
             <div class="flex justify-between items-start mb-8">
                 <div><h2 class="text-2xl font-sans text-[#1845D4] tracking-tighter">Create Community</h2><p class="text-[13px] text-[#8888A8] font-light mt-1">Found a new learning space.</p></div>
-                <button class="close-modal w-8 h-8 flex items-center justify-center border border-[#DDE0F0] dark:border-slate-800 rounded-md text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-950">✕</button>
+                <button class="close-modal w-8 h-8 flex items-center justify-center border border-[#DDE0F0] dark:border-slate-800 rounded-md text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-950 transition-colors">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
             </div>
             <form id="create-community-form" class="space-y-5">
                 <div class="space-y-1.5"><label class="text-[13px] font-bold text-[#0D0D1A] dark:text-slate-100">Community Name</label><input type="text" id="comm-name" required placeholder="e.g. 2026 CS Morning Group" class="w-full px-4 py-2.5 bg-white dark:bg-slate-950 border-2 border-[#DDE0F0] dark:border-slate-800 focus:border-[#1845D4] rounded-md outline-none text-[14px] transition-all"></div>
@@ -458,7 +472,9 @@
         <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-lg p-10 relative shadow-2xl animate-in zoom-in-95 duration-200">
             <div class="flex justify-between items-start mb-8">
                 <div><h2 class="text-2xl font-sans text-[#0D0D1A] dark:text-white tracking-tighter">Join Community</h2><p class="text-[13px] text-[#8888A8] font-light mt-1">Enter your access code.</p></div>
-                <button class="close-modal w-8 h-8 flex items-center justify-center border border-[#DDE0F0] dark:border-slate-800 rounded-md text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-950">✕</button>
+                <button class="close-modal w-8 h-8 flex items-center justify-center border border-[#DDE0F0] dark:border-slate-800 rounded-md text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-950 transition-colors">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
             </div>
             <form id="join-community-form" class="space-y-6 text-center">
                 <input type="text" id="comm-join-code" required placeholder="XXXXXX" class="w-full px-6 py-4 bg-[#F5F6FA] dark:bg-slate-950 border-2 border-[#DDE0F0] dark:border-slate-800 focus:border-[#1845D4] rounded-lg outline-none text-2xl font-black text-center tracking-[0.5em] uppercase transition-all">

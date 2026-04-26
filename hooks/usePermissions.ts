@@ -20,6 +20,14 @@ export const usePermissions = (roomId: string, isLecturer: boolean) => {
         camera: isLecturer,
     });
 
+    // Update permissions if isLecturer changes (e.g. promoted to co-host)
+    useEffect(() => {
+        if (isLecturer) {
+            setPermissions({ mic: true, camera: true });
+            setHasPendingRequest(false);
+        }
+    }, [isLecturer]);
+
     const [hasPendingRequest, setHasPendingRequest] = useState(false);
     const prevPermissionsRef = useRef<Permissions>({ mic: isLecturer, camera: isLecturer });
     const isInitialLoadRef = useRef(true); // Track if this is the first doc fetch
