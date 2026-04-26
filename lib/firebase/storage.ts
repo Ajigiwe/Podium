@@ -149,3 +149,45 @@ export async function compressImage(
         };
     });
 }
+
+/**
+ * Upload learning material to Firebase Storage
+ * @param sessionId - Current session ID
+ * @param file - The file to upload
+ * @returns Metadata about the uploaded file
+ */
+export async function uploadLearningMaterial(sessionId: string, file: File): Promise<{ url: string; name: string; type: string; size: number }> {
+    // 50MB max for materials
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+        throw new Error('File too large. Maximum size is 50MB.');
+    }
+
+    try {
+        const storage = getStorage(app);
+        const timestamp = Date.now();
+        // Clean filename: remove special chars but keep extension
+        const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const fileName = `${timestamp}_${cleanName}`;
+        const fullPath = `sessions/${sessionId}/materials/${fileName}`;
+
+        console.log(`[Storage:Materials] Uploading to: ${fullPath}`);
+        const storageRef = ref(storage, fullPath);
+
+        // Upload file
+        await uploadBytes(storageRef, file);
+
+        // Get download URL
+        const url = await getDownloadURL(storageRef);
+
+        return {
+            url,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+        };
+    } catch (error) {
+        console.error('[Storage:Materials] Upload failed:', error);
+        throw new Error('Failed to upload material');
+    }
+}

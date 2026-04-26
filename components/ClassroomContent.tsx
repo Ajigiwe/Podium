@@ -4,15 +4,16 @@ import { useRouter } from 'next/navigation';
 import { Session } from '@/lib/firebase/types';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import { useAlert } from '@/contexts/AlertContext';
-import { Users, User, MicOff, VideoOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X, Mic, VideoIcon, ArrowLeft, MoreVertical, ShieldAlert, Trash2, Crown, Shield } from 'lucide-react';
+import { Users, User, MicOff, VideoOff, UserX, Volume2, Share2, Copy, Check, Link, Home, LogOut, Menu, X, Mic, VideoIcon, ArrowLeft, MoreVertical, ShieldAlert, Trash2, Crown, Shield, Folder } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 
 import { JitsiParticipant } from '@/contexts/ClassroomContext';
 import { generateMeetingCode } from '@/lib/meetingCode';
 import { db, handleFirestoreError } from '@/lib/firebase/config';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
 import { deleteSession } from '@/lib/firebase/session-utils';
 import dynamic from 'next/dynamic';
+import { MaterialsModal } from './classroom/MaterialsModal';
 
 const RecordingControls = dynamic(() => import('./RecordingControls').then(mod => mod.RecordingControls), {
     ssr: false,
@@ -82,6 +83,11 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     const [activePermissions, setActivePermissions] = useState<{ participantId: string; permissions: ParticipantPermissions }[]>([]);
     const [autoApproveMic, setAutoApproveMic] = useState(false);
     
+    // Materials Modal State
+    const [showMaterialsModal, setShowMaterialsModal] = useState(false);
+    const [hasNewMaterials, setHasNewMaterials] = useState(false);
+    const [lastKnownMaterialCount, setLastKnownMaterialCount] = useState(0);
+    
     // isMutedAll is now synced from sessionData
     const isMutedAll = sessionData?.isMutedAll || false;
 
@@ -102,6 +108,22 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
             unsubscribeAllPerms();
         };
     }, [sessionId, isModerator]);
+
+    // Notification logic for materials
+    useEffect(() => {
+        if (!sessionId) return;
+        const materialsRef = collection(db, 'sessions', sessionId, 'materials');
+        let isFirstLoad = true;
+        const unsubscribe = onSnapshot(materialsRef, (snapshot) => {
+            const count = snapshot.docs.length;
+            if (!isFirstLoad && count > lastKnownMaterialCount && !showMaterialsModal) {
+                setHasNewMaterials(true);
+            }
+            setLastKnownMaterialCount(count);
+            isFirstLoad = false;
+        });
+        return () => unsubscribe();
+    }, [sessionId, lastKnownMaterialCount, showMaterialsModal]);
 
     // Fetch initial auto-approval state from session
     useEffect(() => {
@@ -309,6 +331,20 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                         </span>
                                     )}
                                 </button>
+
+                                <button
+                                    onClick={() => {
+                                        setShowMaterialsModal(true);
+                                        setHasNewMaterials(false);
+                                    }}
+                                    className="relative h-9 px-3 text-[10px] font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-white/10 flex items-center gap-2"
+                                >
+                                    <Folder className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Materials</span>
+                                    {hasNewMaterials && (
+                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-slate-900 shadow-lg animate-pulse" />
+                                    )}
+                                </button>
                                 
                                 <button
                                     onClick={() => setShowShareModal(true)}
@@ -388,6 +424,21 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 >
                                     <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-400"><Share2 className="w-4 h-4" /></div>
                                     <span className="text-xs font-bold text-white">Invite Students</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { 
+                                        setShowMaterialsModal(true); 
+                                        setShowMobileMenu(false); 
+                                        setHasNewMaterials(false);
+                                    }}
+                                    className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all text-left"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 ${hasNewMaterials ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-slate-500/10'} rounded-lg flex items-center justify-center text-white`}><Folder className="w-4 h-4" /></div>
+                                        <span className="text-xs font-bold text-white">Learning Materials</span>
+                                    </div>
+                                    {hasNewMaterials && <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />}
                                 </button>
                             </div>
 
@@ -604,6 +655,15 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                         </div>
                     </div>
                 </div>
+            )}
+
+            {showMaterialsModal && (
+                <MaterialsModal 
+                    sessionId={sessionId}
+                    userId={ctxUserId || ''}
+                    isModerator={isModerator}
+                    onClose={() => setShowMaterialsModal(false)}
+                />
             )}
         </div>
     );
