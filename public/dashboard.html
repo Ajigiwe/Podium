@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="./css/index.css">
+    <script src="./js/theme-init.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -46,18 +47,18 @@
         .sidebar-active { background-color: #E8EEFF; color: #1845D4; }
     </style>
 </head>
-<body class="bg-[#F5F6FA] text-[#0D0D1A] font-sans selection:bg-blue-100 transition-colors duration-200">
+<body class="bg-[#F5F6FA] text-[#0D0D1A] dark:bg-slate-950 dark:text-slate-100 font-sans selection:bg-blue-100 transition-colors duration-200">
     <div id="top-loading-bar" style="width: 0%"></div>
     <div class="min-h-screen flex">
         <!-- Sidebar -->
         <!-- Sidebar -->
-        <aside id="sidebar" class="hidden lg:flex w-60 flex-col fixed inset-y-0 bg-white border-r border-[#DDE0F0] z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
+        <aside id="sidebar" class="hidden lg:flex w-60 flex-col fixed inset-y-0 bg-white dark:bg-slate-950 border-r border-[#DDE0F0] dark:border-slate-800 z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div class="lg:hidden absolute top-4 right-4">
                 <button id="close-mobile-menu" class="p-2 text-[#8888A8] hover:text-[#0D0D1A]">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <a href="/" class="h-[60px] px-6 flex items-center border-b border-[#DDE0F0] font-serif text-[1.3rem] text-[#1845D4] font-black tracking-tighter decoration-none">Podium</a>
+            <a href="/" class="h-[60px] px-6 flex items-center border-b border-[#DDE0F0] dark:border-slate-800 font-serif text-[1.3rem] text-[#1845D4] font-black tracking-tighter decoration-none">Podium</a>
             
             <nav class="flex-1 px-3 py-6 overflow-y-auto space-y-6">
                 <div>
@@ -87,15 +88,18 @@
                 </div>
             </nav>
 
-            <div class="p-3 border-t border-[#DDE0F0]">
-                <a href="./profile.html" id="user-profile-preview" class="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-[#F5F6FA] transition-all group">
+            <div class="p-3 border-t border-[#DDE0F0] dark:border-slate-800 space-y-1">
+                <button id="theme-toggle" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all text-[#8888A8] hover:bg-[#F5F6FA] dark:hover:bg-slate-900 group">
+                    <i id="theme-icon" class="fas fa-moon w-4 h-4"></i> Theme
+                </button>
+                <a href="./profile.html" id="user-profile-preview" class="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-[#F5F6FA] dark:hover:bg-slate-900 transition-all group">
                     <div id="user-avatar" class="w-8 h-8 rounded-full bg-[#1845D4] flex items-center justify-center text-white text-[10px] font-bold overflow-hidden shadow-sm">U</div>
                     <div class="flex-1 min-w-0">
-                        <p id="user-name" class="text-[13px] font-bold text-[#0D0D1A] truncate">User</p>
-                        <p id="user-role" class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest truncate">Student</p>
+                        <p id="user-name" class="text-[13px] font-bold text-[#0D0D1A] dark:text-slate-100 truncate">User</p>
+                        <p id="user-role" class="text-[10px] font-bold text-[#8888A8] dark:text-slate-400 uppercase tracking-widest truncate">Student</p>
                     </div>
                 </a>
-                <button id="logout-btn" class="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2.5 rounded-md text-[13px] font-medium text-[#8888A8] hover:text-red-600 hover:bg-red-50 transition-all">
+                <button id="logout-btn" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-[13px] font-medium text-[#8888A8] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
                     <i class="fas fa-sign-out-alt w-4 h-4"></i> Sign Out
                 </button>
             </div>
@@ -105,7 +109,7 @@
         <div id="sidebar-overlay" class="fixed inset-0 bg-[#0D0D1A]/40 backdrop-blur-sm z-40 hidden lg:hidden"></div>
 
         <!-- Mobile Header -->
-        <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-[#DDE0F0] flex items-center justify-between px-6 z-40">
+        <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-950 border-b border-[#DDE0F0] dark:border-slate-800 flex items-center justify-between px-6 z-40">
             <a href="/" class="font-serif font-black text-[#1845D4] text-lg tracking-tighter">Podium</a>
             <button id="mobile-menu-btn" class="p-2 text-[#0D0D1A] bg-[#F5F6FA] rounded-md">
                 <i class="fas fa-bars"></i>
@@ -119,7 +123,7 @@
                 <div id="content-records" class="content-section space-y-8">
                     <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
                         <div>
-                            <h1 class="text-3xl font-sans text-[#0D0D1A] tracking-tighter">Dashboard</h1>
+                            <h1 class="text-3xl font-sans text-[#0D0D1A] dark:text-white tracking-tighter">Dashboard</h1>
                             <p id="today-date" class="text-[13px] text-[#8888A8] font-medium mt-1">Date</p>
                         </div>
                         <div class="flex items-center gap-3">
@@ -131,16 +135,16 @@
 
                     <!-- Stat Cards (clickable) -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <button onclick="window.openRecordsDrawer('join')" class="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm text-left hover:border-[#1845D4] hover:shadow-md transition-all group outline-none">
+                        <button onclick="window.openRecordsDrawer('join')" class="bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-lg p-6 shadow-sm text-left hover:border-[#1845D4] hover:shadow-md transition-all group outline-none">
                             <div class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-3">Enrolled</div>
-                            <div id="enrolled-count" class="text-3xl font-sans text-[#0D0D1A] tracking-tight">0</div>
+                            <div id="enrolled-count" class="text-3xl font-sans text-[#0D0D1A] dark:text-white tracking-tight">0</div>
                             <div class="text-[11px] text-[#1845D4] font-medium mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                 View classes <i class="fas fa-arrow-right text-[9px]"></i>
                             </div>
                         </button>
-                        <button onclick="window.openRecordsDrawer('host')" class="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm text-left hover:border-[#1845D4] hover:shadow-md transition-all group outline-none">
+                        <button onclick="window.openRecordsDrawer('host')" class="bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-lg p-6 shadow-sm text-left hover:border-[#1845D4] hover:shadow-md transition-all group outline-none">
                             <div class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-3">Hosted</div>
-                            <div id="hosted-count" class="text-3xl font-sans text-[#0D0D1A] tracking-tight">0</div>
+                            <div id="hosted-count" class="text-3xl font-sans text-[#0D0D1A] dark:text-white tracking-tight">0</div>
                             <div class="text-[11px] text-[#1845D4] font-medium mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                 View classes <i class="fas fa-arrow-right text-[9px]"></i>
                             </div>
@@ -419,5 +423,6 @@
     <!-- Firebase Logic -->
     <script type="module" src="./js/sidebar.js"></script>
     <script type="module" src="./js/dashboard.js"></script>
+    <script src="./js/theme-toggle.js"></script>
 </body>
 </html>

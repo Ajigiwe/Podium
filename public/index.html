@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="./js/theme-init.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -47,15 +48,15 @@
         }
     </style>
 </head>
-<body class="bg-[#F5F6FA] text-[#0D0D1A] selection:bg-blue-100 selection:text-blue-900 transition-colors duration-200">
+<body class="bg-[#F5F6FA] text-[#0D0D1A] dark:bg-slate-950 dark:text-slate-100 selection:bg-blue-100 selection:text-blue-900 transition-colors duration-200">
     <!-- Navigation -->
-    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-200 py-5">
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-200 py-5 dark:bg-slate-950/80 backdrop-blur-md">
         <div class="max-w-6xl mx-auto px-6 flex justify-between items-center">
             <a href="/" class="flex items-center gap-2">
                 <div class="w-8 h-8 bg-[#1845D4] rounded-lg flex items-center justify-center">
                     <i class="fas fa-graduation-cap text-white text-sm"></i>
                 </div>
-                <span class="text-lg font-sans font-black text-[#0D0D1A] tracking-tighter">Podium</span>
+                <span class="text-lg font-sans font-black text-[#0D0D1A] dark:text-white tracking-tighter">Podium</span>
             </a>
 
             <div class="hidden md:flex items-center gap-8">
@@ -64,8 +65,8 @@
                     <a href="./auth/login.html" class="text-[9px] font-bold text-[#8888A8] hover:text-[#1845D4] uppercase tracking-widest transition-colors">Sign In</a>
                     <a href="./auth/signup.html" class="px-4 py-2 bg-[#0D0D1A] text-white text-[9px] font-bold uppercase tracking-widest rounded-md hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/5">Get Started</a>
                 </div>
-                <button id="theme-toggle" class="p-2 rounded-lg hover:bg-white transition-colors border border-transparent">
-                    <i id="theme-icon" class="fas fa-moon text-[#8888A8]"></i>
+                <button id="theme-toggle" class="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-900 transition-colors border border-transparent">
+                    <i id="theme-icon" class="fas fa-moon text-[#8888A8] dark:text-slate-400"></i>
                 </button>
             </div>
 
@@ -286,14 +287,8 @@
             }
         });
 
-        // Theme Toggle (Simplified for parity)
-        const themeToggle = document.getElementById('theme-toggle');
-        themeToggle.addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-            const icon = document.getElementById('theme-icon');
-            icon.classList.toggle('fa-moon');
-            icon.classList.toggle('fa-sun');
-        });
+        // Theme Toggle
+        // Logic handled by theme-toggle.js
 
         // Mobile Menu Toggle
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
@@ -308,7 +303,7 @@
         closeMobileMenu?.addEventListener('click', () => {
             mobileMenu.classList.add('translate-x-full');
             document.body.classList.remove('overflow-hidden');
-        });
     </script>
+    <script src="./js/theme-toggle.js"></script>
 </body>
 </html>

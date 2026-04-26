@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="./js/theme-init.js"></script>
     <link rel="stylesheet" href="./css/index.css">
     <script>
         tailwind.config = {
@@ -31,21 +32,26 @@
         }
     </script>
 </head>
-<body class="bg-white text-[#0D0D1A] font-sans selection:bg-blue-100 transition-colors duration-200">
+<body class="bg-[#F5F6FA] text-[#0D0D1A] dark:bg-slate-950 dark:text-slate-100 font-sans selection:bg-blue-100 transition-colors duration-200">
     
     <!-- Navigation -->
-    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
-        <div class="max-w-6xl mx-auto px-6 sm:px-8">
-            <div class="flex justify-between items-center h-20">
-                <a href="/" class="flex items-center gap-3 group">
-                    <div class="w-10 h-10 rounded-lg bg-[#1845D4] flex items-center justify-center border border-blue-600 shadow-lg shadow-blue-600/20 group-hover:scale-105 transition-transform">
-                        <i class="fas fa-graduation-cap text-white"></i>
-                    </div>
-                    <span class="text-2xl font-sans font-black text-[#0D0D1A] tracking-tighter">Podium</span>
-                </a>
-                <a href="/" class="text-[10px] font-black text-[#8888A8] hover:text-[#1845D4] uppercase tracking-[0.2em] flex items-center gap-2 transition-all">
-                    <i class="fas fa-chevron-left"></i> Back to Home
-                </a>
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-[#DDE0F0] dark:border-slate-800 py-4 transition-all">
+        <div class="max-w-6xl mx-auto px-6 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-[#1845D4] rounded-lg flex items-center justify-center">
+                    <i class="fas fa-graduation-cap text-white text-sm"></i>
+                </div>
+                <span class="text-lg font-sans font-black text-[#0D0D1A] dark:text-white tracking-tighter">Podium</span>
+            </a>
+
+            <div class="hidden md:flex items-center gap-6">
+                <button id="theme-toggle" class="p-2 rounded-lg hover:bg-[#F5F6FA] dark:hover:bg-slate-900 transition-colors">
+                    <i id="theme-icon" class="fas fa-moon text-[#8888A8]"></i>
+                </button>
+                <div class="w-px h-4 bg-[#DDE0F0] dark:bg-slate-800"></div>
+                <a href="/" class="text-[9px] font-bold text-[#8888A8] hover:text-[#1845D4] uppercase tracking-widest transition-colors">Home</a>
+                <a href="./auth/login.html" class="text-[9px] font-bold text-[#8888A8] hover:text-[#1845D4] uppercase tracking-widest transition-colors">Sign In</a>
+                <a href="./auth/signup.html" class="px-4 py-2 bg-[#1845D4] text-white text-[9px] font-bold uppercase tracking-widest rounded-md hover:bg-[#0F2FA8] transition-all active:scale-95 shadow-lg shadow-blue-600/10">Get Started</a>
             </div>
         </div>
     </nav>
@@ -156,5 +162,6 @@
             }
         };
     </script>
+    <script src="./js/theme-toggle.js"></script>
 </body>
 </html>
