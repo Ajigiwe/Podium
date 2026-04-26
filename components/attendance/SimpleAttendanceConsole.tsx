@@ -263,7 +263,7 @@ export const SimpleAttendanceConsole = ({ sessionId, isActive }: SimpleAttendanc
                             </button>
 
                             {showSettings && (
-                                <div className="absolute top-full right-0 mt-3 w-56 bg-gray-900 border border-white/10 rounded-lg p-4 animate-in fade-in slide-in-from-top-2 shadow-2xl z-50">
+                                <div className="absolute top-full right-0 mt-3 w-[260px] sm:w-56 bg-gray-900 border border-white/10 rounded-lg p-4 animate-in fade-in slide-in-from-top-2 shadow-2xl z-50">
                                     <div className="flex items-center justify-between mb-4">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Auto-Verify</span>
                                         <label className="relative inline-flex items-center cursor-pointer">

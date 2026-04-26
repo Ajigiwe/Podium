@@ -52,7 +52,7 @@ export function CoHostManagementPanel({ sessionId }: CoHostManagementPanelProps)
 
             {/* Panel */}
             {showPanel && (
-                <div className="fixed top-20 right-4 z-[150] w-80 bg-slate-900/90 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/5 flex flex-col max-h-[70vh] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="fixed top-16 sm:top-20 right-2 sm:right-4 z-[150] w-[calc(100vw-16px)] sm:w-80 bg-slate-900/90 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/5 flex flex-col max-h-[70vh] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* Header */}
                     <div className="flex items-center justify-between p-4 border-b border-white/5 bg-white/5">
                         <h3 className="text-white font-black uppercase tracking-widest text-[10px] flex items-center gap-2">

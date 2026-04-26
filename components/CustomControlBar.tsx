@@ -226,7 +226,7 @@ export default function CustomControlBar({
     };
 
     return (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-0.5 sm:gap-1 p-1 sm:p-1.5 bg-slate-900/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 duration-700 max-w-[98vw]">
+        <div className="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-0.5 sm:gap-1 p-0.5 sm:p-1.5 bg-slate-900/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 duration-700 max-w-[98vw]">
             {/* Audio Section */}
             <div className="flex items-center" ref={micRef}>
                 <button
@@ -244,9 +244,9 @@ export default function CustomControlBar({
                 </button>
                 <button
                     onClick={(e) => toggleMenu('mic', e)}
-                    className={`device-menu-toggle h-9 w-3 sm:h-11 sm:w-4 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'mic' ? 'text-indigo-400' : 'text-slate-500'}`}
+                    className={`device-menu-toggle h-9 w-4 sm:h-11 sm:w-4 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'mic' ? 'text-indigo-400' : 'text-slate-500'}`}
                 >
-                    <ChevronUp className={`w-2.5 h-2.5 transition-transform duration-300 ${activeMenu === 'mic' ? 'rotate-180' : ''}`} />
+                    <ChevronUp className={`w-3 h-3 sm:w-2.5 sm:h-2.5 transition-transform duration-300 ${activeMenu === 'mic' ? 'rotate-180' : ''}`} />
                 </button>
                 <DeviceMenu kind="audioinput" isOpen={activeMenu === 'mic'} onClose={() => setActiveMenu(null)} triggerRef={micRef} />
             </div>
@@ -270,9 +270,9 @@ export default function CustomControlBar({
                 </button>
                 <button
                     onClick={(e) => toggleMenu('camera', e)}
-                    className={`device-menu-toggle h-9 w-3 sm:h-11 sm:w-4 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'camera' ? 'text-indigo-400' : 'text-slate-500'}`}
+                    className={`device-menu-toggle h-9 w-4 sm:h-11 sm:w-4 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors ${activeMenu === 'camera' ? 'text-indigo-400' : 'text-slate-500'}`}
                 >
-                    <ChevronUp className={`w-2.5 h-2.5 transition-transform duration-300 ${activeMenu === 'camera' ? 'rotate-180' : ''}`} />
+                    <ChevronUp className={`w-3 h-3 sm:w-2.5 sm:h-2.5 transition-transform duration-300 ${activeMenu === 'camera' ? 'rotate-180' : ''}`} />
                 </button>
                 <DeviceMenu kind="videoinput" isOpen={activeMenu === 'camera'} onClose={() => setActiveMenu(null)} triggerRef={cameraRef} />
             </div>

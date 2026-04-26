@@ -282,7 +282,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                 <Home className="w-4 h-4" />
                             </button>
                             <div className="min-w-0">
-                                <h1 className="text-[13px] sm:text-base font-bold text-white truncate leading-none mb-1">{session.title}</h1>
+                                <h1 className="text-[13px] sm:text-base font-bold text-white truncate leading-none mb-1 max-w-[100px] xs:max-w-[150px] sm:max-w-none">{session.title}</h1>
                                 <div className="flex items-center gap-2">
                                     <div className="flex items-center gap-1.5">
                                         <span className={`w-1.5 h-1.5 rounded-full ${session.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
@@ -320,11 +320,11 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                             <div className="flex items-center gap-1 sm:gap-1.5">
                                 <button
                                     onClick={() => setShowParticipantsModal(true)}
-                                    className="relative h-9 px-3 text-[10px] font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2 border border-indigo-400/20"
+                                    className="relative h-8 sm:h-9 px-2 sm:px-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5 sm:gap-2 border border-indigo-400/20"
                                 >
-                                    <Users className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">{isModerator ? 'Manage' : 'People'}</span>
-                                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] tabular-nums">{participants.length}</span>
+                                    <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                    <span className="hidden xs:inline sm:inline">{isModerator ? 'Manage' : 'People'}</span>
+                                    <span className="bg-white/20 px-1 py-0.5 rounded text-[8px] sm:text-[10px] tabular-nums">{participants.length}</span>
                                     {isModerator && pendingRequests.length > 0 && (
                                         <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 flex items-center justify-center rounded-full border-2 border-slate-900 animate-bounce">
                                             {pendingRequests.length}
@@ -337,28 +337,28 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                                         setShowMaterialsModal(true);
                                         setHasNewMaterials(false);
                                     }}
-                                    className="relative h-9 px-3 text-[10px] font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-white/10 flex items-center gap-2"
+                                    className="relative h-8 sm:h-9 px-2 sm:px-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-white/10 flex items-center gap-1.5 sm:gap-2"
                                 >
-                                    <Folder className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">Materials</span>
+                                    <Folder className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                    <span className="hidden xs:inline sm:inline">Materials</span>
                                     {hasNewMaterials && (
-                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-slate-900 shadow-lg animate-pulse" />
+                                        <span className="absolute -top-1 -right-1 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-indigo-500 rounded-full border-2 border-slate-900 shadow-lg animate-pulse" />
                                     )}
                                 </button>
                                 
                                 <button
                                     onClick={() => setShowShareModal(true)}
-                                    className="hidden sm:flex h-9 sm:h-10 px-3 sm:px-4 text-[10px] font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-white/10 items-center gap-2"
+                                    className="hidden md:flex h-9 sm:h-10 px-3 sm:px-4 text-[10px] font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-white/10 items-center gap-2"
                                 >
                                     <Share2 className="w-3.5 h-3.5" />
-                                    <span className="hidden md:inline">Invite</span>
+                                    <span className="hidden lg:inline">Invite</span>
                                 </button>
 
                                 <button
                                     onClick={() => setShowMobileMenu(true)}
-                                    className="p-2.5 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5"
+                                    className="p-2 sm:p-2.5 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5"
                                 >
-                                    <Menu className="w-5 h-5" />
+                                    <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
                                 </button>
                             </div>
                         </div>
@@ -375,8 +375,9 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
                     right: 0,
                     bottom: 0,
                     backgroundColor: '#0a0a0a',
+                    paddingBottom: '80px', // Space for Control Bar
                 }}
-                className="sm:!top-[64px]"
+                className="sm:!top-[64px] sm:pb-[100px]"
             >
                 <div
                     id="classroom-video-mount"
