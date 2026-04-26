@@ -60,6 +60,13 @@ onAuthStateChanged(auth, async (user) => {
     // Initial Render
     renderProfile();
     loadStatistics();
+    
+    // Show attendance nav if eligible
+    if (userProfile.role === 'admin' || userProfile.role === 'lecturer' || userProfile.role === 'rep' || userProfile.isVerified) {
+        const attendanceNav = document.getElementById('nav-attendance');
+        if (attendanceNav) attendanceNav.classList.remove('hidden');
+    }
+
     if (userProfile.role === 'lecturer') {
         document.getElementById('tab-recordings').classList.remove('hidden');
         fetchRecordings();

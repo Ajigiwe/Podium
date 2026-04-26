@@ -77,6 +77,13 @@ onAuthStateChanged(auth, async (user) => {
         if (attendanceNav) attendanceNav.classList.add('hidden');
     }
     
+    // Check for tab in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetTab = urlParams.get('tab');
+    if (targetTab && contentSections[targetTab]) {
+        window.switchTab(targetTab);
+    }
+    
     console.log('[Dashboard] Initialized for:', user.email);
 });
 

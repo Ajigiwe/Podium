@@ -40,6 +40,13 @@ onAuthStateChanged(auth, async (user) => {
     setLoading(true);
     fetchJoinHistory();
     fetchHostedHistory();
+    
+    // Show attendance nav if eligible
+    if (profile.role === 'admin' || profile.role === 'lecturer' || profile.role === 'rep' || profile.isVerified) {
+        const attendanceNav = document.getElementById('nav-attendance');
+        if (attendanceNav) attendanceNav.classList.remove('hidden');
+    }
+
     setTimeout(() => setLoading(false), 800);
 });
 
