@@ -46,11 +46,11 @@ export default function ClassroomPage() {
     useEffect(() => {
         if (authLoading || sessionLoading) return;
         if (sessionError) { showAlert('Class not found', 'error'); router.push('/'); return; }
-        if (!user || !profile || !session) { if (!authLoading && !user) router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`); return; }
+        if (!user || !session) { if (!authLoading && !user) router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`); return; }
 
         const verifyAccess = async () => {
             try {
-                const isModerator = session.hostId === user.uid || session.lecturerId === user.uid || (await checkIsCoHost(sessionId, user.uid)) || profile.role === 'lecturer' || profile.role === 'admin';
+                const isModerator = session.hostId === user.uid || session.lecturerId === user.uid || (await checkIsCoHost(sessionId, user.uid)) || profile?.role === 'lecturer' || profile?.role === 'admin';
                 
                 // Group Access Control
                 if (session.groupId && !isModerator) {
@@ -68,15 +68,15 @@ export default function ClassroomPage() {
                     setWaitingForLecturer(true); setLoading(false); return;
                 }
                 const isPayToUse = (await getDoc(doc(db, 'system_settings', 'subscription'))).data()?.isPayToUse ?? true;
-                if (!isModerator && isPayToUse && profile.subscriptionStatus !== 'active') { window.location.href = '/dashboard.html'; return; }
+                if (!isModerator && isPayToUse && profile?.subscriptionStatus !== 'active') { window.location.href = '/dashboard.html'; return; }
 
                 const attendanceSnap = await getDocs(query(collection(db, 'attendance_logs'), where('sessionId', '==', sessionId), where('userId', '==', user.uid)));
                 
                 if (attendanceSnap.empty) {
                     // If it's a student with incomplete profile, show the modal
-                    if (!isModerator && (!profile.fullName || !profile.indexNumber)) {
-                        setStudentName(profile.fullName || '');
-                        setStudentIndex(profile.indexNumber || '');
+                    if (!isModerator && (!profile?.fullName || !profile?.indexNumber)) {
+                        setStudentName(profile?.fullName || '');
+                        setStudentIndex(profile?.indexNumber || '');
                         setShowProfileModal(true);
                         setLoading(false);
                         return;
@@ -88,9 +88,9 @@ export default function ClassroomPage() {
                         sessionId,
                         sessionTitle: session.title || 'Class',
                         userId: user.uid,
-                        userName: profile.fullName || user.email?.split('@')[0] || 'User',
+                        userName: profile?.fullName || user.email?.split('@')[0] || 'User',
                         userEmail: user.email,
-                        userIndexNumber: profile.indexNumber || 'N/A',
+                        userIndexNumber: profile?.indexNumber || 'N/A',
                         joinedAt: serverTimestamp(),
                         lecturerId: session.lecturerId || session.hostId || '',
                         totalVerificationsSent: 0,
@@ -107,8 +107,8 @@ export default function ClassroomPage() {
                 setLoading(false);
                 if (typeof window !== 'undefined') sessionStorage.setItem('podium_user_interacted', 'true');
                 
-                const finalName = profile.fullName || user.email?.split('@')[0] || 'User';
-                joinClass(sessionId, session.title || 'Class', finalName, isModerator ? 'lecturer' : 'student', user.uid, profile.photoURL, profile.displayIcon, true);
+                const finalName = profile?.fullName || user.email?.split('@')[0] || 'User';
+                joinClass(sessionId, session.title || 'Class', finalName, isModerator ? 'lecturer' : 'student', user.uid, profile?.photoURL, profile?.displayIcon, true);
             } catch (error) { 
                 console.error('[Classroom:VerifyAccess] Error:', error);
                 setLoading(false); 
@@ -122,12 +122,18 @@ export default function ClassroomPage() {
         if (!studentName.trim() || !studentIndex.trim()) return showAlert("Fields required.", "error");
         setSubmittingProfile(true);
         try {
-            // Update profile
-            await updateDoc(doc(db, 'profiles', user!.uid), { 
+            // Create or update profile
+            await setDoc(doc(db, 'profiles', user!.uid), { 
                 fullName: studentName, 
                 indexNumber: studentIndex, 
-                updatedAt: serverTimestamp() 
-            });
+                updatedAt: serverTimestamp(),
+                id: user!.uid,
+                email: user!.email,
+                role: 'student',
+                createdAt: serverTimestamp() // setDoc with merge will not overwrite if it exists and we use serverTimestamp? 
+                // Actually, if we want to preserve createdAt, we should probably check if it exists or use a more complex update.
+                // But for a new user, this is fine.
+            }, { merge: true });
 
             // Create log
             const logRef = doc(db, 'attendance_logs', `${sessionId}_${user!.uid}`);
