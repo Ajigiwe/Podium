@@ -43,38 +43,86 @@ export default function ClassroomPage() {
     const [submittingProfile, setSubmittingProfile] = useState(false);
     const [joinMicEnabled, setJoinMicEnabled] = useState(true);
 
+    console.log('[ClassroomPage] Render - loading:', loading, 'authLoading:', authLoading, 'sessionLoading:', sessionLoading, 'sessionError:', !!sessionError, 'user:', !!user, 'session:', !!session, 'profile:', !!profile);
+
     useEffect(() => {
-        if (authLoading || sessionLoading) return;
-        if (sessionError) { showAlert('Class not found', 'error'); router.push('/'); return; }
-        if (!user || !session) { if (!authLoading && !user) router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`); return; }
+        console.log('[ClassroomPage] useEffect triggered - authLoading:', authLoading, 'sessionLoading:', sessionLoading, 'user:', !!user, 'session:', !!session);
+        if (authLoading || sessionLoading) {
+            console.log('[ClassroomPage] useEffect: early return because authLoading or sessionLoading is true');
+            return;
+        }
+        if (sessionError) { 
+            console.error('[ClassroomPage] useEffect: sessionError occurred:', sessionError);
+            showAlert('Class not found', 'error'); 
+            router.push('/'); 
+            return; 
+        }
+        if (!user || !session) { 
+            console.log('[ClassroomPage] useEffect: user or session missing. user:', !!user, 'session:', !!session);
+            if (!authLoading && !user) {
+                console.log('[ClassroomPage] Redirecting to login...');
+                router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`); 
+            }
+            return; 
+        }
 
         const verifyAccess = async () => {
             try {
-                const isModerator = session.hostId === user.uid || session.lecturerId === user.uid || (await checkIsCoHost(sessionId, user.uid)) || profile?.role === 'lecturer' || profile?.role === 'admin';
+                console.log('[Classroom:VerifyAccess] Starting verification for sessionId:', sessionId, 'userId:', user.uid);
+                
+                console.log('[Classroom:VerifyAccess] Checking if user is moderator...');
+                const isCoHost = await checkIsCoHost(sessionId, user.uid);
+                console.log('[Classroom:VerifyAccess] isCoHost:', isCoHost);
+                const isModerator = session.hostId === user.uid || session.lecturerId === user.uid || isCoHost || profile?.role === 'lecturer' || profile?.role === 'admin';
+                console.log('[Classroom:VerifyAccess] isModerator result:', isModerator);
                 
                 // Group Access Control
                 if (session.groupId && !isModerator) {
+                    console.log('[Classroom:VerifyAccess] Checking group membership for groupId:', session.groupId);
                     const membershipRef = doc(db, 'group_memberships', `${user.uid}_${session.groupId}`);
                     const membershipSnap = await getDoc(membershipRef);
                     if (!membershipSnap.exists()) {
+                        console.warn('[Classroom:VerifyAccess] User is not a member of group:', session.groupId);
                         showAlert('This class is restricted to verified group members.', 'error');
                         window.location.href = '/dashboard.html';
                         return;
                     }
+                    console.log('[Classroom:VerifyAccess] Group membership verified.');
                 }
 
                 if (!isModerator && !session.isActive) {
-                    if (session.scheduledStartTime && session.scheduledStartTime.toDate() > new Date()) { setIsScheduledWait(true); setLoading(false); return; }
-                    setWaitingForLecturer(true); setLoading(false); return;
+                    console.log('[Classroom:VerifyAccess] Session inactive, user is student. Checking schedule...');
+                    if (session.scheduledStartTime && session.scheduledStartTime.toDate() > new Date()) { 
+                        console.log('[Classroom:VerifyAccess] Session is scheduled for future. Showing scheduled wait page.');
+                        setIsScheduledWait(true); 
+                        setLoading(false); 
+                        return; 
+                    }
+                    console.log('[Classroom:VerifyAccess] Awaiting host to start class. Showing lobby wait page.');
+                    setWaitingForLecturer(true); 
+                    setLoading(false); 
+                    return;
                 }
-                const isPayToUse = (await getDoc(doc(db, 'system_settings', 'subscription'))).data()?.isPayToUse ?? true;
-                if (!isModerator && isPayToUse && profile?.subscriptionStatus !== 'active') { window.location.href = '/dashboard.html'; return; }
+                
+                console.log('[Classroom:VerifyAccess] Fetching system_settings/subscription...');
+                const subDoc = await getDoc(doc(db, 'system_settings', 'subscription'));
+                console.log('[Classroom:VerifyAccess] system_settings/subscription exists:', subDoc.exists());
+                const isPayToUse = subDoc.data()?.isPayToUse ?? true;
+                console.log('[Classroom:VerifyAccess] isPayToUse:', isPayToUse, 'profile.subscriptionStatus:', profile?.subscriptionStatus);
+                if (!isModerator && isPayToUse && profile?.subscriptionStatus !== 'active') { 
+                    console.warn('[Classroom:VerifyAccess] Unpaid student access denied, redirecting.');
+                    window.location.href = '/dashboard.html'; 
+                    return; 
+                }
 
+                console.log('[Classroom:VerifyAccess] Fetching attendance log for sessionId:', sessionId, 'userId:', user.uid);
                 const attendanceSnap = await getDocs(query(collection(db, 'attendance_logs'), where('sessionId', '==', sessionId), where('userId', '==', user.uid)));
+                console.log('[Classroom:VerifyAccess] attendanceSnap count:', attendanceSnap.size);
                 
                 if (attendanceSnap.empty) {
                     // If it's a student with incomplete profile, show the modal
                     if (!isModerator && (!profile?.fullName || !profile?.indexNumber)) {
+                        console.log('[Classroom:VerifyAccess] Student profile incomplete. Showing profile modal...');
                         setStudentName(profile?.fullName || '');
                         setStudentIndex(profile?.indexNumber || '');
                         setShowProfileModal(true);
@@ -83,6 +131,7 @@ export default function ClassroomPage() {
                     }
 
                     // Otherwise (Lecturer, Co-host, or Student with profile), auto-create the log
+                    console.log('[Classroom:VerifyAccess] Creating attendance log...');
                     const logRef = doc(db, 'attendance_logs', `${sessionId}_${user.uid}`);
                     await setDoc(logRef, {
                         sessionId,
@@ -98,27 +147,34 @@ export default function ClassroomPage() {
                         verificationPercentage: 0,
                         role: isModerator ? 'lecturer' : 'student'
                     });
+                    console.log('[Classroom:VerifyAccess] Attendance log created successfully.');
                     
                     // Increment count
+                    console.log('[Classroom:VerifyAccess] Incrementing session participantCount...');
                     await updateDoc(doc(db, 'sessions', sessionId), { participantCount: increment(1) });
+                    console.log('[Classroom:VerifyAccess] Participant count incremented.');
                 }
 
                 if (isModerator && !session.isActive && session.status === 'active') {
                     try {
+                        console.log('[Classroom:VerifyAccess] Moderator auto-activating session...');
                         await updateDoc(doc(db, 'sessions', sessionId), { isActive: true });
+                        console.log('[Classroom:VerifyAccess] Session activated.');
                     } catch (err) {
                         console.error('[Classroom:AutoActivate] Failed to activate session:', err);
                     }
                 }
 
+                console.log('[Classroom:VerifyAccess] Access verified successfully. canAccess -> true');
                 setCanAccess(true);
                 setLoading(false);
                 if (typeof window !== 'undefined') sessionStorage.setItem('podium_user_interacted', 'true');
                 
                 const finalName = profile?.fullName || user.email?.split('@')[0] || 'User';
+                console.log('[Classroom:VerifyAccess] Joining class with userName:', finalName, 'isModerator:', isModerator);
                 joinClass(sessionId, session.title || 'Class', finalName, isModerator ? 'lecturer' : 'student', user.uid, profile?.photoURL, profile?.displayIcon, true);
             } catch (error) { 
-                console.error('[Classroom:VerifyAccess] Error:', error);
+                console.error('[Classroom:VerifyAccess] Error during verification:', error);
                 setLoading(false); 
             }
         };
