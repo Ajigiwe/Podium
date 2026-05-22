@@ -130,13 +130,26 @@
                     <div class="absolute -top-10 -left-10 w-64 h-64 bg-blue-50 dark:bg-blue-900/10 rounded-full blur-[80px]"></div>
                     <div class="relative bg-white dark:bg-slate-900 p-3 rounded-2xl shadow-xl border border-[#DDE0F0] dark:border-slate-800 overflow-hidden group">
                         <div class="aspect-[4/3] bg-[#F5F6FA] dark:bg-slate-950 rounded-xl border border-[#DDE0F0] dark:border-slate-800 flex items-center justify-center relative overflow-hidden">
-                            <i class="fas fa-play-circle text-5xl text-blue-100 dark:text-blue-900/30 group-hover:scale-110 transition-transform duration-500"></i>
-                            <div class="absolute bottom-4 left-4 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-lg border border-[#DDE0F0] dark:border-slate-800 flex items-center gap-4 translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+                            <!-- Slider Images -->
+                            <div id="hero-slider" class="absolute inset-0 w-full h-full">
+                                <img src="https://i.pinimg.com/736x/82/54/ca/8254ca912c7d68866a7d393bb3f3a927.jpg" alt="Student learning" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 opacity-100 slider-image">
+                                <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2070&auto=format&fit=crop" alt="Virtual class" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 opacity-0 slider-image">
+                                <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop" alt="Interactive session" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 opacity-0 slider-image">
+                            </div>
+
+                            <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md dark:bg-slate-900/90 p-4 rounded-xl shadow-lg border border-[#DDE0F0] dark:border-slate-800 flex items-center gap-4 translate-y-2 group-hover:translate-y-0 transition-all duration-500 z-10">
                                 <div class="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center text-[#1845D4] dark:text-blue-400"><i class="fas fa-chart-line text-sm"></i></div>
                                 <div>
                                     <p class="text-[8px] font-black text-[#8888A8] dark:text-slate-400 uppercase tracking-widest">Registry Status</p>
                                     <p class="text-base font-sans font-black text-[#0D0D1A] dark:text-white">Verified Presence</p>
                                 </div>
+                            </div>
+
+                            <!-- Slider Controls overlay -->
+                            <div class="absolute bottom-4 right-4 flex gap-2 z-10 translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+                                <button class="w-2 h-2 rounded-full bg-white transition-colors slider-dot active shadow-sm"></button>
+                                <button class="w-2 h-2 rounded-full bg-white/50 hover:bg-white transition-colors slider-dot shadow-sm"></button>
+                                <button class="w-2 h-2 rounded-full bg-white/50 hover:bg-white transition-colors slider-dot shadow-sm"></button>
                             </div>
                         </div>
                     </div>
@@ -231,6 +244,37 @@
         closeMobileMenu?.addEventListener('click', () => {
             mobileMenu.classList.add('translate-x-full');
             document.body.classList.remove('overflow-hidden');
+        });
+
+        // Hero Slider Logic
+        const sliderImages = document.querySelectorAll('.slider-image');
+        const sliderDots = document.querySelectorAll('.slider-dot');
+        let currentSlide = 0;
+
+        function goToSlide(index) {
+            sliderImages[currentSlide].classList.replace('opacity-100', 'opacity-0');
+            sliderDots[currentSlide].classList.replace('bg-white', 'bg-white/50');
+            sliderDots[currentSlide].classList.remove('active');
+            
+            currentSlide = index;
+            
+            sliderImages[currentSlide].classList.replace('opacity-0', 'opacity-100');
+            sliderDots[currentSlide].classList.replace('bg-white/50', 'bg-white');
+            sliderDots[currentSlide].classList.add('active');
+        }
+
+        function nextSlide() {
+            goToSlide((currentSlide + 1) % sliderImages.length);
+        }
+
+        let slideInterval = setInterval(nextSlide, 4000);
+
+        sliderDots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                clearInterval(slideInterval);
+                goToSlide(index);
+                slideInterval = setInterval(nextSlide, 4000);
+            });
         });
     </script>
     <script src="./js/theme-toggle.js"></script>
