@@ -45,6 +45,10 @@ async function handleRequest(request: NextRequest) {
     const res = await fetch(targetUrl.toString(), init);
     const contentType = res.headers.get('content-type') || '';
 
+    const responseHeaders = new Headers(res.headers);
+    responseHeaders.delete('content-length');
+    responseHeaders.delete('content-encoding');
+
     if (contentType.includes('text/html')) {
       let html = await res.text();
       
@@ -57,8 +61,6 @@ async function handleRequest(request: NextRequest) {
         html = `<title>Podium</title>${html}`;
       }
       
-      const responseHeaders = new Headers(res.headers);
-      responseHeaders.delete('content-length');
       responseHeaders.set('cache-control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
       return new NextResponse(html, {
@@ -71,7 +73,7 @@ async function handleRequest(request: NextRequest) {
     return new NextResponse(res.body, {
       status: res.status,
       statusText: res.statusText,
-      headers: res.headers,
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error('[auth-handler] Error proxying to Firebase Auth handler:', error);
