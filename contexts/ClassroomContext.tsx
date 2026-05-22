@@ -268,7 +268,15 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             if (docSnap.exists()) {
                 const data = docSnap.data() as Session;
                 setSessionData(data);
-                if (data.status === 'deleted' || data.isDeleted || data.isActive === false || data.status === 'ended') {
+                
+                const userIsHost = data.hostId === userId || data.lecturerId === userId;
+                const userIsCoHost = coHosts.some(ch => ch.userId === userId);
+                const userIsModerator = userIsHost || userIsCoHost || data.backupModId === userId || userRole === 'admin';
+                
+                const isSessionEndedOrDeleted = data.status === 'deleted' || data.isDeleted || data.status === 'ended';
+                const isInactiveForStudent = data.isActive === false && !userIsModerator;
+                
+                if (isSessionEndedOrDeleted || isInactiveForStudent) {
                     if (sessionId === docSnap.id) {
                         const wasAlreadyDeleted = (window as any)._podium_session_deleted;
                         if (!wasAlreadyDeleted) {
@@ -288,7 +296,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             }
         });
         return () => unsubscribe();
-    }, [sessionId, router, showAlert, leaveClass]);
+    }, [sessionId, router, showAlert, leaveClass, userId, userRole, coHosts]);
 
     useEffect(() => {
         if (!liveKitRoom || !sessionData) return;

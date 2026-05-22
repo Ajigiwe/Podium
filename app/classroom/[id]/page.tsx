@@ -103,6 +103,14 @@ export default function ClassroomPage() {
                     await updateDoc(doc(db, 'sessions', sessionId), { participantCount: increment(1) });
                 }
 
+                if (isModerator && !session.isActive && session.status === 'active') {
+                    try {
+                        await updateDoc(doc(db, 'sessions', sessionId), { isActive: true });
+                    } catch (err) {
+                        console.error('[Classroom:AutoActivate] Failed to activate session:', err);
+                    }
+                }
+
                 setCanAccess(true);
                 setLoading(false);
                 if (typeof window !== 'undefined') sessionStorage.setItem('podium_user_interacted', 'true');
