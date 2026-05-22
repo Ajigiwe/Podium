@@ -184,6 +184,15 @@
     <div id="role-menu" class="hidden fixed bg-white dark:bg-slate-900 rounded-lg shadow-2xl border border-[#DDE0F0] dark:border-slate-800 py-2 z-[100] w-44">
         <div class="px-3 pb-2 text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Actions</div>
         <button onclick="openHistoryDrawer()" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-[#1845D4] dark:text-blue-400 flex items-center gap-2"><i class="fas fa-history text-xs"></i> View History</button>
+        
+        <!-- Verification Action Section -->
+        <div id="verification-action-section" class="hidden">
+            <div class="h-px bg-[#F5F6FA] dark:bg-slate-800 my-1 mx-3"></div>
+            <button id="toggle-verify-btn" onclick="toggleVerification()" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-[#1BA05C] flex items-center gap-2">
+                <i class="fas fa-user-check text-xs"></i> Verify Rep
+            </button>
+        </div>
+
         <div class="h-px bg-[#F5F6FA] dark:bg-slate-800 my-1 mx-3"></div>
         <div class="px-3 py-1 text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Change Role</div>
         <button onclick="setRole('student')" class="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-[#444460] dark:text-slate-300">Student</button>
@@ -455,6 +464,22 @@
             menu.classList.remove('hidden');
             const rect = e.currentTarget.getBoundingClientRect();
             
+            // Dynamic Verification Action
+            const verifySection = document.getElementById('verification-action-section');
+            const verifyBtn = document.getElementById('toggle-verify-btn');
+            if (u && u.role === 'student') {
+                verifySection.classList.remove('hidden');
+                if (u.isVerified) {
+                    verifyBtn.innerHTML = '<i class="fas fa-user-slash text-xs"></i> Unverify Rep';
+                    verifyBtn.className = "w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-red-600 flex items-center gap-2";
+                } else {
+                    verifyBtn.innerHTML = '<i class="fas fa-user-check text-xs"></i> Verify Rep';
+                    verifyBtn.className = "w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F5F6FA] dark:hover:bg-slate-800 text-[#1BA05C] flex items-center gap-2";
+                }
+            } else {
+                verifySection.classList.add('hidden');
+            }
+
             // Fixed positioning: relative to viewport, so no scrollY needed
             let top = rect.bottom + 4;
             let left = rect.right - 176;
@@ -477,6 +502,17 @@
                 showToast(`Role updated to ${role}.`);
                 loadStats(); loadUsers();
             } catch { showToast('Failed to update role.', 'error'); }
+        };
+
+        window.toggleVerification = async () => {
+            if (!menuUserId) return;
+            const u = usersCache[menuUserId];
+            const targetStatus = !(u && u.isVerified);
+            try {
+                await updateDoc(doc(db, 'profiles', menuUserId), { isVerified: targetStatus });
+                showToast(targetStatus ? 'Student verified as Rep.' : 'Student verification revoked.');
+                loadStats(); loadUsers();
+            } catch { showToast('Failed to update verification.', 'error'); }
         };
 
         window.deleteUser = async () => {
