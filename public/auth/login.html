@@ -39,7 +39,17 @@
         .font-serif { font-family: 'Outfit', serif; }
     </style>
 </head>
-<body class="bg-[#F5F6FA] dark:bg-slate-950 text-[#0D0D1A] dark:text-slate-100 min-h-screen flex items-center justify-center p-6 transition-colors duration-200">
+<body class="bg-[#F5F6FA] dark:bg-slate-950 text-[#0D0D1A] dark:text-slate-100 min-h-screen flex transition-colors duration-200">
+    <!-- Image Section -->
+    <div class="hidden lg:block lg:w-1/2 relative bg-cover bg-center" style="background-image: url('https://i.pinimg.com/736x/e8/39/1f/e8391f7056eb84e8b7ba3f0d89994d6f.jpg');">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        <div class="absolute inset-0 flex flex-col justify-end p-12 text-white">
+            <h2 class="text-4xl font-serif font-black mb-4 tracking-tighter">Welcome Back</h2>
+            <p class="text-lg font-medium text-white/90 max-w-md">Pick up where you left off and stay ahead in your coursework with Podium.</p>
+        </div>
+    </div>
+    <!-- Form Section -->
+    <div class="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 relative">
     <!-- Theme Toggle -->
     <div class="fixed top-6 right-6">
         <button id="theme-toggle" class="p-3 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl shadow-sm hover:border-[#1845D4] transition-all group">
@@ -117,5 +127,6 @@
             }
         };
     </script>
+    </div>
 </body>
 </html>

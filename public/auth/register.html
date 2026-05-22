@@ -39,7 +39,17 @@
         .font-serif { font-family: 'Outfit', serif; }
     </style>
 </head>
-<body class="bg-[#F5F6FA] dark:bg-slate-950 text-[#0D0D1A] dark:text-slate-100 min-h-screen flex items-center justify-center p-6 transition-colors duration-200">
+<body class="bg-[#F5F6FA] dark:bg-slate-950 text-[#0D0D1A] dark:text-slate-100 min-h-screen flex transition-colors duration-200">
+    <!-- Image Section -->
+    <div class="hidden lg:block lg:w-1/2 relative bg-cover bg-center" style="background-image: url('https://i.pinimg.com/736x/51/46/2b/51462bff02c31d97324d43de3928996d.jpg');">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        <div class="absolute inset-0 flex flex-col justify-end p-12 text-white">
+            <h2 class="text-4xl font-serif font-black mb-4 tracking-tighter">Join the community</h2>
+            <p class="text-lg font-medium text-white/90 max-w-md">Unlock full access to Ghana's premier learning workspace and elevate your academic journey.</p>
+        </div>
+    </div>
+    <!-- Form Section -->
+    <div class="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 relative">
     <!-- Theme Toggle -->
     <div class="fixed top-6 right-6">
         <button id="theme-toggle" class="p-3 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl shadow-sm hover:border-[#1845D4] transition-all group">
@@ -141,5 +151,6 @@
             }
         };
     </script>
+    </div>
 </body>
 </html>
