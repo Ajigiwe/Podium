@@ -533,8 +533,24 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                 const strData = decoder.decode(payload);
                 const data = JSON.parse(strData);
                 const senderMetadata = participant?.metadata ? JSON.parse(participant?.metadata) : {};
-                const isMod = senderMetadata.role === 'lecturer';
+                const senderUserId = senderMetadata.userId;
+                const isSenderHost = senderUserId && (senderUserId === sessionData?.hostId || senderUserId === sessionData?.lecturerId);
+                const isSenderCoHost = senderUserId && coHosts.some(ch => ch.isActive && ch.userId === senderUserId);
+                const isMod = senderMetadata.role === 'lecturer' || isSenderHost || isSenderCoHost || senderMetadata.role === 'admin';
+                
                 if (!isMod && data.type !== 'chat') return;
+                
+                if (data.type === 'class_ended' && isMod) {
+                    const wasAlreadyDeleted = (window as any)._podium_session_deleted;
+                    if (!wasAlreadyDeleted) {
+                        (window as any)._podium_session_deleted = true;
+                        showAlert('This class has been ended by the host.', 'warning').then(() => {
+                            leaveClass();
+                            router.push('/dashboard.html');
+                            (window as any)._podium_session_deleted = false;
+                        });
+                    }
+                }
                 if (data.type === 'mute_request' && data.targetId === liveKitRoom.localParticipant.sid) {
                     liveKitRoom.localParticipant.setMicrophoneEnabled(false);
                     showAlert('You have been muted by the lecturer.', 'info');
@@ -580,7 +596,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             liveKitRoom.off(RoomEvent.ActiveSpeakersChanged, updateParticipants);
             liveKitRoom.off(RoomEvent.DataReceived, handleDataReceived);
         };
-    }, [liveKitRoom, userRole, leaveClass, isChatOpen, showAlert, showConfirm]);
+    }, [liveKitRoom, userRole, leaveClass, isChatOpen, showAlert, showConfirm, sessionData, coHosts]);
 
     useEffect(() => {
         if (!sessionId) {

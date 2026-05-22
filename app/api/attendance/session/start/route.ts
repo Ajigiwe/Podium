@@ -27,8 +27,22 @@ export async function POST(request: NextRequest) {
         durationMinutes = durationMinutes || sessionData?.durationMinutes || 60;
         verificationCount = verificationCount || sessionData?.verificationCount || 3;
 
-        if (sessionData?.lecturerId !== lecturerId) {
-            return NextResponse.json({ error: 'Unauthorized: Only the lecturer can start attendance' }, { status: 403 });
+        // Check if user is host, lecturer, or an active co-host
+        const coHostSnap = await adminDb
+            .collection('sessions')
+            .doc(sessionId)
+            .collection('co_hosts')
+            .doc(lecturerId)
+            .get();
+        const isCoHost = coHostSnap.exists && coHostSnap.data()?.isActive === true;
+        
+        const isAuthorized = 
+            sessionData?.hostId === lecturerId || 
+            sessionData?.lecturerId === lecturerId ||
+            isCoHost;
+
+        if (!isAuthorized) {
+            return NextResponse.json({ error: 'Unauthorized: Only the host or co-host can start attendance' }, { status: 403 });
         }
 
         // Calculate random verification times

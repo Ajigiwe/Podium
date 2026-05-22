@@ -69,6 +69,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         isHost,
         sessionData,
         coHosts,
+        liveKitRoom,
     } = useClassroom();
     const { showAlert, showConfirm } = useAlert();
 
@@ -265,6 +266,17 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
     const handleEndSession = () => {
         showConfirm('End this class session? All students will be removed instantly.', async () => {
             try {
+                if (liveKitRoom) {
+                    try {
+                        const encoder = new TextEncoder();
+                        await liveKitRoom.localParticipant.publishData(
+                            encoder.encode(JSON.stringify({ type: 'class_ended' })),
+                            { reliable: true }
+                        );
+                    } catch (webrtcErr) {
+                        console.warn('[ClassroomContent] WebRTC class_ended publish failed:', webrtcErr);
+                    }
+                }
                 await endSession(sessionId);
                 showAlert('Class session ended.', 'success');
                 // The listener in ClassroomContext will handle the redirect

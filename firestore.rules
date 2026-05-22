@@ -61,6 +61,10 @@ service cloud.firestore {
         resource.data.get('lecturerId', '') == request.auth.uid ||
         isAdmin() ||
         (
+          exists(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)).data.isActive == true
+        ) ||
+        (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount']) &&
           request.resource.data.participantCount == (resource.data.get('participantCount', 0) + 1)
         ) ||
