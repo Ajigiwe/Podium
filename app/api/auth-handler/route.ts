@@ -1,7 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const STATIC_HTML = `<!DOCTYPE html>
+<html>
+<head>
+<title>Podium</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script type="text/javascript">
+// Intercept beforeinstallprompt to hide Chrome's download/install icon from the popup address bar
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+});
+</script>
+<script type="text/javascript" src="experiments.js"></script>
+<script type="text/javascript" src="handler.js"></script>
+<script type="text/javascript" nonce="firebase-auth-helper">
+var POST_BODY = '{{POST_BODY}}';
+fireauth.oauthhelper.widget.initialize();
+</script>
+</head>
+<body>
+</body>
+</html>`;
+
 export async function GET(request: NextRequest) {
-  return handleRequest(request);
+  // Return the static HTML immediately for GET requests to make the popup load instantly
+  // and minimize the brief moment the URL is visible.
+  const responseHeaders = new Headers();
+  responseHeaders.set('content-type', 'text/html; charset=utf-8');
+  responseHeaders.set('cache-control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  return new NextResponse(STATIC_HTML, {
+    status: 200,
+    headers: responseHeaders,
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -52,13 +83,20 @@ async function handleRequest(request: NextRequest) {
     if (contentType.includes('text/html')) {
       let html = await res.text();
       
-      // Inject <title>Podium</title> to prevent showing the URL with API key in the popup title bar
+      // Inject <title>Podium</title> and PWA installation prevention script
+      const injectScript = `<title>Podium</title>
+<script type="text/javascript">
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+});
+</script>`;
+
       if (html.includes('<head>')) {
-        html = html.replace('<head>', '<head><title>Podium</title>');
+        html = html.replace('<head>', `<head>${injectScript}`);
       } else if (html.includes('</head>')) {
-        html = html.replace('</head>', '<title>Podium</title></head>');
+        html = html.replace('</head>', `${injectScript}</head>`);
       } else {
-        html = `<title>Podium</title>${html}`;
+        html = `${injectScript}${html}`;
       }
       
       responseHeaders.set('cache-control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
