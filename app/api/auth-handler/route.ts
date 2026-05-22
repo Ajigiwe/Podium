@@ -10,7 +10,8 @@ export async function POST(request: NextRequest) {
 
 async function handleRequest(request: NextRequest) {
   const url = new URL(request.url);
-  const targetUrl = new URL(url.pathname + url.search, 'https://lite-class.firebaseapp.com');
+  // Reconstruct target URL pointing to Firebase Auth handler
+  const targetUrl = new URL('/__/auth/handler' + url.search, 'https://lite-class.firebaseapp.com');
 
   const headers = new Headers();
   request.headers.forEach((value, key) => {
@@ -47,7 +48,7 @@ async function handleRequest(request: NextRequest) {
     if (contentType.includes('text/html')) {
       let html = await res.text();
       
-      // Inject <title>Podium</title> to prevent showing the URL / API key in the popup title bar
+      // Inject <title>Podium</title> to prevent showing the URL with API key in the popup title bar
       if (html.includes('<head>')) {
         html = html.replace('<head>', '<head><title>Podium</title>');
       } else if (html.includes('</head>')) {
@@ -58,7 +59,6 @@ async function handleRequest(request: NextRequest) {
       
       const responseHeaders = new Headers(res.headers);
       responseHeaders.delete('content-length');
-      // Ensure the browser doesn't cache this modified response incorrectly
       responseHeaders.set('cache-control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
       return new NextResponse(html, {
