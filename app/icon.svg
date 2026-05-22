@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <circle cx="32" cy="32" r="32" fill="#2563eb"/>
-  <g transform="translate(32,30)" fill="white">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <circle cx="256" cy="256" r="256" fill="#1845D4"/>
+  <g transform="translate(256, 240) scale(8)" fill="white">
     <!-- Mortarboard top -->
     <polygon points="0,-14 18,-4 0,2 -18,-4"/>
     <!-- Tassel -->
