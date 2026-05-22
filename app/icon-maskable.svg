@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#1845D4"/>
+  <g transform="translate(256, 240) scale(8)" fill="white">
+    <!-- Mortarboard top -->
+    <polygon points="0,-14 18,-4 0,2 -18,-4"/>
+    <!-- Tassel -->
+    <line x1="18" y1="-4" x2="18" y2="6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="18" cy="7" r="2"/>
+    <!-- Base band -->
+    <path d="M-12,-1 L-12,7 C-12,12 12,12 12,7 L12,-1" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>
