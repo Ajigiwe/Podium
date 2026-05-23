@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         const egressInfo = await egressClient.startRoomCompositeEgress(
             roomName,
             {
-                fileType: undefined,
+                fileType: 1, // EncodedFileType.MP4
                 filepath: filepath,
             } as any,
             'grid', // layout
