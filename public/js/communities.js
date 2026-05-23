@@ -214,20 +214,27 @@ function setupWorkspaceListeners(groupId) {
         snap.forEach(doc => {
             const res = doc.data();
             const div = document.createElement('div');
-            div.className = 'bg-white dark:bg-slate-900 p-6 rounded-xl border border-[#DDE0F0] dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-[#1845D4] transition-all';
+            div.className = 'bg-[#FDFBF7] dark:bg-slate-900 p-6 border-l-4 border-[#5C4D3C] dark:border-[#1845D4] border-t border-r border-b border-[#E8E1D5] dark:border-slate-800 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all relative';
             div.innerHTML = `
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-lg bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center text-[#8888A8] dark:text-slate-400 border border-[#DDE0F0] dark:border-slate-700">
-                        <i class="fas ${res.type === 'link' ? 'fa-link' : 'fa-file-pdf'} text-sm"></i>
+                <div class="absolute top-3 right-4 text-[9px] font-serif font-bold text-[#CBBCA0] dark:text-slate-500 uppercase tracking-widest">
+                    ${res.type === 'link' ? 'Ref' : 'Doc'} // ${new Date(res.createdAt?.toDate() || Date.now()).getFullYear()}
+                </div>
+                <div class="flex items-start gap-4 mb-4 pt-2">
+                    <div class="mt-1 w-8 h-8 rounded-full bg-[#F5F1E7] dark:bg-slate-800 flex items-center justify-center text-[#5C4D3C] dark:text-slate-400 border border-[#E8E1D5] dark:border-slate-700">
+                        <i class="fas ${res.type === 'link' ? 'fa-bookmark' : 'fa-book'} text-xs"></i>
                     </div>
-                    <div>
-                        <h5 class="text-sm font-serif font-black tracking-tight text-[#0D0D1A] dark:text-white">${res.title}</h5>
-                        <p class="text-[9px] font-bold text-[#8888A8] uppercase tracking-widest mt-0.5">${res.type === 'link' ? 'External Link' : 'Document'}</p>
+                    <div class="flex-1 pr-4">
+                        <h5 class="text-[15px] font-serif font-bold leading-snug text-[#2C241B] dark:text-white line-clamp-2">${res.title}</h5>
                     </div>
                 </div>
-                <a href="${res.url}" target="_blank" class="w-10 h-10 rounded-lg bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center text-[#8888A8] dark:text-slate-400 hover:bg-[#1845D4] hover:text-white transition-all border border-[#DDE0F0] dark:border-slate-700">
-                    <i class="fas fa-arrow-right text-xs"></i>
-                </a>
+                <div class="flex items-center justify-between border-t border-[#E8E1D5] dark:border-slate-800 pt-4 mt-2">
+                    <div class="text-[10px] font-serif font-bold text-[#8888A8] uppercase tracking-[0.1em]">
+                        ${res.type === 'link' ? 'External Reference' : 'Archived Material'}
+                    </div>
+                    <a href="${res.url}" target="_blank" class="px-4 py-1.5 rounded-full bg-[#F5F1E7] dark:bg-slate-800 text-[#5C4D3C] dark:text-slate-300 text-[10px] font-bold uppercase tracking-widest hover:bg-[#5C4D3C] hover:text-[#FDFBF7] dark:hover:bg-[#1845D4] dark:hover:text-white transition-all border border-[#E8E1D5] dark:border-slate-700">
+                        Access
+                    </a>
+                </div>
             `;
             resourcesList.appendChild(div);
         });
