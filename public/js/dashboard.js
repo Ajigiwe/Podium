@@ -62,6 +62,35 @@ onAuthStateChanged(auth, async (user) => {
     setupHostedSessions();
     setupEnrolledSessions();
     if (typeof initCommunities === 'function') initCommunities(user, userProfile);
+    
+    // Check Lecturer access
+    let hasLecturerAccess = false;
+    if (userProfile.role === 'lecturer') {
+        const qL = query(collection(db, 'group_memberships'), where('userId', '==', currentUserId), where('role', '==', 'lecturer'));
+        const snapL = await getDocs(qL);
+        hasLecturerAccess = !snapL.empty;
+    }
+    
+    // Create Class Card logic
+    const createClassCard = document.getElementById('open-create-modal-card');
+    const openCreateBtn = document.getElementById('open-create-modal');
+    const hasCreatePermission = userProfile.role === 'admin' || (userProfile.role === 'student' && userProfile.isVerified) || (userProfile.role === 'lecturer' && hasLecturerAccess);
+    
+    if (createClassCard) {
+        if (hasCreatePermission) {
+            createClassCard.classList.remove('hidden');
+        } else {
+            createClassCard.classList.add('hidden');
+        }
+    }
+    if (openCreateBtn) {
+        if (hasCreatePermission) {
+            openCreateBtn.classList.remove('hidden');
+        } else {
+            openCreateBtn.classList.add('hidden');
+        }
+    }
+    
     setupGroupOptions();
     setTimeout(() => setLoading(false), 800);
 
@@ -389,16 +418,35 @@ document.querySelectorAll('.close-modal').forEach(btn => {
 });
 
 async function setupGroupOptions() {
-    const q = query(collection(db, 'groups'), where('ownerId', '==', currentUserId));
-    const snap = await getDocs(q);
-    if (!snap.empty) {
+    let groups = [];
+    
+    if (userProfile.role === 'admin' || (userProfile.role === 'student' && userProfile.isVerified)) {
+        const q = query(collection(db, 'groups'), where('ownerId', '==', currentUserId));
+        const snap = await getDocs(q);
+        snap.forEach(d => groups.push({ id: d.id, name: d.data().name }));
+    } else if (userProfile.role === 'lecturer') {
+        const q = query(collection(db, 'group_memberships'), where('userId', '==', currentUserId), where('role', '==', 'lecturer'));
+        const snap = await getDocs(q);
+        for (const docSnap of snap.docs) {
+            const groupId = docSnap.data().groupId;
+            const groupSnap = await getDoc(doc(db, 'groups', groupId));
+            if (groupSnap.exists()) {
+                groups.push({ id: groupSnap.id, name: groupSnap.data().name });
+            }
+        }
+    }
+    
+    groupSelect.innerHTML = ''; // clear previous options
+    if (groups.length > 0) {
         groupContainer.style.display = 'block';
-        snap.forEach(d => {
+        groups.forEach(g => {
             const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.innerText = d.data().name;
+            opt.value = g.id;
+            opt.innerText = g.name;
             groupSelect.appendChild(opt);
         });
+    } else {
+        groupContainer.style.display = 'none';
     }
 }
 
@@ -428,6 +476,7 @@ if (createForm) {
                 durationMinutes,
                 verificationCount,
                 groupId: groupId || null,
+                hostId: currentUserId,
                 lecturerId: currentUserId,
                 lecturerName: userProfile.fullName || 'Faculty',
                 isActive: false,
@@ -456,6 +505,7 @@ const joinTitle = document.getElementById('join-preview-title');
 const joinFaculty = document.getElementById('join-preview-faculty');
 const confirmJoinBtn = document.getElementById('confirm-join');
 let pendingSessionId = null;
+let pendingSessionGroupId = null;
 
 joinForm.onsubmit = async (e) => {
     e.preventDefault();
@@ -478,6 +528,7 @@ joinForm.onsubmit = async (e) => {
 
 window.openJoinPreview = (session) => {
     pendingSessionId = session.id;
+    pendingSessionGroupId = session.groupId || null;
     joinTitle.innerText = session.title;
     joinFaculty.innerText = session.lecturerName || 'Faculty Member';
     joinPreviewModal.classList.remove('hidden');
@@ -489,6 +540,18 @@ confirmJoinBtn.onclick = async () => {
     confirmJoinBtn.innerText = 'Processing...';
 
     try {
+        // Enforce community check if the session is linked to a group
+        if (pendingSessionGroupId) {
+            const membershipId = `${currentUserId}_${pendingSessionGroupId}`;
+            const membershipSnap = await getDoc(doc(db, 'group_memberships', membershipId));
+            if (!membershipSnap.exists()) {
+                showToast('Access denied: You must be a member of the associated community to join this class.', 'error');
+                confirmJoinBtn.disabled = false;
+                confirmJoinBtn.innerText = 'Enter Classroom';
+                return;
+            }
+        }
+
         // Enroll Logic
         const qTx = query(collection(db, 'transactions'), where('userId', '==', currentUserId), where('sessionId', '==', pendingSessionId));
         const snap = await getDocs(qTx);

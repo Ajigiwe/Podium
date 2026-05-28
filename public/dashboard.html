@@ -164,13 +164,13 @@
                             <h2 class="text-[10px] font-black text-indigo-600 dark:text-blue-400 uppercase tracking-[0.4em] whitespace-nowrap">Jump Back In</h2>
                             <div class="h-px w-full bg-gradient-to-r from-indigo-500/20 to-transparent"></div>
                         </div>
-                        <div id="quick-access-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div id="quick-access-list" class="flex flex-col gap-3 max-w-md">
                             <!-- Dynamically filled -->
                         </div>
                     </div>
 
                     <div class="grid md:grid-cols-2 gap-4">
-                        <button id="open-create-modal-card" class="group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-lg p-8 text-left hover:border-[#1845D4] hover:shadow-lg hover:shadow-blue-600/5 transition-all outline-none">
+                        <button id="open-create-modal-card" class="hidden group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-lg p-8 text-left hover:border-[#1845D4] hover:shadow-lg hover:shadow-blue-600/5 transition-all outline-none">
                             <div class="w-12 h-12 bg-[#1845D4] rounded-lg flex items-center justify-center mb-5 text-white shadow-lg shadow-blue-600/20">
                                 <i class="fas fa-plus text-xl"></i>
                             </div>
@@ -275,50 +275,54 @@
     </div>
 
     <!-- Workspace View (Full Screen) -->
-    <div id="workspace-view" class="hidden fixed inset-0 z-[100] bg-[#F5F6FA] dark:bg-slate-950 overflow-y-auto">
-        <nav class="bg-white dark:bg-slate-900 border-b border-[#DDE0F0] dark:border-slate-800 h-16 sm:h-[60px] flex items-center sticky top-0 z-10">
+    <div id="workspace-view" class="hidden fixed inset-0 z-[100] bg-slate-50 dark:bg-[#080810] overflow-y-auto">
+        <nav class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 h-16 flex items-center sticky top-0 z-10 transition-all">
             <div class="max-w-6xl mx-auto px-6 w-full flex justify-between items-center">
-                <button id="close-workspace" class="flex items-center gap-2 text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white transition-all">
+                <button id="close-workspace" class="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all bg-slate-100 hover:bg-slate-200/70 dark:bg-slate-800 dark:hover:bg-slate-700/80 px-4 py-2 rounded-full text-xs font-semibold tracking-wide shadow-sm">
                     <i class="fas fa-arrow-left text-xs"></i>
-                    <span class="text-[11px] font-bold uppercase tracking-widest">Exit Workspace</span>
+                    <span>Exit Workspace</span>
                 </button>
                 <div class="text-center hidden sm:block">
-                    <h2 id="workspace-title" class="text-[15px] font-bold tracking-tight text-[#0D0D1A] dark:text-white">Community Name</h2>
-                    <p id="workspace-code" class="text-[9px] font-bold text-[#1845D4] dark:text-blue-400 uppercase tracking-[0.2em] mt-0.5">CODE: XXXXXX</p>
+                    <h2 id="workspace-title" class="text-[17px] font-serif font-black tracking-tight text-slate-900 dark:text-white">Community Name</h2>
+                    <p id="workspace-code" class="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full uppercase tracking-[0.25em] mt-1 inline-block">CODE: XXXXXX</p>
                 </div>
-                <div class="w-20"></div>
+                <div class="flex items-center gap-3">
+                    <button id="header-grant-lecturer-btn" class="hidden px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-full text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all flex items-center gap-1.5 active:scale-95">
+                        <i class="fas fa-user-plus text-xs"></i> Grant Lecturer
+                    </button>
+                </div>
             </div>
         </nav>
 
         <div class="max-w-6xl mx-auto px-6 py-10">
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-10">
-                <aside class="space-y-1">
-                    <button onclick="window.switchWorkspaceTab('bulletin')" id="w-tab-bulletin" class="w-full flex items-center gap-3 px-4 py-3 rounded-md text-[13px] font-medium transition-all bg-[#E8EEFF] text-[#1845D4]">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <aside class="space-y-1.5">
+                    <button onclick="window.switchWorkspaceTab('bulletin')" id="w-tab-bulletin" class="w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-600 dark:border-indigo-400 shadow-sm shadow-indigo-500/5">
                         <i class="fas fa-bullhorn w-4"></i> Bulletin
                     </button>
-                    <button onclick="window.switchWorkspaceTab('live')" id="w-tab-live" class="w-full flex items-center justify-between px-4 py-3 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-white">
+                    <button onclick="window.switchWorkspaceTab('live')" id="w-tab-live" class="w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white">
                         <div class="flex items-center gap-3"><i class="fas fa-video w-4"></i> Live Classes</div>
                         <span id="live-indicator" class="hidden w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
                     </button>
-                    <button onclick="window.switchWorkspaceTab('resources')" id="w-tab-resources" class="w-full flex items-center gap-3 px-4 py-3 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-white">
+                    <button onclick="window.switchWorkspaceTab('resources')" id="w-tab-resources" class="w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white">
                         <i class="fas fa-folder-open w-4"></i> Resources
                     </button>
-                    <button onclick="window.switchWorkspaceTab('members')" id="w-tab-members" class="w-full flex items-center gap-3 px-4 py-3 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-white">
+                    <button onclick="window.switchWorkspaceTab('members')" id="w-tab-members" class="w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white">
                         <i class="fas fa-users w-4"></i> Member Registry
                     </button>
-                    <button onclick="window.switchWorkspaceTab('requests')" id="w-tab-requests" class="hidden w-full flex items-center justify-between px-4 py-3 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-white">
+                    <button onclick="window.switchWorkspaceTab('requests')" id="w-tab-requests" class="hidden w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white">
                         <div class="flex items-center gap-3"><i class="fas fa-user-plus w-4"></i> Requests</div>
-                        <span id="requests-count" class="bg-[#1845D4] text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">0</span>
+                        <span id="requests-count" class="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[9px] font-bold">0</span>
                     </button>
                 </aside>
 
                 <div class="lg:col-span-3 space-y-10">
                     <div id="w-content-bulletin" class="space-y-8">
-                        <div id="announcement-composer" class="hidden bg-white rounded-xl p-6 border border-[#DDE0F0] shadow-sm space-y-4">
-                            <h4 class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest">Broadcast Announcement</h4>
-                            <textarea id="announcement-text" class="w-full h-24 p-4 bg-[#F5F6FA] border border-[#DDE0F0] focus:border-[#1845D4] rounded-lg outline-none text-[13px] font-medium resize-none" placeholder="What's the update for today?"></textarea>
+                        <div id="announcement-composer" class="hidden bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4 transition-all">
+                            <h4 class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.25em] block mb-1">Broadcast Announcement</h4>
+                            <textarea id="announcement-text" class="w-full h-24 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl outline-none text-[13px] font-medium resize-none transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400" placeholder="What's the update for today?"></textarea>
                             <div class="flex justify-end">
-                                <button id="post-announcement" class="px-6 py-2 bg-[#1845D4] text-white rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-[#0F2FA8] transition-all">Post Update</button>
+                                <button id="post-announcement" class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl text-[11px] font-bold uppercase tracking-[0.15em] hover:shadow-lg hover:shadow-indigo-500/10 active:scale-[0.98] transition-all shadow-md shadow-indigo-500/5">Post Update</button>
                             </div>
                         </div>
                         <div id="announcements-list" class="space-y-6"></div>
@@ -380,6 +384,14 @@
                     </div>
 
                     <div id="w-content-members" class="hidden space-y-6">
+                        <div id="lecturer-management-section" class="hidden bg-[#FDFBF7] dark:bg-slate-900 border-2 border-[#1845D4]/20 rounded-xl p-6 shadow-sm mb-6">
+                            <h4 class="text-[11px] font-bold text-[#1845D4] uppercase tracking-[0.1em] mb-4">Grant Lecturer Access</h4>
+                            <p class="text-[12px] text-[#444460] dark:text-slate-400 mb-4">Grant a lecturer the ability to create classes for this space.</p>
+                            <div class="flex gap-2">
+                                <input id="grant-lecturer-email" type="email" class="flex-1 px-4 py-2 border border-[#DDE0F0] dark:border-slate-800 rounded-md outline-none text-[13px] font-medium dark:bg-slate-950 focus:border-[#1845D4]" placeholder="Lecturer's Email">
+                                <button id="grant-lecturer-btn" class="px-6 py-2 bg-[#1845D4] text-white rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-[#0F2FA8] transition-all">Grant</button>
+                            </div>
+                        </div>
                         <div class="bg-white rounded-xl border border-[#DDE0F0] overflow-hidden shadow-sm">
                             <table class="w-full text-left border-collapse">
                                 <thead class="bg-[#F5F6FA] border-b border-[#DDE0F0]">
@@ -526,6 +538,29 @@
                 </div>
             </div>
             <div id="attendance-logs-content" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- Grant Lecturer Access Modal -->
+    <div id="modal-grant-lecturer" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
+        <div class="absolute inset-0 bg-[#0D0D1A]/40 backdrop-blur-sm modal-overlay" onclick="document.getElementById('modal-grant-lecturer').classList.add('hidden')"></div>
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-8 relative shadow-2xl animate-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-xl font-serif font-black tracking-tight text-slate-900 dark:text-white">Grant Lecturer Access</h2>
+                    <p class="text-[12px] text-slate-500 mt-1">Allow a lecturer to create classes for this space.</p>
+                </div>
+                <button onclick="document.getElementById('modal-grant-lecturer').classList.add('hidden')" class="w-8 h-8 flex items-center justify-center border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-950 transition-colors">
+                    ✕
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold uppercase tracking-widest text-slate-500">Lecturer's Email</label>
+                    <input id="grant-lecturer-email-modal" type="email" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 rounded-xl outline-none text-[13px] font-medium transition-all text-slate-800 dark:text-slate-100" placeholder="name@university.edu">
+                </div>
+                <button id="grant-lecturer-btn-modal" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl text-[11px] font-bold uppercase tracking-widest hover:shadow-lg hover:shadow-indigo-500/10 active:scale-[0.98] transition-all">Grant Access</button>
+            </div>
         </div>
     </div>
 

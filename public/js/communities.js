@@ -32,8 +32,12 @@ const joinCommunityForm = document.getElementById('join-community-form');
 let currentGroup = null;
 let isOwner = false;
 let workspaceUnsubscribes = [];
+let currentProfile = null;
+let currentUser = null;
 
 export function initCommunities(user, profile) {
+    currentUser = user;
+    currentProfile = profile;
     setupMyCommunities(user.uid);
     setupPublicCommunities(user.uid);
     setupModals();
@@ -51,10 +55,10 @@ window.switchWorkspaceTab = (tab) => {
         
         const isActive = t === tab;
         if (isActive) {
-            btn.className = 'w-full flex items-center gap-3 px-4 py-3 rounded-md text-[13px] font-medium transition-all bg-[#E8EEFF] text-[#1845D4]';
+            btn.className = 'w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-600 dark:border-indigo-400 shadow-sm shadow-indigo-500/5';
             content.classList.remove('hidden');
         } else {
-            btn.className = 'w-full flex items-center gap-3 px-4 py-3 rounded-md text-[13px] font-medium transition-all text-[#444460] hover:bg-white';
+            btn.className = 'w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white';
             content.classList.add('hidden');
         }
     });
@@ -142,10 +146,26 @@ async function openWorkspace(group) {
     document.body.style.overflow = 'hidden';
     
     // Show/Hide Owner Tools
+    const isVerifiedStudent = currentProfile?.role === 'student' && currentProfile?.isVerified === true;
+    
     announcementComposer.classList.toggle('hidden', !isOwner);
     resourceComposer.classList.toggle('hidden', !isOwner);
     requestsTabBtn.classList.toggle('hidden', !isOwner);
-    document.getElementById('members-action-head').classList.toggle('hidden', !isOwner);
+    
+    // Show/Hide Header Grant Lecturer Button
+    const headerGrantBtn = document.getElementById('header-grant-lecturer-btn');
+    if (headerGrantBtn) {
+        headerGrantBtn.classList.toggle('hidden', !(isOwner || isVerifiedStudent));
+    }
+    
+    // Allow either owner or verified student to see members actions (to revoke)
+    document.getElementById('members-action-head').classList.toggle('hidden', !(isOwner || isVerifiedStudent));
+    
+    // Lecturer Management
+    const lecturerMgmt = document.getElementById('lecturer-management-section');
+    if (lecturerMgmt) {
+        lecturerMgmt.classList.toggle('hidden', !(isOwner || isVerifiedStudent));
+    }
     
     // Switch to Bulletin by default
     window.switchWorkspaceTab('bulletin');
@@ -190,18 +210,18 @@ function setupWorkspaceListeners(groupId) {
         snap.forEach(doc => {
             const ann = doc.data();
             const div = document.createElement('div');
-            div.className = 'bg-white dark:bg-slate-900 p-8 rounded-xl border border-[#DDE0F0] dark:border-slate-800 shadow-sm group';
+            div.className = 'bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all group';
             div.innerHTML = `
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 flex items-center justify-center text-[#1845D4] dark:text-blue-400">
-                        <i class="fas fa-bullhorn text-xs"></i>
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-500/10">
+                        ${ann.authorName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <p class="text-[13px] font-bold text-[#0D0D1A] dark:text-white">${ann.authorName}</p>
-                        <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-[0.2em] mt-1">${ann.createdAt?.toDate().toLocaleDateString('en-GB')}</p>
+                        <p class="text-[13px] font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">${ann.authorName}</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mt-0.5">${ann.createdAt?.toDate().toLocaleDateString('en-GB')}</p>
                     </div>
                 </div>
-                <p class="text-[13px] font-medium text-[#444460] dark:text-slate-300 leading-relaxed">${ann.content}</p>
+                <p class="text-[13px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed pl-14">${ann.content}</p>
             `;
             announcementsList.appendChild(div);
         });
@@ -214,24 +234,24 @@ function setupWorkspaceListeners(groupId) {
         snap.forEach(doc => {
             const res = doc.data();
             const div = document.createElement('div');
-            div.className = 'bg-white dark:bg-slate-900 p-6 border-l-4 border-[#1845D4] dark:border-[#1845D4] border-t border-r border-b border-[#DDE0F0] dark:border-slate-800 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all relative rounded-r-md';
+            div.className = 'bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group relative';
             div.innerHTML = `
-                <div class="absolute top-3 right-4 text-[9px] font-serif font-bold text-[#8888A8] dark:text-slate-500 uppercase tracking-widest">
+                <div class="absolute top-4 right-4 text-[9px] font-serif font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                     ${res.type === 'link' ? 'Ref' : 'Doc'} // ${new Date(res.createdAt?.toDate() || Date.now()).getFullYear()}
                 </div>
                 <div class="flex items-start gap-4 mb-4 pt-2">
-                    <div class="mt-1 w-8 h-8 rounded-full bg-[#E8EEFF] dark:bg-slate-800 flex items-center justify-center text-[#1845D4] dark:text-slate-400 border border-[#DDE0F0]/50 dark:border-slate-700">
+                    <div class="mt-1 w-8 h-8 rounded-full bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-slate-200/50 dark:border-slate-700">
                         <i class="fas ${res.type === 'link' ? 'fa-bookmark' : 'fa-book'} text-xs"></i>
                     </div>
                     <div class="flex-1 pr-4">
-                        <h5 class="text-[15px] font-serif font-bold leading-snug text-[#0D0D1A] dark:text-white line-clamp-2">${res.title}</h5>
+                        <h5 class="text-[15px] font-serif font-bold leading-snug text-slate-900 dark:text-white line-clamp-2">${res.title}</h5>
                     </div>
                 </div>
-                <div class="flex items-center justify-between border-t border-[#DDE0F0] dark:border-slate-800 pt-4 mt-2">
-                    <div class="text-[10px] font-serif font-bold text-[#8888A8] uppercase tracking-[0.1em]">
+                <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
+                    <div class="text-[10px] font-serif font-bold text-slate-400 uppercase tracking-[0.1em]">
                         ${res.type === 'link' ? 'External Reference' : 'Archived Material'}
                     </div>
-                    <a href="${res.url}" target="_blank" class="px-4 py-1.5 rounded-full bg-[#E8EEFF] dark:bg-slate-800 text-[#1845D4] dark:text-slate-300 text-[10px] font-bold uppercase tracking-widest hover:bg-[#1845D4] hover:text-white dark:hover:bg-[#1845D4] dark:hover:text-white transition-all border border-[#1845D4]/20 dark:border-slate-700">
+                    <a href="${res.url}" target="_blank" class="px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all border border-indigo-100 dark:border-slate-700">
                         Access
                     </a>
                 </div>
@@ -264,7 +284,7 @@ function setupWorkspaceListeners(groupId) {
                         ${mem.role}
                     </span>
                 </td>
-                ${isOwner && mem.role !== 'owner' ? `
+                ${(isOwner && mem.role !== 'owner') || (currentProfile?.role === 'student' && currentProfile?.isVerified && mem.role === 'lecturer' && mem.grantedBy === currentUser.uid) ? `
                     <td class="px-6 py-4 text-right">
                         <button onclick="window.kickMember('${groupId}', '${mem.userId}')" class="text-red-400 hover:text-red-600 transition-colors">
                             <i class="fas fa-user-minus"></i>
@@ -390,6 +410,116 @@ function setupWorkspaceActions(user, profile) {
         document.body.style.overflow = 'auto';
         workspaceUnsubscribes.forEach(unsub => unsub());
     };
+
+    const headerGrantBtn = document.getElementById('header-grant-lecturer-btn');
+    if (headerGrantBtn) {
+        headerGrantBtn.onclick = () => {
+            document.getElementById('modal-grant-lecturer').classList.remove('hidden');
+        };
+    }
+
+    const grantBtnModal = document.getElementById('grant-lecturer-btn-modal');
+    if (grantBtnModal) {
+        grantBtnModal.onclick = async () => {
+            const emailInput = document.getElementById('grant-lecturer-email-modal');
+            const email = emailInput.value.trim();
+            if (!email) return;
+            
+            const btnOriginalText = grantBtnModal.innerText;
+            grantBtnModal.innerText = 'Granting...';
+            grantBtnModal.disabled = true;
+            
+            try {
+                // Look up lecturer by email
+                const q = query(collection(db, 'profiles'), where('email', '==', email), where('role', '==', 'lecturer'));
+                const snap = await getDocs(q);
+                
+                if (snap.empty) {
+                    showToast('Lecturer not found or user is not a lecturer.', 'error');
+                } else {
+                    const lecturerDoc = snap.docs[0];
+                    const lecturerId = lecturerDoc.id;
+                    const membershipId = `${lecturerId}_${currentGroup.id}`;
+                    
+                    await setDoc(doc(db, 'group_memberships', membershipId), {
+                        id: membershipId,
+                        userId: lecturerId,
+                        groupId: currentGroup.id,
+                        role: 'lecturer',
+                        joinedAt: Timestamp.now(),
+                        userName: lecturerDoc.data().fullName || email,
+                        userEmail: email,
+                        grantedBy: currentUser.uid
+                    });
+                    
+                    await updateDoc(doc(db, 'groups', currentGroup.id), {
+                        memberCount: increment(1)
+                    });
+                    
+                    showToast('Access granted to lecturer!');
+                    emailInput.value = '';
+                    document.getElementById('modal-grant-lecturer').classList.add('hidden');
+                }
+            } catch (err) {
+                console.error('Grant Error:', err);
+                showToast('Failed to grant access.', 'error');
+            } finally {
+                grantBtnModal.innerText = btnOriginalText;
+                grantBtnModal.disabled = false;
+            }
+        };
+    }
+
+    const grantBtn = document.getElementById('grant-lecturer-btn');
+    if (grantBtn) {
+        grantBtn.onclick = async () => {
+            const emailInput = document.getElementById('grant-lecturer-email');
+            const email = emailInput.value.trim();
+            if (!email) return;
+            
+            const btnOriginalText = grantBtn.innerText;
+            grantBtn.innerText = 'Granting...';
+            grantBtn.disabled = true;
+            
+            try {
+                // Look up lecturer by email
+                const q = query(collection(db, 'profiles'), where('email', '==', email), where('role', '==', 'lecturer'));
+                const snap = await getDocs(q);
+                
+                if (snap.empty) {
+                    showToast('Lecturer not found or user is not a lecturer.', 'error');
+                } else {
+                    const lecturerDoc = snap.docs[0];
+                    const lecturerId = lecturerDoc.id;
+                    const membershipId = `${lecturerId}_${currentGroup.id}`;
+                    
+                    await setDoc(doc(db, 'group_memberships', membershipId), {
+                        id: membershipId,
+                        userId: lecturerId,
+                        groupId: currentGroup.id,
+                        role: 'lecturer',
+                        joinedAt: Timestamp.now(),
+                        userName: lecturerDoc.data().fullName || email,
+                        userEmail: email,
+                        grantedBy: currentUser.uid
+                    });
+                    
+                    await updateDoc(doc(db, 'groups', currentGroup.id), {
+                        memberCount: increment(1)
+                    });
+                    
+                    showToast('Access granted to lecturer!');
+                    emailInput.value = '';
+                }
+            } catch (err) {
+                console.error('Grant Error:', err);
+                showToast('Failed to grant access.', 'error');
+            } finally {
+                grantBtn.innerText = btnOriginalText;
+                grantBtn.disabled = false;
+            }
+        };
+    }
 }
 
 window.processRequest = async (requestId, status) => {

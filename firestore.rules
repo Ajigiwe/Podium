@@ -54,7 +54,12 @@ service cloud.firestore {
     
     // Sessions collection
     match /sessions/{sessionId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (
+        resource.data.get('groupId', null) == null ||
+        isGroupMember(resource.data.groupId) ||
+        resource.data.get('lecturerId', '') == request.auth.uid ||
+        isAdmin()
+      );
       allow create: if isSignedIn() && request.resource.data.get('hostId', '') == request.auth.uid;
       allow update: if isSignedIn() && (
         resource.data.get('hostId', '') == request.auth.uid ||
@@ -112,7 +117,8 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if isAdmin() || 
                              resource.data.userId == request.auth.uid || 
-                             isGroupOwner(resource.data.groupId);
+                             isGroupOwner(resource.data.groupId) ||
+                             resource.data.get('grantedBy', '') == request.auth.uid;
     }
 
     // Group requests collection

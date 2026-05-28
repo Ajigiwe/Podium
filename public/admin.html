@@ -146,6 +146,7 @@
                         <select id="role-filter" onchange="applyFilters()" class="bg-white dark:bg-slate-950 border border-[#DDE0F0] dark:border-slate-800 rounded-md text-[10px] font-bold uppercase tracking-widest px-3 py-2 outline-none text-[#8888A8] hover:border-[#1845D4] transition-all">
                             <option value="all">All Roles</option>
                             <option value="student">Students</option>
+                            <option value="verified_student">Verified Students</option>
                             <option value="lecturer">Lecturers</option>
                             <option value="admin">Admins</option>
                         </select>
@@ -366,7 +367,11 @@
                 );
                 
                 if (roleFilter !== 'all') {
-                    users = users.filter(u => u.role === roleFilter);
+                    if (roleFilter === 'verified_student') {
+                        users = users.filter(u => u.role === 'student' && u.isVerified === true);
+                    } else {
+                        users = users.filter(u => u.role === roleFilter);
+                    }
                 }
                 
                 isLastPage = true; 
@@ -376,7 +381,13 @@
             } else {
                 // Standard paginated flow for default view
                 let constraints = [orderBy('createdAt', 'desc'), limit(PAGE_SIZE + 1)];
-                if (roleFilter !== 'all') constraints.unshift(where('role', '==', roleFilter));
+                if (roleFilter !== 'all') {
+                    if (roleFilter === 'verified_student') {
+                        constraints.unshift(where('role', '==', 'student'), where('isVerified', '==', true));
+                    } else {
+                        constraints.unshift(where('role', '==', roleFilter));
+                    }
+                }
                 if (lastDocs[currentPage]) constraints.push(startAfter(lastDocs[currentPage]));
 
                 const snap = await getDocs(query(collection(db, 'profiles'), ...constraints));
