@@ -23,13 +23,11 @@ export default function CountdownTimer({ targetDate, onComplete }: CountdownTime
         };
     }, [targetDate]);
 
-    const [prevTargetDate, setPrevTargetDate] = useState(targetDate);
     const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft());
 
-    if (targetDate !== prevTargetDate) {
-        setPrevTargetDate(targetDate);
+    useEffect(() => {
         setTimeLeft(calculateTimeLeft());
-    }
+    }, [targetDate, calculateTimeLeft]);
 
     useEffect(() => {
         const timer = setInterval(() => {

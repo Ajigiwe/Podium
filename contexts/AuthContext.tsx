@@ -175,8 +175,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             createdAt: Timestamp.now(),
                             updatedAt: Timestamp.now()
                         });
-                    } else {
-                        // Profile exists
                     }
                     profileCreated = true;
                 } catch (error: any) {
@@ -192,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             await new Promise(resolve => setTimeout(resolve, 1000));
                             retries--;
                         } else {
-                            throw error; // Irrecoverable
+                            throw error;
                         }
                     }
                 }
@@ -202,11 +200,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 throw lastError || new Error('Failed to synchronize your profile. Please try again.');
             }
 
+            queryClient.invalidateQueries({ queryKey: ['profile', user?.uid] });
         } catch (error) {
             console.error('Google Sign In Error:', error);
             throw error;
-        } finally {
-            queryClient.invalidateQueries({ queryKey: ['profile', user?.uid] });
         }
     };
 

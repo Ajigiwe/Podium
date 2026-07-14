@@ -1,19 +1,22 @@
 {
-    "rules": {
-        "chats": {
-            "$sessionId": {
-                ".read": "auth != null",
-                ".write": "auth != null",
-                "$messageId": {
-                    ".validate": "newData.hasChildren(['userId', 'userName', 'userRole', 'content', 'createdAt'])"
-                }
-            }
-        },
-        "reactions": {
-            "$sessionId": {
-                ".read": "auth != null",
-                ".write": "auth != null"
-            }
+  "rules": {
+    "chats": {
+      "$sessionId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$messageId": {
+          ".validate": "newData.hasChildren(['userId', 'userName', 'userRole', 'content', 'createdAt']) && newData.child('userId').val() === auth.uid && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 2000 && newData.child('userName').isString() && newData.child('userRole').isString() && (newData.child('userRole').val() === 'student' || newData.child('userRole').val() === 'lecturer' || newData.child('userRole').val() === 'admin' || newData.child('userRole').val() === 'moderator')"
         }
+      }
+    },
+    "reactions": {
+      "$sessionId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$reactionId": {
+          ".validate": "newData.hasChildren(['userId', 'userName', 'emoji', 'createdAt']) && newData.child('userId').val() === auth.uid && newData.child('emoji').isString() && newData.child('emoji').val().length > 0 && newData.child('emoji').val().length <= 10"
+        }
+      }
     }
+  }
 }

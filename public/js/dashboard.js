@@ -23,6 +23,8 @@ const userAvatar = document.getElementById('user-avatar');
 const enrolledCount = document.getElementById('enrolled-count');
 const hostedCount = document.getElementById('hosted-count');
 const recordsList = document.getElementById('records-list');
+const recordsListDrawer = document.getElementById('records-list-drawer');
+const greetingName = document.getElementById('greeting-name');
 const todayDate = document.getElementById('today-date');
 
 // State
@@ -51,6 +53,7 @@ onAuthStateChanged(auth, async (user) => {
     // Update UI
     userName.innerText = userProfile.fullName?.split(' ')[0] || user.email.split('@')[0];
     userRole.innerText = userProfile.role || 'Student';
+    if (greetingName) greetingName.innerText = userProfile.fullName?.split(' ')[0] || user.email.split('@')[0];
     if (userProfile.photoURL) {
         userAvatar.innerHTML = `<img src="${userProfile.photoURL}" class="w-full h-full object-cover">`;
     } else {
@@ -92,7 +95,12 @@ onAuthStateChanged(auth, async (user) => {
     }
     
     setupGroupOptions();
-    setTimeout(() => setLoading(false), 800);
+    setTimeout(() => {
+        setLoading(false);
+        // Hide splash screen
+        const splash = document.getElementById('splash-screen');
+        if (splash) { splash.classList.add('hidden'); }
+    }, 800);
 
     // Show admin nav section if admin
     if (userProfile.role === 'admin' || userProfile.role === 'lecturer' || userProfile.role === 'rep' || userProfile.isVerified) {
@@ -151,13 +159,13 @@ window.switchRecordTab = (tab) => {
     const tabHost = document.getElementById('tab-host');
     
     if (tab === 'join') {
-        if (tabJoin) tabJoin.className = 'text-[12px] font-bold transition-all text-[#1845D4] dark:text-blue-400';
-        if (tabHost) tabHost.className = 'text-[12px] font-bold transition-all text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white';
+        if (tabJoin) { tabJoin.className = 'px-3 py-1.5 rounded-md text-[11px] font-bold transition-all text-[#1845D4] bg-white dark:bg-slate-900 shadow-sm'; }
+        if (tabHost) { tabHost.className = 'px-3 py-1.5 rounded-md text-[11px] font-bold transition-all text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white'; }
     } else {
-        if (tabHost) tabHost.className = 'text-[12px] font-bold transition-all text-[#1845D4] dark:text-blue-400';
-        if (tabJoin) tabJoin.className = 'text-[12px] font-bold transition-all text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white';
+        if (tabHost) { tabHost.className = 'px-3 py-1.5 rounded-md text-[11px] font-bold transition-all text-[#1845D4] bg-white dark:bg-slate-900 shadow-sm'; }
+        if (tabJoin) { tabJoin.className = 'px-3 py-1.5 rounded-md text-[11px] font-bold transition-all text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white'; }
     }
-    renderRecords();
+    renderInlineRecords();
 };
 
 // Drawer Logic
@@ -173,7 +181,7 @@ window.openRecordsDrawer = (tab) => {
     drawer.classList.remove('translate-x-full');
     drawerBackdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    renderRecords();
+    renderDrawerRecords();
 };
 
 window.closeRecordsDrawer = () => {
@@ -190,7 +198,7 @@ function setupHostedSessions() {
         hostedSessionsData = snapshot.docs
             .map(d => ({ id: d.id, ...d.data() }));
         hostedCount.innerText = hostedSessionsData.length;
-        renderRecords();
+        renderInlineRecords();
         renderQuickAccess();
     }, (err) => console.error('[HostedSessions] Error:', err));
 }
@@ -213,7 +221,7 @@ function setupEnrolledSessions() {
             .map(s => ({ id: s.id, ...s.data() }));
             
         enrolledCount.innerText = enrolledSessionsData.length;
-        renderRecords();
+        renderInlineRecords();
         renderQuickAccess();
     }, (err) => console.error('[EnrolledSessions] Error:', err));
 }
@@ -227,7 +235,7 @@ function renderQuickAccess() {
     const combined = [
         ...enrolledSessionsData.map(s => ({ ...s, _type: 'join' })),
         ...hostedSessionsData.map(s => ({ ...s, _type: 'host' }))
-    ].filter(s => !s.isDeleted)
+    ].filter(s => !s.isDeleted && s.status !== 'ended' && s.status !== 'deleted')
     .sort((a, b) => {
         if (a.isActive && !b.isActive) return -1;
         if (!a.isActive && b.isActive) return 1;
@@ -281,24 +289,21 @@ function renderQuickAccess() {
     });
 }
 
-function renderRecords() {
-    // Only render if drawer is open
-    const drawer = document.getElementById('records-drawer');
-    if (drawer.classList.contains('translate-x-full')) return;
-
+function renderInlineRecords() {
+    if (!recordsList) return;
     const raw = activeRecordTab === 'join' ? enrolledSessionsData : hostedSessionsData;
-    const data = [...raw].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    const data = [...raw].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)).slice(0, 6);
 
     recordsList.innerHTML = '';
 
     if (data.length === 0) {
-        recordsList.innerHTML = `<div class="py-20 text-center"><p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.4em] italic">No records found.</p></div>`;
+        recordsList.innerHTML = '<div class="py-12 text-center bg-white dark:bg-slate-900 rounded-xl border border-[#DDE0F0] dark:border-slate-800"><div class="w-12 h-12 bg-[#F5F6FA] dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-[#8888A8]"><i class="fas fa-inbox text-lg"></i></div><p class="text-[12px] font-bold text-[#8888A8] uppercase tracking-widest">No classes yet</p><p class="text-[11px] text-[#8888A8] mt-1">' + (activeRecordTab === 'join' ? 'Join a class using a code to get started.' : 'Create your first class session.') + '</p></div>';
         return;
     }
 
     const fragment = document.createDocumentFragment();
     data.forEach((session, index) => {
-        const item = createRecordItem(session, activeRecordTab === 'host');
+        const item = createRecordItem(session, activeRecordTab === 'host', true);
         item.classList.add('animate-fade-in');
         item.style.animationDelay = `${index * 0.05}s`;
         fragment.appendChild(item);
@@ -306,51 +311,98 @@ function renderRecords() {
     recordsList.appendChild(fragment);
 }
 
-function createRecordItem(session, isHost) {
+function renderDrawerRecords() {
+    if (!recordsListDrawer) return;
+    const raw = activeRecordTab === 'join' ? enrolledSessionsData : hostedSessionsData;
+    const data = [...raw].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+
+    recordsListDrawer.innerHTML = '';
+
+    if (data.length === 0) {
+        recordsListDrawer.innerHTML = '<div class="py-20 text-center"><p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.4em] italic">No records found.</p></div>';
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    data.forEach((session, index) => {
+        const item = createRecordItem(session, activeRecordTab === 'host', false);
+        item.classList.add('animate-fade-in');
+        item.style.animationDelay = `${index * 0.05}s`;
+        fragment.appendChild(item);
+    });
+    recordsListDrawer.appendChild(fragment);
+}
+
+function createRecordItem(session, isHost, compact) {
     const div = document.createElement('div');
-    div.className = `flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-5 sm:py-4 hover:bg-[#F5F6FA] transition-all group border-b border-[#F5F6FA] sm:border-none ${!isHost ? 'cursor-pointer' : ''}`;
-    
     const isActive = session.isActive;
-    const dotColor = isActive ? 'bg-[#1845D4] animate-pulse' : 'bg-[#DDE0F0]';
-    
-    if (!isHost) {
+    const isEnded = session.status === 'ended' || session.status === 'deleted' || session.isDeleted;
+    const dotColor = isActive ? 'bg-[#1845D4] animate-pulse' : isEnded ? 'bg-[#8888A8]' : 'bg-[#DDE0F0]';
+
+    if (!isHost && !isEnded) {
         div.onclick = () => window.openJoinPreview(session);
     }
 
-    div.innerHTML = `
-        <div class="flex items-center gap-4 flex-1 min-w-0">
-            <div class="w-2 h-2 rounded-full flex-shrink-0 ${dotColor}"></div>
-            <div class="flex-1 min-w-0">
-                <div class="text-[14px] font-medium text-[#0D0D1A] dark:text-white group-hover:text-[#1845D4] transition-colors truncate">
-                    ${session.title}
-                    ${session.isDeleted ? '<span class="ml-2 text-[8px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100 uppercase font-black">Deleted</span>' : ''}
+    if (compact) {
+        div.className = `bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl px-5 py-4 flex items-center justify-between ${isEnded ? 'opacity-60' : 'card-hover cursor-pointer'}`;
+        div.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-10 h-10 rounded-lg ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 text-[#1845D4]' : isEnded ? 'bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8]' : 'bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8]'} flex items-center justify-center flex-shrink-0">
+                    <i class="fas ${isActive ? 'fa-video' : 'fa-graduation-cap'} text-sm"></i>
                 </div>
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-                    <span class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest bg-[#F5F6FA] px-2 py-0.5 rounded whitespace-nowrap">${session.meetingCode || 'NO CODE'}</span>
-                    <span class="text-[11px] text-[#8888A8] truncate">· ${session.course || session.lecturerName || 'General'}</span>
+                <div class="min-w-0 flex-1">
+                    <h4 class="text-[13px] font-semibold text-[#0D0D1A] dark:text-white truncate">${session.title}</h4>
+                    <p class="text-[11px] text-[#8888A8] font-medium">${session.course || session.lecturerName || 'General'}</p>
                 </div>
             </div>
-        </div>
-        <div class="flex items-center gap-2 sm:flex-shrink-0">
-            ${isHost ? `
-                <button onclick="window.copyCode('${session.meetingCode}', event)" class="p-2 text-[#8888A8] hover:text-[#1845D4] transition-colors flex-shrink-0"><i class="fas fa-copy"></i></button>
-                ${!session.isDeleted ? `
-                    <a href="/classroom/${session.id}" class="flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 text-[#0D0D1A] dark:text-white text-[10px] font-bold uppercase tracking-widest rounded hover:border-[#1845D4] transition-all whitespace-nowrap text-center">Control</a>
-                    <button onclick="window.toggleLive('${session.id}', ${isActive}, event)" class="flex-1 sm:flex-none px-4 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${isActive ? 'bg-[#1845D4] text-white shadow-lg shadow-blue-600/10' : 'bg-[#F5F6FA] text-[#8888A8] hover:bg-[#E8EEFF]'}">
-                        ${isActive ? 'Live' : 'Go Live'}
-                    </button>
-                    <button onclick="window.deleteSession('${session.id}', event)" class="p-2 text-[#DDE0F0] hover:text-red-600 transition-colors flex-shrink-0"><i class="fas fa-trash-alt"></i></button>
+            <div class="flex items-center gap-3 ml-3 flex-shrink-0">
+                ${isActive ? '<span class="text-[10px] font-bold text-[#1845D4] bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-full uppercase tracking-widest">Live</span>' : ''}
+                ${isEnded ? '<span class="text-[10px] font-bold text-[#8888A8] bg-[#F5F6FA] dark:bg-slate-800 px-2 py-1 rounded-full uppercase tracking-widest">Ended</span>' : ''}
+                ${isHost && !isEnded ? '<span class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest">Host</span>' : ''}
+                <i class="fas fa-chevron-right text-[#DDE0F0] text-xs"></i>
+            </div>
+        `;
+    } else {
+        div.className = `flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-5 sm:py-4 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-all group border-b border-[#F5F6FA] dark:border-slate-800 sm:border-none ${!isHost && !isEnded ? 'cursor-pointer' : ''}`;
+        
+        div.innerHTML = `
+            <div class="flex items-center gap-4 flex-1 min-w-0">
+                <div class="w-2 h-2 rounded-full flex-shrink-0 ${dotColor}"></div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[14px] font-medium text-[#0D0D1A] dark:text-white group-hover:text-[#1845D4] transition-colors truncate">
+                        ${session.title}
+                        ${isEnded ? '<span class="ml-2 text-[8px] bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] px-1.5 py-0.5 rounded uppercase font-black">Ended</span>' : ''}
+                        ${session.isDeleted ? '<span class="ml-2 text-[8px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100 uppercase font-black">Deleted</span>' : ''}
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                        <span class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest bg-[#F5F6FA] dark:bg-slate-800 px-2 py-0.5 rounded whitespace-nowrap">${session.meetingCode || 'NO CODE'}</span>
+                        <span class="text-[11px] text-[#8888A8] truncate">· ${session.course || session.lecturerName || 'General'}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:flex-shrink-0">
+                ${isEnded ? `
+                    <span class="px-4 py-2 text-[#8888A8] text-[9px] font-bold uppercase tracking-widest italic">Ended</span>
+                ` : isHost ? `
+                    <button onclick="window.copyCode('${session.meetingCode}', event)" class="p-2 text-[#8888A8] hover:text-[#1845D4] transition-colors flex-shrink-0"><i class="fas fa-copy"></i></button>
+                    ${!session.isDeleted ? `
+                        <a href="/classroom/${session.id}" class="flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 text-[#0D0D1A] dark:text-white text-[10px] font-bold uppercase tracking-widest rounded hover:border-[#1845D4] transition-all whitespace-nowrap text-center">Control</a>
+                        <button onclick="window.toggleLive('${session.id}', ${isActive}, event)" class="flex-1 sm:flex-none px-4 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${isActive ? 'bg-[#1845D4] text-white shadow-lg shadow-blue-600/10' : 'bg-[#F5F6FA] text-[#8888A8] hover:bg-[#E8EEFF]'}">
+                            ${isActive ? 'Live' : 'Go Live'}
+                        </button>
+                        <button onclick="window.deleteSession('${session.id}', event)" class="p-2 text-[#DDE0F0] hover:text-red-600 transition-colors flex-shrink-0"><i class="fas fa-trash-alt"></i></button>
+                    ` : `
+                        <span class="px-4 py-2 text-[#8888A8] text-[9px] font-bold uppercase tracking-widest italic">Archived</span>
+                    `}
                 ` : `
-                    <span class="px-4 py-2 text-[#8888A8] text-[9px] font-bold uppercase tracking-widest italic">Archived</span>
+                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-widest ${isActive ? 'bg-blue-50 text-[#1845D4]' : 'bg-[#F5F6FA] text-[#8888A8]'}">
+                        ${isActive ? 'Live' : 'Active'}
+                    </span>
+                    <i class="fas fa-chevron-right text-[#DDE0F0] group-hover:text-[#1845D4] transition-all"></i>
                 `}
-            ` : `
-                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-widest ${isActive ? 'bg-blue-50 text-[#1845D4]' : 'bg-[#F5F6FA] text-[#8888A8]'}">
-                    ${isActive ? 'Live' : 'Active'}
-                </span>
-                <i class="fas fa-chevron-right text-[#DDE0F0] group-hover:text-[#1845D4] transition-all"></i>
-            `}
-        </div>
-    `;
+            </div>
+        `;
+    }
     return div;
 }
 
@@ -382,10 +434,10 @@ window.toggleLive = async (id, current, e) => {
 
 window.deleteSession = async (id, e) => {
     if (e) e.stopPropagation();
-    if (confirm('Purge this session?')) {
+    showConfirm('Remove this session?', async () => {
         await updateDoc(doc(db, 'sessions', id), { isDeleted: true });
         showToast('Deleted successfully.');
-    }
+    });
 };
 
 // Create Modal Logic
@@ -459,6 +511,8 @@ if (createForm) {
         const durationMinutes = parseInt(document.getElementById('class-duration').value) || 60;
         const verificationCount = parseInt(document.getElementById('class-checks').value) || 3;
         const groupId = groupSelect.value;
+        const scheduleDate = document.getElementById('class-schedule-date')?.value;
+        const scheduleTime = document.getElementById('class-schedule-time')?.value;
         const submitBtn = createForm.querySelector('button[type="submit"]');
 
         submitBtn.disabled = true;
@@ -466,9 +520,11 @@ if (createForm) {
 
         try {
             const sessionRef = doc(collection(db, 'sessions'));
-            const code = `pod-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 4)}`;
-            
-            await setDoc(sessionRef, {
+            const arr = new Uint32Array(2);
+            crypto.getRandomValues(arr);
+            const code = `pod-${arr[0].toString(36).substring(0, 4)}-${arr[1].toString(36).substring(0, 4)}`;
+
+            const sessionData = {
                 id: sessionRef.id,
                 title,
                 course,
@@ -483,7 +539,15 @@ if (createForm) {
                 status: 'active',
                 meetingCode: code,
                 createdAt: serverTimestamp()
-            });
+            };
+
+            if (scheduleDate && scheduleTime) {
+                const [h, m] = scheduleTime.split(':');
+                const d = new Date(scheduleDate + 'T' + scheduleTime + ':00');
+                sessionData.scheduledStartTime = Timestamp.fromDate(d);
+            }
+
+            await setDoc(sessionRef, sessionData);
             
             createModal.classList.add('hidden');
             createForm.reset();
@@ -596,6 +660,28 @@ function showToast(msg, type = 'success') {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
+window.showToast = showToast;
+
+// Confirm Dialog Helper
+function showConfirm(msg, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-[#0D0D1A]/50 backdrop-blur-sm z-[250] flex items-center justify-center p-6 animate-in fade-in duration-200';
+    overlay.innerHTML = `
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-[#DDE0F0] dark:border-slate-800">
+            <p class="text-[14px] font-semibold text-[#0D0D1A] dark:text-white text-center leading-relaxed">${msg}</p>
+            <div class="flex gap-3 mt-6">
+                <button class="cancel-btn flex-1 px-4 py-2.5 bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] dark:text-slate-400 rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-[#DDE0F0] dark:hover:bg-slate-700 transition-all">Cancel</button>
+                <button class="confirm-btn flex-1 px-4 py-2.5 bg-[#1845D4] text-white rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-[#0F2FA8] transition-all shadow-lg shadow-blue-600/10">Confirm</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cancel-btn').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('.confirm-btn').addEventListener('click', () => { overlay.remove(); if (onConfirm) onConfirm(); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+window.showConfirm = showConfirm;
 
 // Logout
 const logoutBtn = document.getElementById('logout-btn');

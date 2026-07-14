@@ -6,6 +6,7 @@ import {
     updateDoc,
     getDoc,
     getDocs,
+    getCountFromServer,
     query,
     where,
     Timestamp,
@@ -57,12 +58,16 @@ export const triggerVerification = async (
     timeLimitSeconds: number = 60
 ) => {
     const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
-    const sessionSnap = await getDoc(sessionRef);
+    const verificationsRef = collection(db, SESSIONS_COLLECTION, sessionId, VERIFICATIONS_SUBCOLLECTION);
+
+    const [sessionSnap, countSnap] = await Promise.all([
+        getDoc(sessionRef),
+        getCountFromServer(verificationsRef)
+    ]);
 
     if (!sessionSnap.exists()) throw new Error('Session not found');
 
-    const verificationsRef = collection(db, SESSIONS_COLLECTION, sessionId, VERIFICATIONS_SUBCOLLECTION);
-    const verifCount = (await getDocs(verificationsRef)).size + 1;
+    const verifCount = countSnap.data().count + 1;
 
     const verificationId = doc(verificationsRef).id;
     const now = Timestamp.now();

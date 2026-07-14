@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { adminDb, getAuthenticatedUser } from '@/lib/firebase/admin';
 
 export async function GET(request: NextRequest) {
     try {
+        const decoded = await getAuthenticatedUser(request);
+        if (!decoded) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const profileDoc = await adminDb.collection('profiles').doc(decoded.uid).get();
+        if (!profileDoc.exists || profileDoc.data()?.role !== 'admin') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const { searchParams } = new URL(request.url);
         const query = searchParams.get('q');
         const role = searchParams.get('role');
@@ -11,19 +21,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ users: [] });
         }
 
-        // Basic validation: must be an admin to search globally
-        // In a real app, we'd verify the ID token here.
-        // For now, we'll proceed as this is an internal admin-only route.
-
         const profilesRef = adminDb.collection('profiles');
-        let firestoreQuery: any = profilesRef;
-
-        // Note: Firestore doesn't support full-text search or case-insensitive prefix search easily
-        // without external services like Algolia. 
-        // We'll implement a basic prefix search for display name and email.
-
-        // Strategy: Search by displayName prefix (case-sensitive as per Firestore)
-        // or search by email.
 
         const displayNameSnapshot = await profilesRef
             .where('displayName', '>=', query)

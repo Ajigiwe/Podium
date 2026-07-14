@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
-import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { adminDb, getAuthenticatedUser } from '@/lib/firebase/admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
-/**
- * Records a student's response to a verification prompt
- * POST /api/attendance/verification/respond
- */
 export async function POST(request: NextRequest) {
     try {
+        const decoded = await getAuthenticatedUser(request);
+        if (!decoded) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { sessionId, verificationId, studentId } = await request.json();
 
         if (!sessionId || !verificationId || !studentId) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        // Verify the authenticated user matches the claimed studentId
+        if (decoded.uid !== studentId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const sessionRef = adminDb.collection('sessions').doc(sessionId);
@@ -32,7 +38,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Verification has expired' }, { status: 410 });
         }
 
-        // 1. Record response
         const responseRef = verifRef.collection('responses').doc(studentId);
         await responseRef.set({
             attendanceRecordId: studentId,
@@ -40,7 +45,6 @@ export async function POST(request: NextRequest) {
             responseTimeSeconds: now.seconds - verifData.triggeredAt.seconds
         });
 
-        // 2. Update student's summary stats
         const attendanceRef = sessionRef.collection('attendance').doc(studentId);
         const recordSnap = await attendanceRef.get();
 
@@ -57,7 +61,6 @@ export async function POST(request: NextRequest) {
                 lastRespondedAt: now
             });
 
-            // Also update flat log for reports
             const logRef = adminDb.collection('attendance_logs').doc(`${sessionId}_${studentId}`);
             await logRef.update({
                 totalVerificationsCompleted: completed,

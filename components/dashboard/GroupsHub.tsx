@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, orderBy, Timestamp, limit } from 'firebase/firestore';
 import { Group, GroupMembership, GroupRequest, Session } from '@/lib/firebase/types';
 import { createGroup, findGroupByCode, requestToJoinGroup, getAnnouncements, postAnnouncement, getResources, addResource, getGroupMembers, removeMember } from '@/lib/firebase/groups';
 import { 
@@ -17,6 +17,7 @@ import { storage } from '@/lib/firebase/config';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useAlert } from '@/contexts/AlertContext';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { getAuthHeaders } from '@/lib/firebase/api-client';
 
 export default function GroupsHub() {
     const { user, profile } = useAuth();
@@ -43,23 +44,25 @@ export default function GroupsHub() {
     useEffect(() => {
         if (!user) return;
 
-        // Fetch My Groups (via memberships)
+        // Fetch My Groups (via memberships) - batched query
         const membershipsQuery = query(collection(db, 'group_memberships'), where('userId', '==', user.uid));
         const unsubscribeMemberships = onSnapshot(membershipsQuery, async (snapshot) => {
             const groupIds = snapshot.docs.map(doc => doc.data().groupId);
             if (groupIds.length === 0) { setMyGroups([]); setLoading(false); return; }
 
-            const groupsData: Group[] = [];
-            for (const id of groupIds) {
-                const groupSnap = await getDocs(query(collection(db, 'groups'), where('id', '==', id)));
-                if (!groupSnap.empty) groupsData.push({ id: groupSnap.docs[0].id, ...groupSnap.docs[0].data() } as Group);
+            try {
+                const q = query(collection(db, 'groups'), where('id', 'in', groupIds));
+                const groupSnap = await getDocs(q);
+                const groupsData = groupSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group));
+                setMyGroups(groupsData);
+            } catch (e) {
+                console.error('Failed to fetch groups:', e);
             }
-            setMyGroups(groupsData);
             setLoading(false);
         });
 
         // Fetch Public Groups
-        const publicQuery = query(collection(db, 'groups'), where('isPublic', '==', true));
+        const publicQuery = query(collection(db, 'groups'), where('isPublic', '==', true), limit(50));
         const unsubscribePublic = onSnapshot(publicQuery, (snapshot) => {
             setPublicGroups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group)));
         });
@@ -72,7 +75,7 @@ export default function GroupsHub() {
         if (!user || !profile || !isVerified) return;
         setCreating(true);
         try {
-            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const code = crypto.randomUUID().replace(/-/g, '').substring(0, 6).toUpperCase();
             await createGroup(newName, newDesc, user.uid, profile.fullName || 'User', user.email!, isPublic, code);
             setShowCreateModal(false);
             setNewName(''); setNewDesc('');
@@ -91,8 +94,9 @@ export default function GroupsHub() {
             
             // Notify Owner
             if (group.ownerEmail) {
-                fetch('/api/communities/notifications', {
+                getAuthHeaders().then(headers => fetch('/api/communities/notifications', {
                     method: 'POST',
+                    headers,
                     body: JSON.stringify({
                         type: 'JOIN_REQUEST',
                         data: {
@@ -102,7 +106,7 @@ export default function GroupsHub() {
                             communityName: group.name
                         }
                     })
-                }).catch(console.error);
+                })).catch(console.error);
             }
 
             setShowJoinModal(false);
@@ -213,7 +217,7 @@ export default function GroupsHub() {
     );
 }
 
-function GroupCard({ group, isMember, onOpen }: { group: Group, isMember: boolean, onOpen?: () => void }) {
+const GroupCard = memo(function GroupCard({ group, isMember, onOpen }: { group: Group, isMember: boolean, onOpen?: () => void }) {
     const { user, profile } = useAuth();
     const { showAlert } = useAlert();
     const [requesting, setRequesting] = useState(false);
@@ -227,8 +231,9 @@ function GroupCard({ group, isMember, onOpen }: { group: Group, isMember: boolea
             
             // Notify Owner
             if (group.ownerEmail) {
-                fetch('/api/communities/notifications', {
+                getAuthHeaders().then(headers => fetch('/api/communities/notifications', {
                     method: 'POST',
+                    headers,
                     body: JSON.stringify({
                         type: 'JOIN_REQUEST',
                         data: {
@@ -238,7 +243,7 @@ function GroupCard({ group, isMember, onOpen }: { group: Group, isMember: boolea
                             communityName: group.name
                         }
                     })
-                }).catch(console.error);
+                })).catch(console.error);
             }
 
             showAlert('Request sent!', 'success');
@@ -267,9 +272,8 @@ function GroupCard({ group, isMember, onOpen }: { group: Group, isMember: boolea
             </div>
         </div>
     );
-}
-
-function CommunityWorkspace({ group, user, profile, onBack }: { group: Group, user: any, profile: any, onBack: () => void }) {
+});
+const CommunityWorkspace = memo(function CommunityWorkspace({ group, user, profile, onBack }: { group: Group, user: any, profile: any, onBack: () => void }) {
     const { showAlert, showConfirm } = useAlert();
     const [activeTab, setActiveTab] = useState<'announcements' | 'resources' | 'members' | 'requests' | 'live'>('announcements');
     const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -283,7 +287,7 @@ function CommunityWorkspace({ group, user, profile, onBack }: { group: Group, us
 
     useEffect(() => {
         // Real-time listener for sessions
-        const qSessions = query(collection(db, 'sessions'), where('groupId', '==', group.id));
+        const qSessions = query(collection(db, 'sessions'), where('groupId', '==', group.id), limit(50));
         const unsubscribeLive = onSnapshot(qSessions, (snap) => {
             const allSessions = snap.docs.map(d => ({ id: d.id, ...d.data() } as Session));
             setLiveSessions(isOwner ? allSessions : allSessions.filter(s => s.isActive));
@@ -296,13 +300,13 @@ function CommunityWorkspace({ group, user, profile, onBack }: { group: Group, us
         });
 
         // Real-time listener for announcements
-        const qAnn = query(collection(db, 'groups', group.id, 'announcements'), orderBy('createdAt', 'desc'));
+        const qAnn = query(collection(db, 'groups', group.id, 'announcements'), orderBy('createdAt', 'desc'), limit(50));
         const unsubscribeAnn = onSnapshot(qAnn, (snap) => {
             setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
         // Real-time listener for resources
-        const qRes = query(collection(db, 'groups', group.id, 'resources'), orderBy('createdAt', 'desc'));
+        const qRes = query(collection(db, 'groups', group.id, 'resources'), orderBy('createdAt', 'desc'), limit(50));
         const unsubscribeRes = onSnapshot(qRes, (snap) => {
             setResources(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
@@ -339,8 +343,9 @@ function CommunityWorkspace({ group, user, profile, onBack }: { group: Group, us
             // Notify Members
             const memberEmails = members.filter(m => m.userEmail).map(m => m.userEmail!);
             if (memberEmails.length > 0) {
-                fetch('/api/communities/notifications', {
+                getAuthHeaders().then(headers => fetch('/api/communities/notifications', {
                     method: 'POST',
+                    headers,
                     body: JSON.stringify({
                         type: 'ANNOUNCEMENT',
                         data: {
@@ -350,7 +355,7 @@ function CommunityWorkspace({ group, user, profile, onBack }: { group: Group, us
                             content
                         }
                     })
-                }).catch(console.error);
+                })).catch(console.error);
             }
 
             showAlert('Announcement posted.', 'success');
@@ -418,8 +423,7 @@ function CommunityWorkspace({ group, user, profile, onBack }: { group: Group, us
             </div>
         </div>
     );
-}
-
+});
 function AnnouncementsTab({ announcements, isOwner, onPost }: { announcements: any[], isOwner: boolean, onPost: (c: string) => void }) {
     const [newContent, setNewContent] = useState('');
     return (
@@ -444,6 +448,7 @@ function AnnouncementsTab({ announcements, isOwner, onPost }: { announcements: a
 }
 
 function ResourcesTab({ resources, isOwner, onAdd, groupId }: { resources: any[], isOwner: boolean, onAdd: (t: string, u: string, type: string) => void, groupId: string }) {
+    const { showAlert } = useAlert();
     const [title, setTitle] = useState('');
     const [url, setUrl] = useState('');
     const [uploading, setUploading] = useState(false);
@@ -454,7 +459,7 @@ function ResourcesTab({ resources, isOwner, onAdd, groupId }: { resources: any[]
         if (!file) return;
 
         if (file.size > 20 * 1024 * 1024) {
-            alert('File too large (Max 20MB)');
+            showAlert('File too large (Max 20MB)', 'warning');
             return;
         }
 
@@ -586,8 +591,9 @@ function RequestsTab({ requests, communityName, refresh }: { requests: GroupRequ
             
             if (status === 'approved') {
                 // Notify Student
-                fetch('/api/communities/notifications', {
+                getAuthHeaders().then(headers => fetch('/api/communities/notifications', {
                     method: 'POST',
+                    headers,
                     body: JSON.stringify({
                         type: 'JOIN_APPROVAL',
                         data: {
@@ -596,7 +602,7 @@ function RequestsTab({ requests, communityName, refresh }: { requests: GroupRequ
                             communityName: communityName
                         }
                     })
-                }).catch(console.error);
+                })).catch(console.error);
             }
 
             showAlert(`Member ${status === 'approved' ? 'enrolled' : 'rejected'}.`, 'success');
@@ -621,7 +627,7 @@ function RequestsTab({ requests, communityName, refresh }: { requests: GroupRequ
     );
 }
 
-function LiveSessionsTab({ sessions }: { sessions: Session[] }) {
+const LiveSessionsTab = memo(function LiveSessionsTab({ sessions }: { sessions: Session[] }) {
     const router = useRouter();
     return (
         <div className="space-y-6">
@@ -664,4 +670,4 @@ function LiveSessionsTab({ sessions }: { sessions: Session[] }) {
             )}
         </div>
     );
-}
+});

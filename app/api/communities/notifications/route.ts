@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/firebase/admin';
 import { 
     sendCommunityJoinRequestEmail, 
     sendCommunityApprovalEmail, 
@@ -8,11 +9,17 @@ import {
 
 export async function POST(request: Request) {
     try {
+        const decoded = await getAuthenticatedUser(request as any);
+        if (!decoded) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
         const { type, data } = body;
 
         switch (type) {
             case 'JOIN_REQUEST':
+                if (!data.ownerEmail) return NextResponse.json({ error: 'Missing ownerEmail' }, { status: 400 });
                 await sendCommunityJoinRequestEmail({
                     to: data.ownerEmail,
                     ownerName: data.ownerName,
@@ -22,6 +29,7 @@ export async function POST(request: Request) {
                 break;
 
             case 'JOIN_APPROVAL':
+                if (!data.userEmail) return NextResponse.json({ error: 'Missing userEmail' }, { status: 400 });
                 await sendCommunityApprovalEmail({
                     to: data.userEmail,
                     userName: data.userName,
@@ -30,14 +38,15 @@ export async function POST(request: Request) {
                 break;
 
             case 'ANNOUNCEMENT':
-                // For announcements, 'to' might be an array or a single string
                 const recipientsA = Array.isArray(data.to) ? data.to : [data.to];
-                const emailPromisesA = recipientsA.map((email: string) => 
+                const validRecipientsA = recipientsA.filter((e: string) => e && e.includes('@'));
+                if (validRecipientsA.length === 0) return NextResponse.json({ error: 'No valid recipients' }, { status: 400 });
+                const emailPromisesA = validRecipientsA.map((email: string) => 
                     sendCommunityAnnouncementEmail({
                         to: email,
                         communityName: data.communityName,
                         authorName: data.authorName,
-                        content: data.content
+                        content: (data.content || '').substring(0, 5000)
                     })
                 );
                 await Promise.all(emailPromisesA);
@@ -45,7 +54,9 @@ export async function POST(request: Request) {
 
             case 'SESSION_START':
                 const recipientsS = Array.isArray(data.to) ? data.to : [data.to];
-                const emailPromisesS = recipientsS.map((email: string) => 
+                const validRecipientsS = recipientsS.filter((e: string) => e && e.includes('@'));
+                if (validRecipientsS.length === 0) return NextResponse.json({ error: 'No valid recipients' }, { status: 400 });
+                const emailPromisesS = validRecipientsS.map((email: string) => 
                     sendCommunitySessionStartEmail({
                         to: email,
                         communityName: data.communityName,
@@ -65,7 +76,7 @@ export async function POST(request: Request) {
     } catch (error: any) {
         console.error('Community Notification Error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to send notification' },
+            { error: 'Failed to send notification' },
             { status: 500 }
         );
     }

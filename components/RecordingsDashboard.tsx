@@ -21,7 +21,7 @@ export const RecordingsDashboard = ({ lecturerId, showTitle = false }: Recording
             const response = await fetch(`/api/recordings/lecturer/${lecturerId}`);
             const data = await response.json();
             if (data.success) setRecordings(data.recordings);
-        } catch (error) {} finally { setLoading(false); }
+        } catch (error) { console.error('Failed to fetch recordings:', error); } finally { setLoading(false); }
     };
 
     const downloadRecording = async (recordingId: string, classTitle: string, startedAt: string) => {

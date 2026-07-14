@@ -1,9 +1,14 @@
-import { FocusLayout } from '@livekit/components-react';
+import { FocusLayout, TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { User } from 'lucide-react';
 
-// Wrapper for Focus Layout to handle placeholders
-export function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
+interface FocusWrapperProps {
+    trackRef: TrackReferenceOrPlaceholder;
+    onParticipantClick?: () => void;
+    [key: string]: any;
+}
+
+export function FocusWrapper({ trackRef, onParticipantClick, ...props }: FocusWrapperProps) {
     const isCameraOff = trackRef.source === Track.Source.Camera &&
         (trackRef.publication?.isMuted || !trackRef.participant.isCameraEnabled);
 

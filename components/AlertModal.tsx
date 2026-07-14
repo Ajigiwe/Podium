@@ -30,9 +30,11 @@ export default function AlertModal({
 }: AlertModalProps) {
     const [visible, setVisible] = useState(isOpen);
 
-    if (isOpen && !visible) {
-        setVisible(true);
-    }
+    useEffect(() => {
+        if (isOpen && !visible) {
+            setVisible(true);
+        }
+    }, [isOpen, visible]);
 
     useEffect(() => {
         if (!isOpen) {

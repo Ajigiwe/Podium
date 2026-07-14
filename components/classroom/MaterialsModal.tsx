@@ -52,7 +52,7 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
     const [searchQuery, setSearchQuery] = useState('');
     const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { showAlert } = useAlert();
+    const { showAlert, showConfirm } = useAlert();
 
     useEffect(() => {
         if (!sessionId) return;
@@ -97,14 +97,14 @@ export const MaterialsModal = ({ sessionId, userId, isModerator, onClose }: Mate
     };
 
     const handleDelete = async (materialId: string) => {
-        if (!window.confirm('Are you sure you want to delete this material?')) return;
-
-        try {
-            await deleteDoc(doc(db, 'sessions', sessionId, 'materials', materialId));
-            showAlert('Material deleted', 'info');
-        } catch (error) {
-            showAlert('Failed to delete material', 'error');
-        }
+        showConfirm('Delete this material?', async () => {
+            try {
+                await deleteDoc(doc(db, 'sessions', sessionId, 'materials', materialId));
+                showAlert('Material deleted', 'info');
+            } catch (error: any) {
+                showAlert(error.message || 'Failed to delete material', 'error');
+            }
+        });
     };
 
     const formatSize = (bytes: number) => {

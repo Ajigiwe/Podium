@@ -13,7 +13,9 @@ import {
     Timestamp,
     addDoc,
     deleteDoc,
-    orderBy
+    orderBy,
+    writeBatch,
+    limit
 } from 'firebase/firestore';
 import { Group, GroupMembership, GroupRequest } from './types';
 
@@ -37,9 +39,9 @@ export const createGroup = async (name: string, description: string, ownerId: st
         createdAt: Timestamp.now(),
     };
     
-    await setDoc(newGroupDoc, groupData);
-    
-    // Create initial membership for owner
+    const batch = writeBatch(db);
+    batch.set(newGroupDoc, groupData);
+
     const membershipRef = doc(db, 'group_memberships', `${ownerId}_${newGroupDoc.id}`);
     const membershipData: GroupMembership = {
         id: `${ownerId}_${newGroupDoc.id}`,
@@ -49,8 +51,9 @@ export const createGroup = async (name: string, description: string, ownerId: st
         joinedAt: Timestamp.now(),
         userName: ownerName
     };
-    
-    await setDoc(membershipRef, membershipData);
+
+    batch.set(membershipRef, membershipData);
+    await batch.commit();
     return newGroupDoc.id;
 };
 
@@ -110,10 +113,12 @@ export const handleJoinRequest = async (requestId: string, status: 'approved' | 
             userEmail: request.userEmail
         };
         
-        await setDoc(membershipRef, membershipData);
-        await updateDoc(doc(db, 'groups', request.groupId), {
-            memberCount: increment(1)
-        });
+        const batch = writeBatch(db);
+        batch.set(membershipRef, membershipData);
+        batch.update(doc(db, 'groups', request.groupId), { memberCount: increment(1) });
+        batch.update(requestRef, { status, updatedAt: serverTimestamp() });
+        await batch.commit();
+        return;
     }
     
     await updateDoc(requestRef, { status, updatedAt: serverTimestamp() });
@@ -132,7 +137,7 @@ export const checkGroupMembership = async (groupId: string, userId: string) => {
  * Get all members of a group
  */
 export const getGroupMembers = async (groupId: string) => {
-    const q = query(collection(db, 'group_memberships'), where('groupId', '==', groupId));
+    const q = query(collection(db, 'group_memberships'), where('groupId', '==', groupId), limit(200));
     const snap = await getDocs(q);
     return snap.docs.map(d => d.data() as GroupMembership);
 };
@@ -141,11 +146,11 @@ export const getGroupMembers = async (groupId: string) => {
  * Remove a member from a group
  */
 export const removeMember = async (groupId: string, userId: string) => {
+    const batch = writeBatch(db);
     const membershipRef = doc(db, 'group_memberships', `${userId}_${groupId}`);
-    await deleteDoc(membershipRef);
-    await updateDoc(doc(db, 'groups', groupId), {
-        memberCount: increment(-1)
-    });
+    batch.delete(membershipRef);
+    batch.update(doc(db, 'groups', groupId), { memberCount: increment(-1) });
+    await batch.commit();
 };
 
 /**
@@ -165,7 +170,7 @@ export const postAnnouncement = async (groupId: string, content: string, authorI
  * Get announcements for a group
  */
 export const getAnnouncements = async (groupId: string) => {
-    const q = query(collection(db, 'groups', groupId, 'announcements'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'groups', groupId, 'announcements'), orderBy('createdAt', 'desc'), limit(50));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
@@ -187,7 +192,7 @@ export const addResource = async (groupId: string, title: string, url: string, t
  * Get resources for a group
  */
 export const getResources = async (groupId: string) => {
-    const q = query(collection(db, 'groups', groupId, 'resources'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'groups', groupId, 'resources'), orderBy('createdAt', 'desc'), limit(50));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
@@ -196,7 +201,7 @@ export const getResources = async (groupId: string) => {
  * Get all member emails for a group
  */
 export const getGroupMemberEmails = async (groupId: string): Promise<string[]> => {
-    const q = query(collection(db, 'group_memberships'), where('groupId', '==', groupId));
+    const q = query(collection(db, 'group_memberships'), where('groupId', '==', groupId), limit(200));
     const snap = await getDocs(q);
     return snap.docs.map(d => d.data().userEmail).filter(Boolean);
 };

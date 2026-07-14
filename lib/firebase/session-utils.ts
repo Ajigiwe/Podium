@@ -1,5 +1,6 @@
 import { db } from './config';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { RoomServiceClient } from 'livekit-server-sdk';
 
 /**
  * Soft-deletes a session by setting its status to 'deleted'.
@@ -18,7 +19,7 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
 
 /**
  * Ends a session by setting isActive to false and status to 'ended'.
- * This kicks all participants but preserves the session record.
+ * Also disconnects all participants from the LiveKit room.
  */
 export const endSession = async (sessionId: string): Promise<void> => {
     const sessionRef = doc(db, 'sessions', sessionId);
@@ -27,4 +28,18 @@ export const endSession = async (sessionId: string): Promise<void> => {
         isActive: false,
         endedAt: serverTimestamp(),
     });
+
+    // Disconnect all participants from the LiveKit room
+    try {
+        const livekitUrl = process.env.LIVEKIT_API_URL || (process.env.NEXT_PUBLIC_LIVEKIT_URL?.replace('wss://', 'https://').replace('ws://', 'http://') + ':7880');
+        const apiKey = process.env.LIVEKIT_API_KEY;
+        const apiSecret = process.env.LIVEKIT_API_SECRET;
+        if (livekitUrl && apiKey && apiSecret) {
+            const client = new RoomServiceClient(livekitUrl, apiKey, apiSecret);
+            const roomName = `podium_${sessionId}`;
+            await client.deleteRoom(roomName);
+        }
+    } catch (err) {
+        console.error('[endSession] Failed to delete LiveKit room:', err);
+    }
 };

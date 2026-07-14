@@ -203,9 +203,9 @@ function render() {
 
 window.deleteRecord = async (id, e) => {
     if (e) e.stopPropagation();
-    if (confirm('Permanently remove this entry?')) {
+    showConfirm('Permanently remove this entry?', async () => {
         await deleteDoc(doc(db, 'attendance_logs', id));
-    }
+    });
 };
 
 window.viewLogs = async (sessionId, title) => {

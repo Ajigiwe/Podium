@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb, getAuthenticatedUser } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
-/**
- * Records a student joining the attendance session
- * POST /api/attendance/join
- */
 export async function POST(request: NextRequest) {
     try {
+        const decoded = await getAuthenticatedUser(request);
+        if (!decoded) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { sessionId, studentId, studentName, studentIndexNumber } = await request.json();
 
         if (!sessionId || !studentId || !studentName) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        // Verify the authenticated user matches the claimed studentId
+        if (decoded.uid !== studentId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const attendanceRef = adminDb
@@ -34,7 +40,6 @@ export async function POST(request: NextRequest) {
                 isPresent: true
             });
         } else {
-            // Already joined previously, just mark as present if they were away
             await attendanceRef.update({
                 isPresent: true,
                 lastSeenAt: Timestamp.now()

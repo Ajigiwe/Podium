@@ -24,6 +24,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
             let q = query(logsRef, where('lecturerId', '==', userId), orderBy('joinedAt', 'desc'));
             let snapshot;
             try { snapshot = await getDocs(q); } catch (e) { snapshot = await getDocs(query(logsRef, where('lecturerId', '==', userId))); }
+            if (!snapshot || !snapshot.docs) { showAlert("Failed to load records.", "error"); setLoadingHistory(false); return; }
             const logs = snapshot.docs.map(doc => doc.data() as AttendanceLog);
             const grouped: Record<string, any> = {};
             logs.forEach(log => {
@@ -55,7 +56,10 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
                 if (seen.has(log.userId)) return; seen.add(log.userId);
                 csv.push([`"${log.userName}"`, `"${log.userEmail}"`, `"${log.userIndexNumber}"`, `"${log.joinedAt?.toDate().toLocaleString()}"`, verifData[log.userId] || 0].join(','));
             });
-            const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv.join('\n')], { type: 'text/csv' })); link.download = `${title}_attendance.csv`; link.click();
+            const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a'); link.href = url; link.download = `${title}_attendance.csv`; link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         } catch (error) { showAlert("Download failed.", "error"); }
     };
 

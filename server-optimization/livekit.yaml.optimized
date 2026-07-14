@@ -42,9 +42,9 @@ room:
     - h264
     - vp8
   
-  # Timeout settings
-  participant_timeout: 30
-  track_publish_timeout: 10
+  # Timeout settings - generous for mobile/flaky networks
+  participant_timeout: 300
+  track_publish_timeout: 30
 
 # Video optimization (CRITICAL)
 video:

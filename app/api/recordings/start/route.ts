@@ -14,20 +14,9 @@ export async function POST(req: NextRequest) {
         const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
         const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
 
-        console.log('DEBUG: LiveKit Config:', {
-            url: LIVEKIT_API_URL ? 'PRESENT' : 'MISSING',
-            key: LIVEKIT_API_KEY ? 'PRESENT' : 'MISSING',
-            secret: LIVEKIT_API_SECRET ? 'PRESENT' : 'MISSING'
-        });
-
         if (!LIVEKIT_API_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
             return NextResponse.json({
-                error: 'LiveKit credentials not configured',
-                debug: {
-                    url: !!LIVEKIT_API_URL,
-                    key: !!LIVEKIT_API_KEY,
-                    secret: !!LIVEKIT_API_SECRET
-                }
+                error: 'LiveKit credentials not configured'
             }, { status: 500 });
         }
 
@@ -38,7 +27,7 @@ export async function POST(req: NextRequest) {
         const filepath = `${EGRESS_BASE_PATH}/${filename}`;
 
         const roomName = `podium_${roomId}`;
-        console.log(`Starting recording for room ${roomName} to ${filepath}`);
+        console.log(`Starting recording for room ${roomName}`);
 
         const egressInfo = await egressClient.startRoomCompositeEgress(
             roomName,
@@ -80,14 +69,7 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         console.error('Failed to start recording:', error);
         return NextResponse.json({
-            error: 'Failed to start recording',
-            details: error.message,
-            stack: error.stack,
-            config: {
-                url: process.env.LIVEKIT_API_URL ? 'PRESENT' : 'MISSING',
-                key: process.env.LIVEKIT_API_KEY ? 'PRESENT' : 'MISSING',
-                secret: process.env.LIVEKIT_API_SECRET ? 'PRESENT' : 'MISSING'
-            }
+            error: 'Failed to start recording'
         }, { status: 500 });
     }
 }

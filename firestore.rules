@@ -29,10 +29,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'minatoflash82@gmail.com' ||
-        (profileExists() && getUserProfile().get('role', '') == 'admin')
-      );
+      return isSignedIn() && profileExists() && getUserProfile().get('role', '') == 'admin';
     }
     
     // Check if user is a member of a group
@@ -44,6 +41,22 @@ service cloud.firestore {
     function isGroupOwner(groupId) {
       return isSignedIn() && exists(/databases/$(database)/documents/groups/$(groupId)) && 
              get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId == request.auth.uid;
+    }
+
+    // Check if user is a session co-host
+    function isSessionCoHost(sessionId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)).data.isActive == true;
+    }
+
+    // Check if user is a session moderator (lecturer, host, co-host, or admin)
+    function isSessionModerator(sessionId) {
+      return isSignedIn() && (
+        isAdmin() ||
+        resource.data.get('hostId', '') == request.auth.uid ||
+        resource.data.get('lecturerId', '') == request.auth.uid ||
+        isSessionCoHost(sessionId)
+      );
     }
     
     // Profiles collection
@@ -65,10 +78,7 @@ service cloud.firestore {
         resource.data.get('hostId', '') == request.auth.uid ||
         resource.data.get('lecturerId', '') == request.auth.uid ||
         isAdmin() ||
-        (
-          exists(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)).data.isActive == true
-        ) ||
+        isSessionCoHost(sessionId) ||
         (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount']) &&
           request.resource.data.participantCount == (resource.data.get('participantCount', 0) + 1)
@@ -85,8 +95,51 @@ service cloud.firestore {
         isAdmin()
       );
 
-      match /{allSubcollections=**} {
-        allow read, write: if isSignedIn(); // Simplified for now, keep subcollection specific rules if needed
+      // Co-hosts subcollection
+      match /co_hosts/{coHostId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (
+          isAdmin() ||
+          resource.data.get('hostId', '') == request.auth.uid ||
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('hostId', '') == request.auth.uid
+        );
+      }
+
+      // Permissions subcollection
+      match /permissions/{participantId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (
+          isSessionModerator(sessionId) ||
+          (request.auth.uid == participantId && request.resource.data.keys().hasOnly(['microphone', 'camera']))
+        );
+      }
+
+      // Permission requests subcollection
+      match /permission_requests/{requestId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.participantId == request.auth.uid;
+        allow update, delete: if isSignedIn() && isSessionModerator(sessionId);
+      }
+
+      // Attendance subcollection
+      match /attendance/{studentId} {
+        allow read: if isSignedIn() && (
+          request.auth.uid == studentId || isSessionModerator(sessionId)
+        );
+        allow write: if isSignedIn() && isSessionModerator(sessionId);
+      }
+
+      // Materials subcollection
+      match /materials/{materialId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && isSessionModerator(sessionId);
+        allow delete: if isSignedIn() && isSessionModerator(sessionId);
+      }
+
+      // Verifications subcollection
+      match /verifications/{eventId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && isSessionModerator(sessionId);
       }
     }
     
@@ -96,14 +149,12 @@ service cloud.firestore {
       allow create: if isLecturer() || isAdmin() || isVerifiedStudent();
       allow update, delete: if isAdmin() || isGroupOwner(groupId);
 
-      // Announcements subcollection
       match /announcements/{annId} {
         allow read: if isGroupMember(groupId);
         allow create: if isGroupOwner(groupId);
         allow delete: if isGroupOwner(groupId);
       }
 
-      // Resources subcollection
       match /resources/{resId} {
         allow read: if isGroupMember(groupId);
         allow create: if isGroupOwner(groupId);
@@ -140,19 +191,24 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // System Settings & Attendance Logs (Standard)
-    match /system_settings/{docId} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    // System Settings & Attendance Logs
+    match /system_settings/{docId} { 
+      allow read: if isSignedIn(); 
+      allow write: if isAdmin(); 
+    }
+    
     match /attendance_logs/{logId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.lecturerId == request.auth.uid ||
-        exists(/databases/$(database)/documents/sessions/$(resource.data.sessionId)/co_hosts/$(request.auth.uid)) ||
+        isSessionCoHost(resource.data.sessionId) ||
         isAdmin()
       );
       allow delete: if isAdmin();
     }
+    
     match /transactions/{transactionId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isLecturer() || isAdmin());
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.amount == 0;

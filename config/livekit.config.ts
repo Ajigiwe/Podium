@@ -20,11 +20,11 @@ export const roomOptions: RoomOptions = {
         resolution: VideoPresets.h360.resolution, // Start at 360p to reduce initial pressure
     },
 
-    // Reconnection settings - more aggressive for mobile hangovers
+    // Reconnection settings - persistent for mobile and flaky networks
     reconnectPolicy: {
         nextRetryDelayInMs: (context) => {
-            if (context.retryCount > 15) return null; // Increase to 15 attempts for flaky mobile
-            return Math.min(500 * Math.pow(1.4, context.retryCount), 20000); // Faster initial retries
+            if (context.retryCount > 50) return 15000;
+            return Math.min(300 * Math.pow(1.3, context.retryCount), 15000);
         }
     },
 

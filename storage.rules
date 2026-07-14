@@ -12,7 +12,7 @@ service firebase.storage {
 
     match /group-resources/{groupId}/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.resource.size < 20 * 1024 * 1024;
+      allow write: if isSignedIn() && request.resource.size < 20 * 1024 * 1024 && request.resource.contentType.matches('(application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/vnd.ms-powerpoint|application/vnd.openxmlformats-officedocument.presentationml.presentation|text/plain|image/.*)');
     }
     
     match /{allPaths=**} {

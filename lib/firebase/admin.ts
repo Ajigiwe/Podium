@@ -1,10 +1,10 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { NextRequest } from 'next/server';
 
 let adminApp: App;
 
-// Initialize Firebase Admin SDK (server-side only)
 // Initialize Firebase Admin SDK (server-side only)
 if (!getApps().length) {
     if (process.env.FIREBASE_ADMIN_PROJECT_ID && process.env.FIREBASE_ADMIN_CLIENT_EMAIL && process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
@@ -17,24 +17,47 @@ if (!getApps().length) {
             databaseURL: `https://${process.env.FIREBASE_ADMIN_PROJECT_ID}-default-rtdb.firebaseio.com`,
         });
     } else {
-        // Fallback for build time or missing credentials
         console.warn('Firebase Admin SDK not initialized: Missing environment variables');
-        // We can't really initialize a dummy app easily without errors later, 
-        // but we can avoid crashing here. The route using this will need to handle it.
-        // For build time static generation, this might be enough if the code path isn't executed.
-        // If it IS executed, we need a mock.
-
-        // This is a minimal mock to satisfy the export types during build
         adminApp = {} as App;
     }
 } else {
     adminApp = getApps()[0];
 }
 
-// Helper to safely get Auth
 const adminAuth = adminApp.name ? getAuth(adminApp) : {} as ReturnType<typeof getAuth>;
-
-// Helper to safely get Firestore
 const adminDb = adminApp.name ? getFirestore(adminApp) : {} as ReturnType<typeof getFirestore>;
 
-export { adminApp, adminAuth, adminDb };
+async function getBearerToken(request: NextRequest): Promise<string | null> {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    return authHeader.split('Bearer ')[1];
+}
+
+async function verifyIdToken(token: string) {
+    if (!adminApp.name) throw new Error('Firebase Admin not initialized');
+    return getAuth(adminApp).verifyIdToken(token);
+}
+
+async function getAuthenticatedUser(request: NextRequest) {
+    const token = await getBearerToken(request);
+    if (!token) return null;
+    try {
+        return await verifyIdToken(token);
+    } catch {
+        return null;
+    }
+}
+
+async function isAuthenticatedAdmin(request: NextRequest): Promise<boolean> {
+    const decoded = await getAuthenticatedUser(request);
+    if (!decoded) return false;
+    if (!decoded.uid) return false;
+    try {
+        const profileDoc = await (adminDb as ReturnType<typeof getFirestore>).collection('profiles').doc(decoded.uid).get();
+        return profileDoc.exists && profileDoc.data()?.role === 'admin';
+    } catch {
+        return false;
+    }
+}
+
+export { adminApp, adminAuth, adminDb, getBearerToken, verifyIdToken, getAuthenticatedUser, isAuthenticatedAdmin };

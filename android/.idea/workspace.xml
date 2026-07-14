@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="1490e0d3-f90b-44c4-bd27-252dadb2fa38" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../.dockerignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.dockerignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../.firebaserc" beforeDir="false" afterPath="$PROJECT_DIR$/../.firebaserc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DARK_MODE_TROUBLESHOOTING.md" beforeDir="false" afterPath="$PROJECT_DIR$/../DARK_MODE_TROUBLESHOOTING.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DEPLOYMENT.md" beforeDir="false" afterPath="$PROJECT_DIR$/../DEPLOYMENT.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DEPLOY_VPS.md" beforeDir="false" afterPath="$PROJECT_DIR$/../DEPLOY_VPS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/../Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../FIREBASE_SETUP.md" beforeDir="false" afterPath="$PROJECT_DIR$/../FIREBASE_SETUP.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../PAYSTACK_SETUP.md" beforeDir="false" afterPath="$PROJECT_DIR$/../PAYSTACK_SETUP.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../SCREEN_SHARING_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/../SCREEN_SHARING_GUIDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/(auth)_disabled/forgot-password/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../app/(auth)_disabled/forgot-password/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/(auth)_disabled/register/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../app/(auth)_disabled/register/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/(auth)_disabled/welcome/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../app/(auth)_disabled/welcome/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/about_disabled/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../app/about_disabled/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/admin_disabled/components/LecturerClassesModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../app/admin_disabled/components/LecturerClassesModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/admin_disabled/components/StudentHistoryModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../app/admin_disabled/components/StudentHistoryModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/admin/users/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/admin/users/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/admin/users/search/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/admin/users/search/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/attendance/download/[sessionId]/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/attendance/download/[sessionId]/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/attendance/join/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/attendance/join/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/attendance/session/start/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/attendance/session/start/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/attendance/session/status/[sessionId]/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/attendance/session/status/[sessionId]/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/attendance/verification/respond/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/attendance/verification/respond/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/attendance/verification/trigger/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/attendance/verification/trigger/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/auth/reset-password/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/auth/reset-password/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/auth/send-verification/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/auth/send-verification/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/communities/notifications/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/communities/notifications/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/livekit/stats/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/livekit/stats/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/moderators/assign-cohost/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/moderators/assign-cohost/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/moderators/remove-cohost/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/moderators/remove-cohost/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/paystack/initialize-subscription/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/paystack/initialize-subscription/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/paystack/initialize/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/paystack/initialize/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/paystack/verify/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/paystack/verify/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/paystack/webhook/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/paystack/webhook/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/recordings/[egressId]/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/recordings/[egressId]/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/recordings/download/[recordingId]/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/recordings/download/[recordingId]/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/recordings/lecturer/[lecturerId]/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/recordings/lecturer/[lecturerId]/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/recordings/start/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/recordings/start/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/api/recordings/stop/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../app/api/recordings/stop/route.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../app/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/AlertModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/AlertModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/AttendanceHistoryModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/AttendanceHistoryModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/ClassroomChat.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/ClassroomChat.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/ClassroomContent.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/ClassroomContent.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/CoHostManagementPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/CoHostManagementPanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/CountdownTimer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/CountdownTimer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/CustomControlBar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/CustomControlBar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/FocusWrapper.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/FocusWrapper.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/ImageCropperModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/ImageCropperModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/LayoutSelector.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/LayoutSelector.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/MediaRestorationIndicator.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/MediaRestorationIndicator.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/RaisedHandsBanner.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/RaisedHandsBanner.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/ReactionModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/ReactionModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/ReactionOverlay.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/ReactionOverlay.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/RecordingControls.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/RecordingControls.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/RecordingsDashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/RecordingsDashboard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/ScreenShareFullscreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/ScreenShareFullscreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/attendance/LecturerAttendanceControls.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/attendance/LecturerAttendanceControls.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/attendance/SimpleAttendanceConsole.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/attendance/SimpleAttendanceConsole.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/attendance/StudentVerificationModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/attendance/StudentVerificationModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/classroom/InnerVideoLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/classroom/InnerVideoLayout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/classroom/MaterialsModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/classroom/MaterialsModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/dashboard/GroupsHub.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/dashboard/GroupsHub.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/media/DeviceFailureHandler.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/media/DeviceFailureHandler.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/media/EnhancedMobileAudio.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/media/EnhancedMobileAudio.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/media/InstantPiPManager.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/media/InstantPiPManager.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/media/PiPPermissionPrompt.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/media/PiPPermissionPrompt.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/media/SimplePiPButton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/media/SimplePiPButton.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/media/UnifiedMediaButton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/media/UnifiedMediaButton.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/providers/QueryProvider.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/providers/QueryProvider.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../components/ui/Skeleton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../components/ui/Skeleton.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../config/livekit.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../config/livekit.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../contexts/AlertContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../contexts/AlertContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../contexts/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../contexts/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../cors.json" beforeDir="false" afterPath="$PROJECT_DIR$/../cors.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../database.rules.json" beforeDir="false" afterPath="$PROJECT_DIR$/../database.rules.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../egress.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/../egress.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../eslint.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/../eslint.config.mjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../firestore.rules" beforeDir="false" afterPath="$PROJECT_DIR$/../firestore.rules" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useAttendanceVerification.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useAttendanceVerification.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useAutoPiP.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useAutoPiP.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useAutoReconnect.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useAutoReconnect.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useConnectionRecovery.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useConnectionRecovery.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useEnhancedMediaPersistence.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useEnhancedMediaPersistence.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useInstantPiP.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useInstantPiP.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useLayoutConfig.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useLayoutConfig.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useMediaPersistence.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useMediaPersistence.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/usePermissions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/usePermissions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/usePiPPersistence.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/usePiPPersistence.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useRaisedHands.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useRaisedHands.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useScreenShareOrientation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useScreenShareOrientation.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../hooks/useScreenSharePersistence.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../hooks/useScreenSharePersistence.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jobs/attendanceVerificationScheduler.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../jobs/attendanceVerificationScheduler.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/email/send.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/email/send.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/admin.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/admin.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/attendance-utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/attendance-utils.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/auth-errors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/auth-errors.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/cohost.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/cohost.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/firestore-utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/firestore-utils.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/groups.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/groups.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/permissions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/permissions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/session-utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/session-utils.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/storage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/storage.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/test-connection.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/test-connection.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/firebase/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/firebase/types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/meetingCode.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/meetingCode.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/payments/initializePayment.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/payments/initializePayment.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/payments/initializeSubscription.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/payments/initializeSubscription.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/payments/verifyPayment.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/payments/verifyPayment.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lib/paystack/config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../lib/paystack/config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lint_output.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../lint_output.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../next.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../next.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../podium_cohost_feature.md" beforeDir="false" afterPath="$PROJECT_DIR$/../podium_cohost_feature.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../podium_features_implementation.md" beforeDir="false" afterPath="$PROJECT_DIR$/../podium_features_implementation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../podium_permissions_screenshare.md" beforeDir="false" afterPath="$PROJECT_DIR$/../podium_permissions_screenshare.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../postcss.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/../postcss.config.mjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../public/dashboard.html" beforeDir="false" afterPath="$PROJECT_DIR$/../public/dashboard.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/../public/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../public/js/communities.js" beforeDir="false" afterPath="$PROJECT_DIR$/../public/js/communities.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../public/js/dashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/../public/js/dashboard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../public/js/history.js" beforeDir="false" afterPath="$PROJECT_DIR$/../public/js/history.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../public/manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/../public/manifest.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../server-optimization/livekit.yaml.optimized" beforeDir="false" afterPath="$PROJECT_DIR$/../server-optimization/livekit.yaml.optimized" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../server-optimization/setup-vps.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../server-optimization/setup-vps.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../storage.rules" beforeDir="false" afterPath="$PROJECT_DIR$/../storage.rules" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tailwind.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../tailwind.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/../tsconfig.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../types/layout.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../types/layout.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[PhysicalDevice::serial=R3CR60VJZTH]" />
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 5,
+  "fromUser": false
+}]]></component>
+  <component name="ProjectId" id="3GShOpf5JVrnXCaVQgRRuP0gvjR" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Android App.app.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "settings.editor.selected.configurable": "reference.settingsdialog.project.gradle"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration name="app" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
+      <module name="android.app" />
+      <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
+      <option name="DEPLOY" value="true" />
+      <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
+      <option name="DEPLOY_AS_INSTANT" value="false" />
+      <option name="ARTIFACT_NAME" value="" />
+      <option name="PM_INSTALL_OPTIONS" value="" />
+      <option name="ALL_USERS" value="false" />
+      <option name="ALWAYS_INSTALL_WITH_PM" value="false" />
+      <option name="ALLOW_ASSUME_VERIFIED" value="false" />
+      <option name="CLEAR_APP_STORAGE" value="false" />
+      <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
+      <option name="ACTIVITY_EXTRA_FLAGS" value="" />
+      <option name="MODE" value="default_activity" />
+      <option name="RESTORE_ENABLED" value="false" />
+      <option name="RESTORE_FILE" value="" />
+      <option name="RESTORE_FRESH_INSTALL_ONLY" value="false" />
+      <option name="CLEAR_LOGCAT" value="false" />
+      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="false" />
+      <option name="TARGET_SELECTION_MODE" value="DEVICE_AND_SNAPSHOT_COMBO_BOX" />
+      <option name="DEBUGGER_TYPE" value="Auto" />
+      <Auto>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+      </Auto>
+      <Hybrid>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+      </Hybrid>
+      <Java>
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+      </Java>
+      <Native>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+      </Native>
+      <Profilers>
+        <option name="ADVANCED_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_CONFIGURATION_NAME" value="Java/Kotlin Method Sample (legacy)" />
+        <option name="STARTUP_NATIVE_MEMORY_PROFILING_ENABLED" value="false" />
+        <option name="NATIVE_MEMORY_SAMPLE_RATE_BYTES" value="2048" />
+      </Profilers>
+      <option name="DEEP_LINK" value="" />
+      <option name="ACTIVITY" value="" />
+      <option name="ACTIVITY_CLASS" value="" />
+      <option name="SEARCH_ACTIVITY_IN_GLOBAL_SCOPE" value="false" />
+      <option name="SKIP_ACTIVITY_VALIDATION" value="false" />
+      <method v="2">
+        <option name="Android.Gradle.BeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="1490e0d3-f90b-44c4-bd27-252dadb2fa38" name="Changes" comment="" />
+      <created>1783970849922</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1783970849922</updated>
+    </task>
+    <servers />
+  </component>
+</project>

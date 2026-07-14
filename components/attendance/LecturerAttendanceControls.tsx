@@ -11,6 +11,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAlert } from '@/contexts/AlertContext';
 
 interface LecturerAttendanceControlsProps {
     sessionId: string;
@@ -19,6 +20,7 @@ interface LecturerAttendanceControlsProps {
 
 export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAttendanceControlsProps) => {
     const { user } = useAuth();
+    const { showAlert } = useAlert();
     const [isStarting, setIsStarting] = useState(false);
     const [isTriggering, setIsTriggering] = useState(false);
     const [stats, setStats] = useState<{
@@ -93,11 +95,11 @@ export const LecturerAttendanceControls = ({ sessionId, isActive }: LecturerAtte
                 await fetchStatus(); // Refresh state from server
             } else {
                 const error = await response.json();
-                alert(error.error || 'Failed to start attendance');
+                showAlert(error.error || 'Failed to start attendance', 'error');
             }
         } catch (error) {
             console.error('Error starting attendance:', error);
-            alert('An unexpected error occurred');
+            showAlert('An unexpected error occurred', 'error');
         } finally {
             setIsStarting(false);
         }

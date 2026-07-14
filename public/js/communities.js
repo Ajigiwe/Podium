@@ -394,7 +394,7 @@ function setupWorkspaceActions(user, profile) {
         const uploadTask = uploadBytesResumable(storageRef, file);
         uploadTask.on('state_changed', 
             (snapshot) => { progressBar.style.width = (snapshot.bytesTransferred / snapshot.totalBytes) * 100 + '%'; }, 
-            (error) => alert(error.message), 
+            (error) => { console.error('Upload error:', error); window.showToast('Upload failed.', 'error'); }, 
             async () => {
                 const url = await getDownloadURL(uploadTask.snapshot.ref);
                 await addDoc(collection(db, 'groups', currentGroup.id, 'resources'), {
@@ -538,10 +538,10 @@ window.processRequest = async (requestId, status) => {
 };
 
 window.kickMember = async (groupId, userId) => {
-    if (confirm('Remove this member?')) {
+    showConfirm('Remove this member?', async () => {
         await deleteDoc(doc(db, 'group_memberships', `${userId}_${groupId}`));
         await updateDoc(doc(db, 'groups', groupId), { memberCount: increment(-1) });
-    }
+    });
 };
 
 function setupModals() {
