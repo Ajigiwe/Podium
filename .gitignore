@@ -23,6 +23,9 @@
 # misc
 .DS_Store
 *.pem
+.ssh_vps_key*
+.idea/
+android/
 
 # debug
 npm-debug.log*
