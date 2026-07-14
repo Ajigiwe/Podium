@@ -2,7 +2,7 @@
 # Automated deployment script for Podium LMS (Next.js + LiveKit) on Linux VPS
 
 $vps_ip = "161.97.176.191"
-$key_path = "d:\lite-lms\.ssh_vps_key"
+$key_path = ".\.ssh_vps_key"
 
 # Ensure we use UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
