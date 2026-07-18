@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         console.error('Failed to start recording:', error);
         return NextResponse.json({
-            error: 'Failed to start recording'
+            error: error?.message || error?.toString() || 'Failed to start recording'
         }, { status: 500 });
     }
 }

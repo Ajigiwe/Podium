@@ -1,8 +1,8 @@
 # LiveKit Egress Configuration
 # Place this file in your project root or /etc/livekit/egress.yaml on VPS
 
-api_key: APIGzFR3hY8ZbFC
-api_secret: dni8frv6eNiRmTGPQfERUTTjsZRDRudth4yNtTxwJP2B
+api_key: APIJ6NUcyCNXdrz
+api_secret: BFZlwnXsuFbBecFiCRyouNN9tGDWXdMUrvtMHHHsyep
 ws_url: wss://livekit.podiumclass.online # e.g., wss://livekit.podiumclass.online
 
 # Redis Configuration (Same as your LiveKit server)
