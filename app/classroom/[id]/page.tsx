@@ -90,18 +90,19 @@ export default function ClassroomPage() {
                     console.log('[Classroom:VerifyAccess] Group membership verified.');
                 }
 
-                if (!isModerator && !session.isActive) {
-                    console.log('[Classroom:VerifyAccess] Session inactive, user is student. Checking schedule...');
-                    if (session.scheduledStartTime && session.scheduledStartTime.toDate() > new Date()) { 
+                if (!session.isActive) {
+                    if (session.scheduledStartTime && session.scheduledStartTime.toDate() > new Date()) {
                         console.log('[Classroom:VerifyAccess] Session is scheduled for future. Showing scheduled wait page.');
                         setIsScheduledWait(true); 
                         setLoading(false); 
-                        return; 
+                        return;
                     }
-                    console.log('[Classroom:VerifyAccess] Awaiting host to start class. Showing lobby wait page.');
-                    setWaitingForLecturer(true); 
-                    setLoading(false); 
-                    return;
+                    if (!isModerator) {
+                        console.log('[Classroom:VerifyAccess] Awaiting host to start class. Showing lobby wait page.');
+                        setWaitingForLecturer(true); 
+                        setLoading(false);
+                        return;
+                    }
                 }
                 
                 console.log('[Classroom:VerifyAccess] Fetching system_settings/subscription...');
