@@ -42,8 +42,7 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #DDE0F0; border-radius: 10px; }
-        .sidebar-active { background-color: #E8EEFF; color: #1845D4; }
-        .sidebar-active i { color: #1845D4; }
+        .sidebar-active { background-color: #E8EEFF; color: #1845D4; font-weight: 800; }
 
         .stat-glow-blue { box-shadow: 0 0 0 1px rgba(24,69,212,0.08), 0 4px 24px rgba(24,69,212,0.06); }
         .stat-glow-amber { box-shadow: 0 0 0 1px rgba(245,158,11,0.10), 0 4px 24px rgba(245,158,11,0.06); }
@@ -127,57 +126,86 @@
     <div id="top-loading-bar" style="width: 0%"></div>
     <div class="min-h-screen flex">
         <!-- Sidebar -->
-        <aside id="sidebar" class="hidden lg:flex w-60 flex-col fixed inset-y-0 bg-white dark:bg-slate-950 border-r border-[#DDE0F0] dark:border-slate-800 z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
+        <aside id="sidebar" class="hidden lg:flex w-64 flex-col fixed inset-y-0 bg-white dark:bg-slate-950 border-r border-[#DDE0F0] dark:border-slate-800 z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div class="lg:hidden absolute top-4 right-4">
                 <button id="close-mobile-menu" class="p-2 text-[#8888A8] hover:text-[#0D0D1A]">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <a href="/" class="h-[60px] px-6 flex items-center border-b border-[#DDE0F0] dark:border-slate-800 font-serif text-[1.3rem] text-[#1845D4] font-black tracking-tighter decoration-none">Podium</a>
+            <a href="/" class="h-16 px-6 flex items-center gap-2.5 border-b border-[#DDE0F0] dark:border-slate-800">
+                <div class="w-8 h-8 bg-[#1845D4] rounded-lg flex items-center justify-center">
+                    <i class="fas fa-graduation-cap text-white text-sm"></i>
+                </div>
+                <span class="font-sans font-black text-lg text-[#0D0D1A] dark:text-white tracking-tight">Podium</span>
+            </a>
 
-            <nav class="flex-1 px-3 py-6 overflow-y-auto space-y-6">
+            <nav class="flex-1 px-4 py-6 overflow-y-auto space-y-6">
                 <div>
-                    <div class="px-3 mb-2 text-[10px] font-bold text-[#8888A8] uppercase tracking-[0.1em]">Main</div>
+                    <p class="px-2 mb-1 text-[10px] font-black text-[#8888A8] uppercase tracking-[0.15em]">Workspace</p>
                     <div class="space-y-0.5">
-                        <button onclick="window.switchTab('records')" id="nav-records" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all sidebar-active">
-                            <i class="fas fa-home w-4 h-4"></i> Home
+                        <button onclick="window.switchTab('records')" id="nav-records" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all sidebar-active">
+                            <span class="nav-icon w-8 h-8 rounded-lg flex items-center justify-center bg-[#1845D4] text-white shadow-sm">
+                                <i class="fas fa-layer-group text-xs"></i>
+                            </span>
+                            <span class="flex-1 text-left">Classes</span>
                         </button>
-                        <button onclick="window.switchTab('communities')" id="nav-communities" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
-                            <i class="fas fa-users w-4 h-4"></i> Communities
+                        <button onclick="window.switchTab('communities')" id="nav-communities" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
+                            <span class="nav-icon w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 text-amber-600 transition-colors">
+                                <i class="fas fa-users text-xs"></i>
+                            </span>
+                            <span class="flex-1 text-left">Communities</span>
                         </button>
-                        <button onclick="window.switchTab('attendance')" id="nav-attendance" class="hidden w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
-                            <i class="fas fa-clipboard-list w-4 h-4"></i> Attendance
+                        <button onclick="window.switchTab('attendance')" id="nav-attendance" class="hidden w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
+                            <span class="nav-icon w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 transition-colors">
+                                <i class="fas fa-clipboard-check text-xs"></i>
+                            </span>
+                            <span class="flex-1 text-left">Attendance</span>
                         </button>
-                        <a href="./history.html" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
-                            <i class="fas fa-history w-4 h-4"></i> My History
+                        <button onclick="window.switchTab('recordings')" id="nav-recordings" class="hidden w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
+                            <span class="nav-icon w-8 h-8 rounded-lg flex items-center justify-center bg-rose-50 dark:bg-rose-900/20 text-rose-600 transition-colors">
+                                <i class="fas fa-video text-xs"></i>
+                            </span>
+                            <span class="flex-1 text-left">Recordings</span>
+                        </button>
+                        <a href="./history.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
+                            <span class="nav-icon w-8 h-8 rounded-lg flex items-center justify-center bg-purple-50 dark:bg-purple-900/20 text-purple-600 transition-colors">
+                                <i class="fas fa-history text-xs"></i>
+                            </span>
+                            <span class="flex-1 text-left">History</span>
                         </a>
                     </div>
                 </div>
 
                 <div id="admin-nav-section" class="hidden">
-                    <div class="px-3 mb-2 text-[10px] font-bold text-[#8888A8] uppercase tracking-[0.1em]">Administration</div>
+                    <p class="px-2 mb-1 text-[10px] font-black text-red-500 uppercase tracking-[0.15em]">Admin</p>
                     <div class="space-y-0.5">
-                        <a href="./admin.html" target="_blank" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] hover:bg-red-50 hover:text-red-600 group">
-                            <i class="fas fa-shield-alt w-4 h-4 group-hover:text-red-500"></i> Control Panel
-                            <i class="fas fa-external-link-alt text-[9px] ml-auto opacity-40 group-hover:opacity-100"></i>
+                        <a href="./admin.html" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 group/item">
+                            <span class="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-500 group-hover/item:bg-red-100 dark:group-hover/item:bg-red-900/30 transition-colors">
+                                <i class="fas fa-shield-alt text-xs"></i>
+                            </span>
+                            <span class="flex-1 text-left">Control Panel</span>
+                            <i class="fas fa-external-link-alt text-[8px] opacity-30 group-hover/item:opacity-60 transition-opacity"></i>
                         </a>
                     </div>
                 </div>
             </nav>
 
-            <div class="p-3 border-t border-[#DDE0F0] dark:border-slate-800 space-y-1">
-                <button id="theme-toggle" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all text-[#8888A8] hover:bg-[#F5F6FA] dark:hover:bg-slate-900 group">
-                    <i id="theme-icon" class="fas fa-moon w-4 h-4"></i> Theme
+            <div class="p-4 border-t border-[#DDE0F0] dark:border-slate-800 space-y-2">
+                <button id="theme-toggle" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-semibold transition-all text-[#8888A8] hover:bg-[#F5F6FA] dark:hover:bg-slate-800 group">
+                    <i id="theme-icon" class="fas fa-moon w-4 h-4"></i>
+                    <span>Toggle theme</span>
                 </button>
-                <a href="./profile.html" id="user-profile-preview" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#F5F6FA] dark:hover:bg-slate-900 transition-all group">
-                    <div id="user-avatar" class="w-9 h-9 rounded-full bg-[#1845D4] flex items-center justify-center text-white text-[11px] font-bold overflow-hidden shadow-sm">U</div>
+                <a href="./profile.html" id="user-profile-preview" class="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-all group">
+                    <div id="user-avatar" class="w-9 h-9 rounded-xl bg-[#1845D4] flex items-center justify-center text-white text-xs font-black shadow-sm shrink-0">U</div>
                     <div class="flex-1 min-w-0">
                         <p id="user-name" class="text-[13px] font-bold text-[#0D0D1A] dark:text-slate-100 truncate">User</p>
-                        <p id="user-role" class="text-[10px] font-bold text-[#8888A8] dark:text-slate-400 uppercase tracking-widest truncate">Student</p>
+                        <p id="user-role" class="text-[10px] font-bold text-[#8888A8] dark:text-slate-500 uppercase tracking-widest truncate">Student</p>
                     </div>
+                    <i class="fas fa-chevron-right text-[8px] text-[#8888A8] group-hover:translate-x-0.5 transition-transform"></i>
                 </a>
-                <button id="logout-btn" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-[13px] font-medium text-[#8888A8] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
-                    <i class="fas fa-sign-out-alt w-4 h-4"></i> Sign Out
+                <button id="logout-btn" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-semibold text-[#8888A8] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                    <i class="fas fa-sign-out-alt w-4 h-4"></i>
+                    <span>Sign out</span>
                 </button>
             </div>
         </aside>
@@ -352,6 +380,20 @@
                         <div class="h-48 skeleton rounded-xl"></div>
                         <div class="h-48 skeleton rounded-xl"></div>
                         <div class="h-48 skeleton rounded-xl"></div>
+                    </div>
+                </div>
+
+                <!-- ============ RECORDINGS TAB ============ -->
+                <div id="content-recordings" class="content-section hidden space-y-8">
+                    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl lg:text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight">Recordings</h2>
+                            <p class="text-sm text-[#8888A8] font-medium mt-1">Download and manage your class recordings.</p>
+                        </div>
+                    </div>
+                    <div id="recordings-list" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="h-32 skeleton rounded-xl"></div>
+                        <div class="h-32 skeleton rounded-xl"></div>
                     </div>
                 </div>
 

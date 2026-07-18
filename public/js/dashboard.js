@@ -9,12 +9,14 @@ import { initCommunities } from './communities.js';
 const sidebarLinks = {
     records: document.getElementById('nav-records'),
     communities: document.getElementById('nav-communities'),
-    attendance: document.getElementById('nav-attendance')
+    attendance: document.getElementById('nav-attendance'),
+    recordings: document.getElementById('nav-recordings')
 };
 const contentSections = {
     records: document.getElementById('content-records'),
     communities: document.getElementById('content-communities'),
-    attendance: document.getElementById('content-attendance')
+    attendance: document.getElementById('content-attendance'),
+    recordings: document.getElementById('content-recordings')
 };
 
 const userName = document.getElementById('user-name');
@@ -113,6 +115,12 @@ onAuthStateChanged(auth, async (user) => {
         const attendanceNav = document.getElementById('nav-attendance');
         if (attendanceNav) attendanceNav.classList.add('hidden');
     }
+
+    // Show recordings nav for lecturers and admins
+    if (userProfile.role === 'lecturer' || userProfile.role === 'admin') {
+        const recordingsNav = document.getElementById('nav-recordings');
+        if (recordingsNav) recordingsNav.classList.remove('hidden');
+    }
     
     // Check for tab in URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -133,6 +141,19 @@ function setLoading(isLoading) {
 }
 
 // Sidebar Logic
+const navColors = {
+    records: 'bg-[#1845D4] text-white shadow-sm',
+    communities: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600',
+    attendance: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600',
+    recordings: 'bg-rose-50 dark:bg-rose-900/20 text-rose-600'
+};
+const navActiveColors = {
+    records: 'bg-[#1845D4] text-white shadow-sm',
+    communities: 'bg-amber-500 text-white shadow-sm',
+    attendance: 'bg-emerald-500 text-white shadow-sm',
+    recordings: 'bg-rose-500 text-white shadow-sm'
+};
+
 window.switchTab = (tab) => {
     activeWorkspace = tab;
     Object.keys(sidebarLinks).forEach(key => {
@@ -140,13 +161,21 @@ window.switchTab = (tab) => {
         const section = contentSections[key];
         if (!link || !section) return;
 
+        const icon = link.querySelector('.nav-icon');
+
         if (key === tab) {
             link.classList.add('sidebar-active');
             link.classList.remove('text-[#444460]', 'dark:text-slate-400', 'hover:bg-[#F5F6FA]', 'dark:hover:bg-slate-800', 'hover:text-[#0D0D1A]', 'dark:hover:text-white');
+            if (icon && navActiveColors[key]) {
+                icon.className = 'nav-icon w-8 h-8 rounded-lg flex items-center justify-center ' + navActiveColors[key];
+            }
             section.classList.remove('hidden');
         } else {
             link.classList.remove('sidebar-active');
             link.classList.add('text-[#444460]', 'dark:text-slate-400', 'hover:bg-[#F5F6FA]', 'dark:hover:bg-slate-800', 'hover:text-[#0D0D1A]', 'dark:hover:text-white');
+            if (icon && navColors[key]) {
+                icon.className = 'nav-icon w-8 h-8 rounded-lg flex items-center justify-center ' + navColors[key] + ' transition-colors';
+            }
             section.classList.add('hidden');
         }
     });
@@ -682,6 +711,81 @@ function showConfirm(msg, onConfirm) {
 }
 
 window.showConfirm = showConfirm;
+
+// Recordings Tab Logic
+async function loadRecordings() {
+    const list = document.getElementById('recordings-list');
+    if (!list || !currentUserId) return;
+
+    list.innerHTML = '<div class="col-span-full text-center py-12 text-[#8888A8] text-sm">Loading recordings...</div>';
+
+    try {
+        const token = await firebase.auth().currentUser?.getIdToken();
+        const response = await fetch(`/api/recordings/lecturer/${currentUserId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (!data.success || !data.recordings || data.recordings.length === 0) {
+            list.innerHTML = '<div class="col-span-full text-center py-12 text-[#8888A8] text-sm font-medium">No recordings found. Start a recording during your next class.</div>';
+            return;
+        }
+
+        list.innerHTML = data.recordings.map(r => `
+            <div class="p-5 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl flex items-center justify-between gap-4 hover:border-[#1845D4] dark:hover:border-blue-600 transition-all">
+                <div class="flex items-center gap-4 min-w-0">
+                    <div class="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 rounded-lg flex items-center justify-center shrink-0">
+                        <i class="fas fa-video text-rose-500 text-sm"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-[#0D0D1A] dark:text-white truncate">${r.classTitle || 'Untitled Session'}</p>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="text-[10px] text-[#8888A8] font-medium">${new Date(r.startedAt).toLocaleDateString()}</span>
+                            ${r.durationSeconds > 0 ? `<span class="text-[10px] text-[#8888A8] font-medium">${Math.floor(r.durationSeconds / 60)}m ${Math.floor(r.durationSeconds % 60)}s</span>` : ''}
+                            <span class="text-[10px] px-1.5 py-0.5 rounded ${r.status === 'finished' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} font-bold uppercase">${r.status}</span>
+                        </div>
+                    </div>
+                </div>
+                ${r.status === 'finished' ? `<button onclick="downloadRecording('${r.id}', '${(r.classTitle || 'session').replace(/'/g, "\\'")}')" class="px-4 py-2 bg-[#1845D4] text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-[#0F2FA8] transition-all shrink-0"><i class="fas fa-download mr-1.5"></i>Download</button>` : ''}
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load recordings:', err);
+        list.innerHTML = '<div class="col-span-full text-center py-12 text-red-500 text-sm">Failed to load recordings.</div>';
+    }
+}
+
+async function downloadRecording(id, title) {
+    try {
+        const token = await firebase.auth().currentUser?.getIdToken();
+        const response = await fetch(`/api/recordings/download/${id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) {
+            const data = await response.json();
+            showToast(data.error || 'Download failed', 'error');
+            return;
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        showToast('Download failed', 'error');
+    }
+}
+
+// Load recordings when tab is switched to it
+const origSwitchTab = window.switchTab;
+window.switchTab = function(tab) {
+    origSwitchTab(tab);
+    if (tab === 'recordings') loadRecordings();
+};
+
+window.downloadRecording = downloadRecording;
 
 // Logout
 const logoutBtn = document.getElementById('logout-btn');
