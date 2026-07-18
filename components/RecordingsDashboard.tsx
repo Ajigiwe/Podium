@@ -24,9 +24,27 @@ export const RecordingsDashboard = ({ lecturerId, showTitle = false }: Recording
         } catch (error) { console.error('Failed to fetch recordings:', error); } finally { setLoading(false); }
     };
 
-    const downloadRecording = async (recordingId: string, classTitle: string, startedAt: string) => {
+    const downloadRecording = async (recordingId: string, classTitle: string) => {
         try {
-            const link = document.createElement('a'); link.href = `/api/recordings/download/${recordingId}`; link.download = `${(classTitle || 'Session').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`; link.click();
+            const { auth } = await import('@/lib/firebase/config');
+            const user = auth.currentUser;
+            if (!user) { showAlert('Please sign in to download.', 'error'); return; }
+            const token = await user.getIdToken();
+            const response = await fetch(`/api/recordings/download/${recordingId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                showAlert(data.error || 'Download failed.', 'error');
+                return;
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${(classTitle || 'Session').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
+            link.click();
+            URL.revokeObjectURL(url);
         } catch (error) { showAlert('Download failed.', 'error'); }
     };
 
@@ -56,7 +74,7 @@ export const RecordingsDashboard = ({ lecturerId, showTitle = false }: Recording
                                 </div>
                             </div>
                         </div>
-                        {recording.status === 'finished' && <button onClick={() => downloadRecording(recording.id, recording.classTitle, recording.startedAt)} className="w-full md:w-auto px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all shadow-xl shadow-slate-900/10 active:scale-95 flex items-center justify-center gap-2.5"><Download className="w-4 h-4" /> Download File</button>}
+                        {recording.status === 'finished' && <button onClick={() => downloadRecording(recording.id, recording.classTitle)} className="w-full md:w-auto px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all shadow-xl shadow-slate-900/10 active:scale-95 flex items-center justify-center gap-2.5"><Download className="w-4 h-4" /> Download File</button>}
                     </div>
                 ))}
             </div>
