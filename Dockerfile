@@ -9,11 +9,12 @@ RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
+ARG NEXT_PUBLIC_LIVEKIT_URL
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_PUBLIC_LIVEKIT_URL=${NEXT_PUBLIC_LIVEKIT_URL}
 RUN npm run build
 
 # Production image, copy all the files and run next
