@@ -19,7 +19,7 @@ export const ReactionModal = ({ isOpen, onClose, onReaction, emojis }: ReactionM
             />
 
             {/* Modal Content */}
-            <div className="relative bg-gray-900 border border-gray-800 rounded-lg p-4 w-auto max-w-[240px] animate-in zoom-in-95 duration-200">
+            <div id="reaction-popover" className="relative bg-gray-900 border border-gray-800 rounded-lg p-4 w-auto max-w-[240px] animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-bold text-white">Reactions</h3>
                     <button
