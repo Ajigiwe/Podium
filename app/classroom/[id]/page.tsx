@@ -156,12 +156,15 @@ export default function ClassroomPage() {
                 }
 
                 if (isModerator && !session.isActive && session.status === 'active') {
-                    try {
-                        console.log('[Classroom:VerifyAccess] Moderator auto-activating session...');
-                        await updateDoc(doc(db, 'sessions', sessionId), { isActive: true });
-                        console.log('[Classroom:VerifyAccess] Session activated.');
-                    } catch (err) {
-                        console.error('[Classroom:AutoActivate] Failed to activate session:', err);
+                    const scheduledTime = session.scheduledStartTime?.toDate();
+                    if (!scheduledTime || scheduledTime <= new Date()) {
+                        try {
+                            console.log('[Classroom:VerifyAccess] Moderator auto-activating session...');
+                            await updateDoc(doc(db, 'sessions', sessionId), { isActive: true });
+                            console.log('[Classroom:VerifyAccess] Session activated.');
+                        } catch (err) {
+                            console.error('[Classroom:AutoActivate] Failed to activate session:', err);
+                        }
                     }
                 }
 
