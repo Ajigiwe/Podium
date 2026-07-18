@@ -25,9 +25,13 @@ export const useAttendanceVerification = (sessionId: string) => {
         if (!sessionId || !user || isHost || isJoined) return;
 
         try {
+            const token = await user.getIdToken();
             const response = await fetch('/api/attendance/join', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     sessionId,
                     studentId: user.uid,
@@ -86,9 +90,13 @@ export const useAttendanceVerification = (sessionId: string) => {
 
         setIsResponding(true);
         try {
+            const token = await user.getIdToken();
             const response = await fetch('/api/attendance/verification/respond', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     sessionId,
                     verificationId: activeVerification.verificationId,
