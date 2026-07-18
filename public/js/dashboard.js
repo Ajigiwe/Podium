@@ -488,7 +488,7 @@ async function setupGroupOptions() {
         }
     }
     
-    groupSelect.innerHTML = ''; // clear previous options
+    groupSelect.innerHTML = '<option value="">Independent Session</option>';
     if (groups.length > 0) {
         groupContainer.style.display = 'block';
         groups.forEach(g => {
