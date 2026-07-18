@@ -210,7 +210,7 @@ export default function GlobalClassroom() {
     const handleReaction = useCallback(async (emoji: string) => {
         if (roomRef.current) {
             const encoder = new TextEncoder();
-            await roomRef.current.localParticipant.publishData(encoder.encode(JSON.stringify({ type: 'reaction', emoji })), { reliable: true });
+            await roomRef.current.localParticipant.publishData(encoder.encode(JSON.stringify({ type: 'reaction', emoji })), { reliable: true, topic: 'reaction' });
             if (reactionRef.current) reactionRef.current.addReaction(emoji);
         }
     }, []);
