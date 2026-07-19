@@ -787,6 +787,14 @@ async function downloadRecording(id, title) {
 // Load recordings when tab is switched to it
 const origSwitchTab = window.switchTab;
 window.switchTab = function(tab) {
+    // Close mobile sidebar
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar && window.innerWidth < 1024) {
+        sidebar.classList.add('-translate-x-full');
+        if (overlay) overlay.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
     origSwitchTab(tab);
     if (tab === 'recordings') loadRecordings();
 };
