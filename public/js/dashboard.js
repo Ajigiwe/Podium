@@ -715,13 +715,15 @@ window.showConfirm = showConfirm;
 // Recordings Tab Logic
 async function loadRecordings() {
     const list = document.getElementById('recordings-list');
-    if (!list || !currentUserId) return;
+    if (!list) return;
 
     list.innerHTML = '<div class="col-span-full text-center py-12 text-[#8888A8] text-sm">Loading recordings...</div>';
 
     try {
-        const token = await firebase.auth().currentUser?.getIdToken();
-        const response = await fetch(`/api/recordings/lecturer/${currentUserId}`, {
+        const user = auth.currentUser;
+        if (!user) { list.innerHTML = '<div class="col-span-full text-center py-12 text-[#8888A8] text-sm">Sign in to view recordings.</div>'; return; }
+        const token = await user.getIdToken();
+        const response = await fetch('/api/recordings/lecturer/any', {
             headers: { Authorization: `Bearer ${token}` }
         });
         const data = await response.json();
@@ -757,7 +759,9 @@ async function loadRecordings() {
 
 async function downloadRecording(id, title) {
     try {
-        const token = await firebase.auth().currentUser?.getIdToken();
+        const user = auth.currentUser;
+        if (!user) { showToast('Sign in to download', 'error'); return; }
+        const token = await user.getIdToken();
         const response = await fetch(`/api/recordings/download/${id}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
