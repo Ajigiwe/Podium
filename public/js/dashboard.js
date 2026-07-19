@@ -734,21 +734,23 @@ async function loadRecordings() {
         }
 
         list.innerHTML = data.recordings.map(r => `
-            <div class="p-5 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl flex items-center justify-between gap-4 hover:border-[#1845D4] dark:hover:border-blue-600 transition-all">
-                <div class="flex items-center gap-4 min-w-0">
-                    <div class="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 rounded-lg flex items-center justify-center shrink-0">
-                        <i class="fas fa-video text-rose-500 text-sm"></i>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-sm font-bold text-[#0D0D1A] dark:text-white truncate">${r.classTitle || 'Untitled Session'}</p>
-                        <div class="flex items-center gap-3 mt-1">
-                            <span class="text-[10px] text-[#8888A8] font-medium">${new Date(r.startedAt).toLocaleDateString()}</span>
-                            ${r.durationSeconds > 0 ? `<span class="text-[10px] text-[#8888A8] font-medium">${Math.floor(r.durationSeconds / 60)}m ${Math.floor(r.durationSeconds % 60)}s</span>` : ''}
-                            <span class="text-[10px] px-1.5 py-0.5 rounded ${r.status === 'finished' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} font-bold uppercase">${r.status}</span>
+            <div class="p-4 sm:p-5 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl hover:border-[#1845D4] dark:hover:border-blue-600 transition-all">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 rounded-lg flex items-center justify-center shrink-0">
+                            <i class="fas fa-video text-rose-500 text-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-[#0D0D1A] dark:text-white truncate">${r.classTitle || 'Untitled Session'}</p>
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                                <span class="text-[10px] text-[#8888A8] font-medium">${new Date(r.startedAt).toLocaleDateString()}</span>
+                                ${r.durationSeconds > 0 ? `<span class="text-[10px] text-[#8888A8] font-medium">${Math.floor(r.durationSeconds / 60)}m ${Math.floor(r.durationSeconds % 60)}s</span>` : ''}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${r.status === 'finished' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} font-bold uppercase">${r.status}</span>
+                            </div>
                         </div>
                     </div>
+                    ${r.status === 'finished' ? `<button onclick="downloadRecording('${r.id}', '${(r.classTitle || 'session').replace(/'/g, "\\'")}')" class="sm:self-center px-4 py-2 bg-[#1845D4] text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-[#0F2FA8] transition-all w-full sm:w-auto text-center shrink-0"><i class="fas fa-download mr-1.5"></i>Download</button>` : ''}
                 </div>
-                ${r.status === 'finished' ? `<button onclick="downloadRecording('${r.id}', '${(r.classTitle || 'session').replace(/'/g, "\\'")}')" class="px-4 py-2 bg-[#1845D4] text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-[#0F2FA8] transition-all shrink-0"><i class="fas fa-download mr-1.5"></i>Download</button>` : ''}
             </div>
         `).join('');
     } catch (err) {
