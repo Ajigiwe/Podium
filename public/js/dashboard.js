@@ -786,16 +786,16 @@ async function downloadRecording(id, title) {
 
 // Load recordings when tab is switched to it
 const origSwitchTab = window.switchTab;
-window.switchTab = function(tab) {
-    // Close mobile sidebar
+window.navTo = function(tab) {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-    if (sidebar && window.innerWidth < 1024) {
+    if (sidebar) {
         sidebar.classList.add('-translate-x-full');
-        if (overlay) overlay.classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
+        sidebar.classList.add('hidden');
     }
-    origSwitchTab(tab);
+    if (overlay) overlay.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    window.switchTab(tab);
     if (tab === 'recordings') loadRecordings();
 };
 
