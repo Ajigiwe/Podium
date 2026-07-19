@@ -52,7 +52,7 @@ export function ClassroomHeader({
     onEndSession,
 }: ClassroomHeaderProps) {
     return (
-        <header className="fixed top-0 inset-x-0 z-[100] h-14 sm:h-16 flex items-center bg-slate-900/80 backdrop-blur-3xl border-b border-white/5">
+        <header className="fixed top-0 inset-x-0 z-[100] h-14 sm:h-16 flex items-center bg-black border-b border-white/[0.06]">
             <div className="w-full px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                     <button

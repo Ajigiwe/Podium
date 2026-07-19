@@ -159,7 +159,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         activePermissions.find(p => p.participantId === participantId)?.permissions || null;
 
     return (
-        <div className="min-h-screen bg-gray-950 font-sans">
+        <div className="min-h-screen bg-black font-sans">
             <ClassroomHeader
                 title={session.title}
                 isActive={session.isActive}
@@ -180,7 +180,7 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
             />
 
             <div
-                style={{ position: 'fixed', top: '56px', left: 0, right: 0, bottom: 0, backgroundColor: '#0a0a0a', paddingBottom: '80px' }}
+                style={{ position: 'fixed', top: '56px', left: 0, right: 0, bottom: 0, backgroundColor: '#000', paddingBottom: '80px' }}
                 className="sm:!top-[64px] sm:pb-[100px]"
             >
                 <div

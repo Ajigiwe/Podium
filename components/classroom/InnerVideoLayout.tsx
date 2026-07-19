@@ -109,7 +109,7 @@ export function InnerVideoLayout(props: InnerVideoLayoutProps) {
     const exitFocus = () => { setFocusTrack(null); setUserDisabledAutoFocus(true); };
 
     return (
-        <div className="flex flex-col h-full bg-[#0a0a0a] relative">
+        <div className="flex flex-col h-full bg-black relative">
             <style>{`.lk-video-conference .lk-control-bar{display:none!important}`}</style>
 
             {!isDocked && (
@@ -169,9 +169,9 @@ export function InnerVideoLayout(props: InnerVideoLayoutProps) {
                 customAlert={customAlert}
             />
 
-            <div className={`absolute left-4 right-4 sm:left-auto sm:right-4 top-20 bottom-24 sm:w-80 z-[100] rounded-xl overflow-hidden border border-white/10 bg-gray-950/90 backdrop-blur-2xl shadow-2xl flex flex-col transition-all duration-300 ${isChatOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-[120%] pointer-events-none'}`}>
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-white/5">
-                    <h3 className="text-sm font-bold text-white">Chat</h3>
+            <div className={`absolute left-4 right-4 sm:left-auto sm:right-4 top-20 bottom-24 sm:w-80 z-[100] rounded-xl overflow-hidden border border-white/[0.06] bg-neutral-950 flex flex-col transition-all duration-300 ${isChatOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-[120%] pointer-events-none'}`}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                    <h3 className="text-sm font-semibold text-white/80">Chat</h3>
                     <button onClick={onToggleChat} className="flex w-8 h-8 items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"><X className="w-5 h-5" /></button>
                 </div>
                 <div className="flex-1 min-h-0">

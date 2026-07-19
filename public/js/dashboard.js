@@ -116,8 +116,8 @@ onAuthStateChanged(auth, async (user) => {
         if (attendanceNav) attendanceNav.classList.add('hidden');
     }
 
-    // Show recordings nav for lecturers and admins
-    if (userProfile.role === 'lecturer' || userProfile.role === 'admin') {
+    // Show recordings nav for all verified users, lecturers, and admins
+    if (userProfile.role === 'lecturer' || userProfile.role === 'admin' || userProfile.isVerified) {
         const recordingsNav = document.getElementById('nav-recordings');
         if (recordingsNav) recordingsNav.classList.remove('hidden');
     }

@@ -172,7 +172,7 @@ export default function CustomControlBar({
 
     return (
         <>
-            <div className="fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1 p-1 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] max-w-[98vw]">
+            <div className="fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1.5 p-1.5 bg-neutral-900/90 backdrop-blur-sm border border-white/[0.06] rounded-2xl max-w-[98vw]">
                 <div className="flex items-center" ref={micRef}>
                     <button onClick={toggleMic} disabled={toggling.mic || !isConnected} className={btn(isMicrophoneEnabled ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:bg-white/5')}>
                         {isMicrophoneEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5 text-red-400" />}

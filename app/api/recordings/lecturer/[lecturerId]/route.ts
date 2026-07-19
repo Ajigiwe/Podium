@@ -14,8 +14,7 @@ export async function GET(
 
         const recordingsSnapshot = await adminDb
             .collection('recordings')
-            .where('lecturerId', '==', lecturerId)
-            // .orderBy('createdAt', 'desc') // Requires composite index, may fail initially without it
+            .orderBy('createdAt', 'desc')
             .get();
 
         const recordings = recordingsSnapshot.docs.map(doc => {
