@@ -363,21 +363,15 @@
 
     // ===== DASHBOARD =====
     async function loadDashboard() {
-        try {
-            // Stats
-            const [totalUsers, activeSnap, revenueSnap, recordingsSnap] = await Promise.all([
-                getCountFromServer(query(collection(db, 'profiles'))),
-                getDocs(query(collection(db, 'sessions'), where('isActive', '==', true))),
-                getDocs(query(collection(db, 'transactions'), where('status', '==', 'success'))),
-                getCountFromServer(query(collection(db, 'recordings')))
-            ]);
-            document.getElementById('stat-total-users').textContent = totalUsers.data().count;
-            document.getElementById('stat-active-sessions').textContent = activeSnap.size;
-            const total = revenueSnap.docs.reduce((s, d) => s + (d.data().amount || 0), 0);
-            document.getElementById('stat-revenue').textContent = total.toLocaleString();
-            document.getElementById('stat-recordings').textContent = recordingsSnap.data().count;
+        // Load each stat independently so one failure doesn't block others
+        try { const snap = await getDocs(query(collection(db, 'profiles'), limit(1))); document.getElementById('stat-total-users').textContent = (await getCountFromServer(collection(db, 'profiles')).catch(() => ({ data: () => ({ count: '?' }) }))).data().count; } catch { document.getElementById('stat-total-users').textContent = '?'; }
+        try { const snap = await getDocs(query(collection(db, 'sessions'), where('isActive', '==', true))); document.getElementById('stat-active-sessions').textContent = snap.size; } catch { document.getElementById('stat-active-sessions').textContent = '?'; }
+        try { const snap = await getDocs(query(collection(db, 'transactions'), where('status', '==', 'success'))); let t = 0; snap.forEach(d => t += d.data().amount || 0); document.getElementById('stat-revenue').textContent = t.toLocaleString(); } catch { document.getElementById('stat-revenue').textContent = '?'; }
+        try { document.getElementById('stat-recordings').textContent = (await getCountFromServer(collection(db, 'recordings')).catch(() => ({ data: () => ({ count: '?' }) }))).data().count; } catch { document.getElementById('stat-recordings').textContent = '?'; }
 
-            // Active sessions list
+        // Active sessions list
+        try {
+            const activeSnap = await getDocs(query(collection(db, 'sessions'), where('isActive', '==', true)));
             const list = document.getElementById('dashboard-sessions-list');
             if (activeSnap.empty) {
                 list.innerHTML = '<div class="text-sm text-[#8888A8] text-center py-4">No active sessions</div>';
@@ -386,12 +380,14 @@
                     const s = d.data();
                     return `<div class="flex items-center justify-between p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-lg">
                         <div class="min-w-0"><p class="text-xs font-bold truncate">${s.title}</p><p class="text-[9px] text-[#8888A8]">${s.lecturerName || ''} &middot; ${s.participantCount || 0} participants</p></div>
-                        <a href="/classroom/${s.id}" class="text-[9px] font-bold text-[#1845D4] uppercase tracking-widest shrink-0 ml-3">View</a>
+                        <button onclick="openSessionModal('${s.id}')" class="text-[9px] font-bold text-[#1845D4] uppercase tracking-widest shrink-0 ml-3">View</button>
                     </div>`;
                 }).join('');
             }
+        } catch { document.getElementById('dashboard-sessions-list').innerHTML = '<div class="text-sm text-[#8888A8] text-center py-4">Could not load</div>'; }
 
-            // Recent users
+        // Recent users
+        try {
             const recentSnap = await getDocs(query(collection(db, 'profiles'), orderBy('createdAt', 'desc'), limit(5)));
             const ulist = document.getElementById('dashboard-users-list');
             ulist.innerHTML = recentSnap.docs.map(d => {
@@ -401,7 +397,7 @@
                     <div class="min-w-0"><p class="text-xs font-bold truncate">${p.fullName}</p><p class="text-[9px] text-[#8888A8]">${p.role || 'student'}</p></div>
                 </div>`;
             }).join('');
-        } catch (e) { console.error(e); }
+        } catch { document.getElementById('dashboard-users-list').innerHTML = '<div class="text-sm text-[#8888A8] text-center py-4">Could not load</div>'; }
     }
 
     // ===== SESSIONS =====
