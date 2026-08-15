@@ -30,17 +30,18 @@ export default function AlertModal({
 }: AlertModalProps) {
     const [visible, setVisible] = useState(isOpen);
 
+    // `visible` exists purely to keep the modal mounted for the 200ms fade-out after
+    // `isOpen` flips to false. Mirroring a prop into state is the whole purpose of this
+    // effect, so the set-state-in-effect heuristic is intentionally suppressed.
     useEffect(() => {
-        if (isOpen && !visible) {
+        if (isOpen) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setVisible(true);
+            return;
         }
-    }, [isOpen, visible]);
 
-    useEffect(() => {
-        if (!isOpen) {
-            const timer = setTimeout(() => setVisible(false), 200); // Wait for animation
-            return () => clearTimeout(timer);
-        }
+        const timer = setTimeout(() => setVisible(false), 200); // Wait for animation
+        return () => clearTimeout(timer);
     }, [isOpen]);
 
     if (!visible && !isOpen) return null;

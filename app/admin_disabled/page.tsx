@@ -74,7 +74,7 @@ export default function AdminPage() {
         setIndexError(null);
         try {
             const usersRef = collection(db, 'profiles');
-            let constraints: any[] = [];
+            const constraints: any[] = [];
             
             // Apply Filters
             if (roleFilter !== 'all') constraints.push(where('role', '==', roleFilter));

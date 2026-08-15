@@ -21,7 +21,7 @@ export default function AttendanceHistoryModal({ isOpen, onClose, userId }: Atte
         setLoadingHistory(true);
         try {
             const logsRef = collection(db, 'attendance_logs');
-            let q = query(logsRef, where('lecturerId', '==', userId), orderBy('joinedAt', 'desc'));
+            const q = query(logsRef, where('lecturerId', '==', userId), orderBy('joinedAt', 'desc'));
             let snapshot;
             try { snapshot = await getDocs(q); } catch (e) { snapshot = await getDocs(query(logsRef, where('lecturerId', '==', userId))); }
             if (!snapshot || !snapshot.docs) { showAlert("Failed to load records.", "error"); setLoadingHistory(false); return; }

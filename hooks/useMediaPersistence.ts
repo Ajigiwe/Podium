@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
-import { ConnectionState } from 'livekit-client';
+import { useMaybeRoomContext } from '@livekit/components-react';
+import { ConnectionState, LocalParticipant } from 'livekit-client';
 
 import { useClassroom } from '@/contexts/ClassroomContext';
 
@@ -19,20 +19,12 @@ interface MediaState {
 
 export const useMediaPersistence = () => {
     const { userRole } = useClassroom();
-    // Context hooks that might throw if called outside LiveKitRoom
-    let localParticipant: any = null;
-    let room: any = { state: 'disconnected' };
-
-    try {
-        // These will throw if not inside a <LiveKitRoom>
-        const roomContext = useRoomContext();
-        const lpContext = useLocalParticipant();
-        room = roomContext;
-        localParticipant = lpContext.localParticipant;
-    } catch (e) {
-        // Gracefully handle missing context if called from a parent (like GlobalClassroom)
-        // This prevents the "No room provided" runtime crash.
-    }
+    // This hook can be mounted outside of a <LiveKitRoom> (e.g. from GlobalClassroom),
+    // so use the "maybe" variant of the context hook, which returns undefined instead
+    // of throwing. Hooks must always be called unconditionally and in the same order,
+    // so they cannot be wrapped in try/catch.
+    const room = useMaybeRoomContext();
+    const localParticipant = room?.localParticipant ?? null;
 
     const isInitializedRef = useRef(false);
     const isRestoringRef = useRef(false);
@@ -81,7 +73,7 @@ export const useMediaPersistence = () => {
         if (!localParticipant || isRestoringRef.current || !isInitializedRef.current) return;
 
         // Don't save if room isn't fully connected (states might be transient/incorrect)
-        if (room.state !== ConnectionState.Connected) return;
+        if (room?.state !== ConnectionState.Connected) return;
 
         const state: MediaState = {
             camera: localParticipant.isCameraEnabled,
@@ -91,7 +83,7 @@ export const useMediaPersistence = () => {
         localStorage.setItem(STORAGE_KEYS.CAMERA, String(state.camera));
         localStorage.setItem(STORAGE_KEYS.MICROPHONE, String(state.microphone));
         console.log('💾 [MediaPersistence] State saved:', state);
-    }, [localParticipant, room.state]);
+    }, [localParticipant, room?.state]);
 
     // Main restoration logic - Robustly waits for Room and Participant
     const restore = useCallback(async () => {
@@ -113,18 +105,19 @@ export const useMediaPersistence = () => {
             // 1. Wait for stable Room connection, LocalParticipant, and User Interaction
             let attempts = 0;
             const maxAttempts = 180; // 3 minutes max for technical readiness
+            let readyParticipant: LocalParticipant | null = null;
 
             while (true) {
                 const currentRoom = liveRoomRef.current;
                 const currentParticipant = liveParticipantRef.current;
 
-                const isConnected = currentRoom.state === ConnectionState.Connected;
+                const isConnected = currentRoom?.state === ConnectionState.Connected;
                 const hasParticipant = !!currentParticipant && !!currentParticipant.sid;
                 const hasInteracted = typeof window !== 'undefined' && sessionStorage.getItem('podium_user_interacted') === 'true';
 
                 if (isConnected && hasParticipant && hasInteracted) {
                     console.log('✅ [MediaPersistence] Room, Participant & Interaction ready.');
-                    localParticipant = currentParticipant;
+                    readyParticipant = currentParticipant;
                     break;
                 }
 
@@ -145,7 +138,7 @@ export const useMediaPersistence = () => {
                     }
 
                     if (!isConnected) {
-                        console.log(`⏳ [MediaPersistence] Waiting for connection... (Room: ${currentRoom.state}, Attempt ${attempts + 1}/${maxAttempts})`);
+                        console.log(`⏳ [MediaPersistence] Waiting for connection... (Room: ${currentRoom?.state ?? 'no room'}, Attempt ${attempts + 1}/${maxAttempts})`);
                     } else if (!hasParticipant) {
                         console.log(`⏳ [MediaPersistence] Waiting for participant identity... (Attempt ${attempts + 1}/${maxAttempts})`);
                     }
@@ -165,11 +158,11 @@ export const useMediaPersistence = () => {
             }
 
             // 3. Restore Microphone
-            if (savedState.microphone) {
+            if (savedState.microphone && readyParticipant) {
                 console.log('🎤 [MediaPersistence] Restoring Microphone...');
                 try {
-                    await localParticipant.setMicrophoneEnabled(true);
-                } catch (error: any) {
+                    await readyParticipant.setMicrophoneEnabled(true);
+                } catch (error) {
                     console.error('🎤 [MediaPersistence] Mic restoration failed:', error);
                     // If device is in use or blocked, don't try again next time
                     localStorage.setItem(STORAGE_KEYS.MICROPHONE, 'false');
@@ -194,7 +187,7 @@ export const useMediaPersistence = () => {
             // useEffect from re-triggering and hammering the hardware/CPU.
             isInitializedRef.current = true;
         }
-    }, [localParticipant, room.state, loadStates]);
+    }, [localParticipant, room?.state, loadStates]);
 
     // Manual Retry Function
     const retryRestoration = useCallback(() => {
@@ -226,7 +219,7 @@ export const useMediaPersistence = () => {
             window.removeEventListener('click', checkInteraction);
             window.removeEventListener('touchstart', checkInteraction);
         };
-    }, [room.state, localParticipant?.sid, restore]);
+    }, [room?.state, localParticipant?.sid, restore]);
 
     // Auto-save cycle
     useEffect(() => {

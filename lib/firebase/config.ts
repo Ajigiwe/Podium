@@ -1,6 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore, connectFirestoreEmulator, waitForPendingWrites, enableNetwork, disableNetwork, terminate } from 'firebase/firestore';
+import { getFirestore, Firestore } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
@@ -17,10 +17,6 @@ const firebaseConfig = {
 
 // Initialize Firebase (client-side)
 let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-let rtdb: Database;
-let storage: FirebaseStorage;
 
 // Initialize Firebase
 if (!getApps().length) {
@@ -29,14 +25,10 @@ if (!getApps().length) {
     app = getApps()[0];
 }
 
-auth = getAuth(app);
-db = getFirestore(app);
-rtdb = getDatabase(app);
-storage = getStorage(app);
-
-if (typeof window !== 'undefined') {
-    // Client-side only logic can be added here if needed
-}
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+const rtdb: Database = getDatabase(app);
+const storage: FirebaseStorage = getStorage(app);
 
 export { app, auth, db, rtdb, storage };
 

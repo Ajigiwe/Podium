@@ -8,7 +8,10 @@ import { Timestamp } from 'firebase-admin/firestore';
  */
 export async function POST(request: NextRequest) {
     try {
-        let { sessionId, durationMinutes, verificationCount, lecturerId } = await request.json();
+        const body = await request.json();
+        const { sessionId, lecturerId } = body;
+        // These two are reassigned below with fallbacks from the session document.
+        let { durationMinutes, verificationCount } = body;
 
         if (!sessionId || !lecturerId) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

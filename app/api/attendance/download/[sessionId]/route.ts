@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import Papa from 'papaparse';
 
-// @ts-ignore - papaparse might not have types installed
-import type { UnparseConfig } from 'papaparse';
-
 /**
  * Generates a CSV report for session attendance
  * GET /api/attendance/download/[sessionId]

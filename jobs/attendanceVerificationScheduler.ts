@@ -11,7 +11,6 @@ import { adminDb } from '../lib/firebase/admin.js';
 import { Timestamp } from 'firebase-admin/firestore';
 
 // In Node 18+, fetch is global. If using older Node, ensure a polyfill or node-fetch is available.
-// @ts-ignore - node-fetch might not have types installed
 const fetchApi = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default;
 
 const TICK_INTERVAL_MS = 30000; // Check every 30 seconds

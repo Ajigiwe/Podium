@@ -12,15 +12,14 @@ export default function PwaInstallPrompt() {
   const [showInstall, setShowInstall] = useState(false);
   const [showUpdate, setShowUpdate] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isStandalone, setIsStandalone] = useState(false);
+  // Read the display mode in a lazy initializer instead of syncing it from an effect.
+  // Guarded for SSR, where matchMedia is unavailable.
+  const [isStandalone] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
+  );
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsStandalone(true);
-      return;
-    }
+    if (typeof window === 'undefined' || isStandalone) return;
 
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -40,7 +39,7 @@ export default function PwaInstallPrompt() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, []);
+  }, [isStandalone]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;

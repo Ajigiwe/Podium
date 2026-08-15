@@ -82,6 +82,9 @@ export function InnerVideoLayout(props: InnerVideoLayoutProps) {
     const paginatedTracks = sortedTracks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
     const carouselTracks = sortedTracks.filter(t => !focusTrack || (t.participant.sid !== focusTrack.participant.sid || t.source !== focusTrack.source));
 
+    // Auto-focuses the lecturer's screen share (or camera) as participants and tracks
+    // change. focusTrack has to stay real state because a click can override it and
+    // userDisabledAutoFocus latches that choice, so it cannot simply be derived.
     useEffect(() => {
         const lecturerTracks = tracks.filter((t: any) => {
             try { return JSON.parse(t.participant.metadata || '{}').role === 'lecturer'; } catch { return false; }
@@ -90,8 +93,10 @@ export function InnerVideoLayout(props: InnerVideoLayoutProps) {
         const camera = lecturerTracks.find((t: any) => t.source === Track.Source.Camera || t.source === Track.Source.Unknown);
         const target = screen || camera;
         if (target && !userDisabledAutoFocus && (!focusTrack || focusTrack.participant.sid !== target.participant.sid || focusTrack.source !== target.source)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFocusTrack(target);
         } else if (focusTrack && !userDisabledAutoFocus && !tracks.some((t: any) => t.participant.sid === focusTrack.participant.sid && t.source === focusTrack.source)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFocusTrack(null);
         }
     }, [tracks, userDisabledAutoFocus]);

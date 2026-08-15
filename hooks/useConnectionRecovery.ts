@@ -1,5 +1,5 @@
 // hooks/useConnectionRecovery.ts
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRoomContext } from '@livekit/components-react';
 import { ConnectionState } from 'livekit-client';
 
@@ -14,21 +14,12 @@ export const useConnectionRecovery = () => {
     const [connectionState, setConnectionState] = useState<ConnectionState>(
         ConnectionState.Connected
     );
-    const isRecoveringRef = useRef(false);
 
     useEffect(() => {
         if (!room) return;
 
         const handleConnectionStateChange = (state: ConnectionState) => {
             setConnectionState(state);
-
-            if (state === ConnectionState.Reconnecting) {
-                isRecoveringRef.current = true;
-            }
-
-            if (state === ConnectionState.Connected) {
-                isRecoveringRef.current = false;
-            }
         };
 
         room.on('connectionStateChanged', handleConnectionStateChange);
@@ -40,6 +31,8 @@ export const useConnectionRecovery = () => {
 
     return {
         connectionState,
-        isRecovering: isRecoveringRef.current,
+        // Derived from connectionState instead of a ref. Reading a ref during render
+        // meant consumers never re-rendered when recovery started or stopped.
+        isRecovering: connectionState === ConnectionState.Reconnecting,
     };
 };

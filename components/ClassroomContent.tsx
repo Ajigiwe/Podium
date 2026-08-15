@@ -87,7 +87,11 @@ export default function ClassroomContent({ session, user, profile, sessionId }: 
         return () => unsub();
     }, [sessionId, lastKnownMaterialCount, showMaterialsModal]);
 
+    // autoApproveMic is held locally so the toggle can update optimistically, but the
+    // Firestore value remains the source of truth and must win when it changes. Mirroring
+    // a prop into state is the point of this effect, so the heuristic is suppressed.
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (session.autoApproveMic !== undefined) setAutoApproveMic(session.autoApproveMic);
     }, [session.autoApproveMic]);
 

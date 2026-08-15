@@ -20,21 +20,29 @@ export const usePermissions = (roomId: string, isLecturer: boolean) => {
         camera: isLecturer,
     });
 
-    // Update permissions if isLecturer changes (e.g. promoted to co-host)
+    const [hasPendingRequest, setHasPendingRequest] = useState(false);
+
+    // Update permissions if isLecturer changes (e.g. promoted to co-host). This mirrors a
+    // prop into state deliberately, so the set-state-in-effect heuristic is suppressed.
     useEffect(() => {
         if (isLecturer) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setPermissions({ mic: true, camera: true });
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setHasPendingRequest(false);
         }
     }, [isLecturer]);
 
-    const [hasPendingRequest, setHasPendingRequest] = useState(false);
     const prevPermissionsRef = useRef<Permissions>({ mic: isLecturer, camera: isLecturer });
     const isInitialLoadRef = useRef(true); // Track if this is the first doc fetch
 
-    // STABLE REF for localParticipant so effects don't re-run on reference changes
+    // STABLE REF for localParticipant so effects don't re-run on reference changes.
+    // Synced in an effect rather than during render: the ref is only ever read from
+    // async Firestore callbacks and event handlers, never while rendering.
     const participantRef = useRef(localParticipant);
-    participantRef.current = localParticipant;
+    useEffect(() => {
+        participantRef.current = localParticipant;
+    }, [localParticipant]);
 
     // Extract identity as a stable primitive for the dependency array
     const identity = localParticipant?.identity;

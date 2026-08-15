@@ -12,7 +12,7 @@ export interface ReactionOverlayHandle {
     addReaction: (emoji: string) => void;
 }
 
-const ReactionOverlay = forwardRef<ReactionOverlayHandle, {}>((props, ref) => {
+const ReactionOverlay = forwardRef<ReactionOverlayHandle, object>((props, ref) => {
     const room = useRoomContext();
     const [reactions, setReactions] = useState<Reaction[]>([]);
 
@@ -86,5 +86,7 @@ const ReactionOverlay = forwardRef<ReactionOverlayHandle, {}>((props, ref) => {
         </div>
     );
 });
+
+ReactionOverlay.displayName = 'ReactionOverlay';
 
 export default ReactionOverlay;

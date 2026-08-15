@@ -150,7 +150,7 @@ export default function GroupsHub() {
                 ) : (
                     <div className="bg-white border-2 border-dashed border-[#DDE0F0] rounded-xl p-12 text-center space-y-4">
                         <Users className="w-10 h-10 text-[#DDE0F0] mx-auto" />
-                        <p className="text-[13px] text-[#8888A8] font-medium max-w-xs mx-auto">You haven't joined any communities yet. Discover public spaces or use a join code.</p>
+                        <p className="text-[13px] text-[#8888A8] font-medium max-w-xs mx-auto">You haven&apos;t joined any communities yet. Discover public spaces or use a join code.</p>
                     </div>
                 )}
             </section>
@@ -303,6 +303,11 @@ const CommunityWorkspace = memo(function CommunityWorkspace({ group, user, profi
         const qAnn = query(collection(db, 'groups', group.id, 'announcements'), orderBy('createdAt', 'desc'), limit(50));
         const unsubscribeAnn = onSnapshot(qAnn, (snap) => {
             setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            // Announcements back the default tab, so their first delivery is what marks
+            // the workspace as ready. This flag used to be cleared synchronously while
+            // attaching the listeners, which ended the loading state before any data
+            // had actually arrived.
+            setLoadingData(false);
         });
 
         // Real-time listener for resources
@@ -320,13 +325,11 @@ const CommunityWorkspace = memo(function CommunityWorkspace({ group, user, profi
             });
         }
 
-        setLoadingData(false);
-
-        return () => { 
-            unsubscribeLive(); 
-            unsubscribeMembers(); 
-            unsubscribeAnn(); 
-            unsubscribeRes(); 
+        return () => {
+            unsubscribeLive();
+            unsubscribeMembers();
+            unsubscribeAnn();
+            unsubscribeRes();
             unsubscribeReq();
         };
     }, [group, isOwner]);
@@ -529,8 +532,8 @@ function ResourcesTab({ resources, isOwner, onAdd, groupId }: { resources: any[]
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {resources.length > 0 ? resources.map(r => (
-                    <a key={r.id || Math.random().toString()} href={r.url} target="_blank" rel="noopener noreferrer" className="bg-white border border-[#DDE0F0] p-6 rounded-xl hover:border-[#1845D4] transition-all flex items-start justify-between shadow-sm group">
+                {resources.length > 0 ? resources.map((r, i) => (
+                    <a key={r.id || `resource-${i}`} href={r.url} target="_blank" rel="noopener noreferrer" className="bg-white border border-[#DDE0F0] p-6 rounded-xl hover:border-[#1845D4] transition-all flex items-start justify-between shadow-sm group">
                         <div className="flex items-start gap-4 overflow-hidden">
                             <div className="w-12 h-12 bg-[#F5F6FA] rounded-lg flex items-center justify-center text-[#1845D4] group-hover:bg-[#1845D4] group-hover:text-white transition-all shrink-0">
                                 {r.type === 'file' ? <FileText className="w-6 h-6" /> : <LinkIcon className="w-6 h-6" />}

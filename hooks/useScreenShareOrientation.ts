@@ -1,39 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRemoteParticipants } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 
+import { useIsMobile } from '@/hooks/useIsMobile';
+
 export const useScreenShareOrientation = () => {
-    const [isScreenSharing, setIsScreenSharing] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+    const isMobile = useIsMobile();
     const remoteParticipants = useRemoteParticipants();
 
-    // Detect if mobile
-    useEffect(() => {
-        const checkMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        setIsMobile(checkMobile);
-    }, []);
-
-    // Monitor for screen share
-    useEffect(() => {
-        if (!isMobile) return;
-
-        let hasScreenShare = false;
-
-        // Check all remote participants for screen share tracks
-        for (const participant of remoteParticipants) {
-            const screenSharePublication = Array.from(participant.videoTrackPublications.values())
-                .find(pub => pub.source === Track.Source.ScreenShare);
-
-            if (screenSharePublication && screenSharePublication.isSubscribed) {
-                hasScreenShare = true;
-                break;
-            }
-        }
-
-        setIsScreenSharing(hasScreenShare);
-    }, [remoteParticipants, isMobile]);
+    // Derived directly from the participant list during render. useRemoteParticipants
+    // already re-renders on participant/track changes, so mirroring this into state via
+    // an effect only caused an extra render pass.
+    const isScreenSharing = isMobile && remoteParticipants.some((participant) =>
+        Array.from(participant.videoTrackPublications.values()).some(
+            (pub) => pub.source === Track.Source.ScreenShare && pub.isSubscribed
+        )
+    );
 
     return {
         isScreenSharing,

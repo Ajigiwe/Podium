@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 interface CountdownTimerProps {
     targetDate: Date;
@@ -8,8 +8,13 @@ interface CountdownTimerProps {
 }
 
 export default function CountdownTimer({ targetDate, onComplete }: CountdownTimerProps) {
-    const calculateTimeLeft = useCallback(() => {
-        const difference = targetDate.getTime() - new Date().getTime();
+    // The ticking clock is the only real state. The remaining time is derived from it
+    // during render, so a change of targetDate recomputes immediately without needing
+    // an effect to copy the result back into state.
+    const [now, setNow] = useState(() => Date.now());
+
+    const timeLeft = useMemo(() => {
+        const difference = targetDate.getTime() - now;
 
         if (difference <= 0) {
             return { hours: 0, minutes: 0, seconds: 0, total: 0 };
@@ -21,29 +26,22 @@ export default function CountdownTimer({ targetDate, onComplete }: CountdownTime
             seconds: Math.floor((difference / 1000) % 60),
             total: difference
         };
-    }, [targetDate]);
+    }, [targetDate, now]);
 
-    const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft());
-
-    useEffect(() => {
-        setTimeLeft(calculateTimeLeft());
-    }, [targetDate, calculateTimeLeft]);
+    const isComplete = timeLeft.total <= 0;
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            const newTimeLeft = calculateTimeLeft();
-            setTimeLeft(newTimeLeft);
+        if (isComplete) return;
 
-            if (newTimeLeft.total <= 0) {
-                if (onComplete) onComplete();
-                clearInterval(timer);
-            }
-        }, 1000);
-
+        const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);
-    }, [calculateTimeLeft, onComplete]);
+    }, [isComplete]);
 
-    if (timeLeft.total <= 0) return null;
+    useEffect(() => {
+        if (isComplete) onComplete?.();
+    }, [isComplete, onComplete]);
+
+    if (isComplete) return null;
 
     return (
         <div className="flex gap-4 justify-center">

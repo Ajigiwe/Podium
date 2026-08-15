@@ -1,19 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type { Room } from 'livekit-client';
 import { useRaisedHands } from '@/hooks/useRaisedHands';
 
 const mockOn = vi.fn();
 const mockOff = vi.fn();
 const mockPublishData = vi.fn();
 
-const createMockRoom = (overrides = {}) => ({
+// Only the members the hook actually touches are stubbed, so the object is cast to
+// Room rather than implementing all ~126 members of the real class.
+const createMockRoom = (overrides: Partial<Room> = {}) => ({
   on: mockOn,
   off: mockOff,
   localParticipant: {
     publishData: mockPublishData,
   },
   ...overrides,
-});
+} as unknown as Room);
 
 vi.mock('@livekit/components-react', () => ({
   useRoomContext: vi.fn(() => createMockRoom()),
@@ -51,7 +54,7 @@ describe('useRaisedHands', () => {
     });
 
     it('handles null room gracefully', () => {
-      vi.mocked(useRoomContext).mockReturnValue(null as any);
+      vi.mocked(useRoomContext).mockReturnValue(null as unknown as Room);
       const { result } = renderHook(() => useRaisedHands());
       expect(result.current.raisedHands).toEqual([]);
     });
@@ -120,7 +123,7 @@ describe('useRaisedHands', () => {
     });
 
     it('does not throw when room is null', async () => {
-      vi.mocked(useRoomContext).mockReturnValue(null as any);
+      vi.mocked(useRoomContext).mockReturnValue(null as unknown as Room);
       const { result } = renderHook(() => useRaisedHands());
 
       await act(async () => {

@@ -31,7 +31,7 @@ function HistoryContent() {
         };
         const fetchHostedClasses = async () => {
             if (!user) return setLoadingHosted(false);
-            let counts: Record<string, Set<string>> = {};
+            const counts: Record<string, Set<string>> = {};
             try {
                 const sessionsSnap = await getDocs(query(collection(db, 'sessions'), where('lecturerId', '==', user.uid), orderBy('createdAt', 'desc')));
                 const logsSnap = await getDocs(query(collection(db, 'attendance_logs'), where('lecturerId', '==', user.uid)));

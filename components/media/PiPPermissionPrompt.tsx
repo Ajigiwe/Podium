@@ -6,7 +6,13 @@ import { useAlert } from '@/contexts/AlertContext';
 
 export const PiPPermissionPrompt = () => {
     const [showPrompt, setShowPrompt] = useState(false);
-    const [hasPermission, setHasPermission] = useState(false);
+    // Read the persisted value in a lazy initializer rather than syncing it in an
+    // effect. Safe for SSR because showPrompt starts false, so the server and the
+    // initial client render both produce null regardless of this value.
+    const [hasPermission, setHasPermission] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return localStorage.getItem('podium_pip_permission_granted') === 'true';
+    });
     const { showAlert } = useAlert();
 
     useEffect(() => {
@@ -20,8 +26,6 @@ export const PiPPermissionPrompt = () => {
             }, 5000);
 
             return () => clearTimeout(timer);
-        } else if (granted === 'true') {
-            setHasPermission(true);
         }
     }, []);
 

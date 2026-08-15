@@ -1,24 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRemoteParticipants, VideoTrack } from '@livekit/components-react';
-import { Track } from 'livekit-client';
+import { Track, type RemoteParticipant, type RemoteTrackPublication } from 'livekit-client';
 import { Maximize2, Minimize2, X, Monitor } from 'lucide-react';
+
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 export const ScreenShareFullscreen = () => {
     const remoteParticipants = useRemoteParticipants();
-    const [screenShareTrack, setScreenShareTrack] = useState<any>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+    const isMobile = useIsMobile();
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Detect mobile
-    useEffect(() => {
-        const checkMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        setIsMobile(checkMobile);
-    }, []);
-
-    const exitFullscreen = async () => {
+    const exitFullscreen = useCallback(async () => {
         try {
             if (document.fullscreenElement) {
                 await document.exitFullscreen();
@@ -33,7 +28,7 @@ export const ScreenShareFullscreen = () => {
         } catch (error) {
             console.error('Exit fullscreen failed:', error);
         }
-    };
+    }, []);
 
     const enterFullscreen = async () => {
         if (!containerRef.current) return;
@@ -63,32 +58,32 @@ export const ScreenShareFullscreen = () => {
         }
     };
 
-    // Find screen share track
-    useEffect(() => {
-        let foundTrack: any = null;
+    // Computed during render rather than memoized: publication state can change without
+    // the remoteParticipants array identity changing, so re-reading it each render keeps
+    // this correct. The loop is trivially cheap.
+    let screenShareTrack: { participant: RemoteParticipant; publication: RemoteTrackPublication } | null = null;
 
-        for (const participant of remoteParticipants) {
-            const screenPublication = Array.from(participant.videoTrackPublications.values())
-                .find(pub => pub.source === Track.Source.ScreenShare);
+    for (const participant of remoteParticipants) {
+        const screenPublication = Array.from(participant.videoTrackPublications.values())
+            .find(pub => pub.source === Track.Source.ScreenShare);
 
-            if (screenPublication && screenPublication.isSubscribed && screenPublication.track) {
-                foundTrack = {
-                    participant,
-                    publication: screenPublication,
-                };
-                break;
-            }
+        if (screenPublication && screenPublication.isSubscribed && screenPublication.track) {
+            screenShareTrack = { participant, publication: screenPublication };
+            break;
         }
+    }
 
-        setScreenShareTrack(foundTrack);
+    const hasScreenShare = screenShareTrack !== null;
 
-        // Exit fullscreen when screen share ends
-        if (!foundTrack && isFullscreen) {
+    // Leave browser fullscreen once the presenter stops sharing. Keyed on a boolean so
+    // the effect does not re-run every render from a fresh object identity. Exiting
+    // fullscreen is a real side effect; the state update is a consequence of it.
+    useEffect(() => {
+        if (!hasScreenShare && isFullscreen) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             exitFullscreen();
         }
-    }, [remoteParticipants, isMobile]);
-
-
+    }, [hasScreenShare, isFullscreen, exitFullscreen]);
 
     // Listen for fullscreen changes
     useEffect(() => {
