@@ -51,18 +51,24 @@ export async function POST(request: NextRequest) {
         const attendanceRef = sessionRef.collection('attendance');
         const studentsSnap = await attendanceRef.where('isPresent', '==', true).get();
 
-        const batch = adminDb.batch();
-        studentsSnap.docs.forEach(doc => {
-            batch.update(doc.ref, {
-                totalVerificationsSent: FieldValue.increment(1)
-            });
-            // Also update flat log for reports
-            const logRef = adminDb.collection('attendance_logs').doc(`${sessionId}_${doc.id}`);
-            batch.update(logRef, {
-                totalVerificationsSent: FieldValue.increment(1)
-            });
-        });
-        await batch.commit();
+        // Firestore batches are capped at 500 operations and each student costs two,
+        // so chunk into 250-student slices to keep large rooms below the limit.
+        const BATCH_SIZE = 250;
+        const studentDocs = studentsSnap.docs;
+        for (let i = 0; i < studentDocs.length; i += BATCH_SIZE) {
+            const batch = adminDb.batch();
+            for (const doc of studentDocs.slice(i, i + BATCH_SIZE)) {
+                batch.update(doc.ref, {
+                    totalVerificationsSent: FieldValue.increment(1)
+                });
+                // Also update flat log for reports (merge so a missing log can't fail the batch)
+                const logRef = adminDb.collection('attendance_logs').doc(`${sessionId}_${doc.id}`);
+                batch.set(logRef, {
+                    totalVerificationsSent: FieldValue.increment(1)
+                }, { merge: true });
+            }
+            await batch.commit();
+        }
 
         // 3. Broadcast to LiveKit room
         const svc = new RoomServiceClient(livekitUrl, apiKey, apiSecret);

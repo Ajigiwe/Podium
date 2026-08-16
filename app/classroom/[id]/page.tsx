@@ -176,7 +176,7 @@ export default function ClassroomPage() {
                 
                 const finalName = profile?.fullName || user.email?.split('@')[0] || 'User';
                 console.log('[Classroom:VerifyAccess] Joining class with userName:', finalName, 'isModerator:', isModerator);
-                joinClass(sessionId, session.title || 'Class', finalName, isModerator ? 'lecturer' : 'student', user.uid, profile?.photoURL, profile?.displayIcon, true);
+                joinClass(sessionId, session.title || 'Class', finalName, isModerator ? 'lecturer' : 'student', user.uid, profile?.photoURL, profile?.displayIcon, isModerator);
             } catch (error) { 
                 console.error('[Classroom:VerifyAccess] Error during verification:', error);
                 setLoading(false); 

@@ -129,6 +129,12 @@ service cloud.firestore {
         allow write: if isSignedIn() && isSessionModerator(sessionId);
       }
 
+      // Presence heartbeats subcollection
+      match /participants/{participantId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isSignedIn() && request.auth.uid == participantId;
+      }
+
       // Materials subcollection
       match /materials/{materialId} {
         allow read: if isSignedIn();

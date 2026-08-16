@@ -7,7 +7,7 @@ import { Room, RemoteParticipant, LocalParticipant, Participant, RoomEvent, Trac
 import { useAlert } from '@/contexts/AlertContext';
 import { GridLayout } from '@/types/layout';
 import { db } from '@/lib/firebase/config';
-import { collection, query, orderBy, onSnapshot, limit, addDoc, serverTimestamp, setDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limitToLast, addDoc, serverTimestamp, setDoc, doc, updateDoc } from 'firebase/firestore';
 
 import { Session } from '@/lib/firebase/types';
 import type { CoHost } from '@/lib/firebase/types';
@@ -603,7 +603,7 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
             setUnreadChatCount(0);
             return;
         }
-        const q = query(collection(db, `sessions/${sessionId}/messages`), orderBy('createdAt', 'asc'));
+        const q = query(collection(db, `sessions/${sessionId}/messages`), orderBy('createdAt', 'asc'), limitToLast(200));
         let initialLoad = true;
         const unsubscribe = onSnapshot(q, (snapshot: any) => {
             if (initialLoad) {
@@ -622,6 +622,8 @@ export function ClassroomProvider({ children }: { children: ReactNode }) {
                         });
                     });
                     if (data.senderId !== userId && !isChatOpen) setUnreadChatCount(prev => prev + 1);
+                } else if (change.type === 'removed') {
+                    setLiveMessages(prev => prev.filter(m => m.id !== change.doc.id));
                 }
             });
         });

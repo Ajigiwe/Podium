@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Outfit', serif;
+
+  --color-podium-blue: #1845D4;
+  --color-podium-deep: #0D0D1A;
+  --color-podium-muted: #8888A8;
+  --color-podium-border: #DDE0F0;
+  --color-podium-bg: #F5F6FA;
+  --color-podium-active: #E8EEFF;
+}

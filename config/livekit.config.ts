@@ -1,5 +1,5 @@
 // config/livekit.config.ts
-import { RoomOptions, VideoPresets } from 'livekit-client';
+import { RoomOptions, ScreenSharePresets, VideoPresets } from 'livekit-client';
 
 export const roomOptions: RoomOptions = {
     // Adaptive streaming for better network handling
@@ -33,20 +33,30 @@ export const roomOptions: RoomOptions = {
         // Broad compatibility and low hardware cost
         videoCodec: 'vp8',
 
+        // Keep full detail under congestion instead of dropping to a blur -
+        // resolution matters far more than framerate for slides and text
+        degradationPreference: 'maintain-resolution',
+
+        // Redundant audio encoding (RED) - recovers lost audio packets on flaky mobile links
+        red: true,
+        // Discontinuous transmission - no packets while silent, saves bandwidth and battery
+        dtx: true,
+
         // Automatically manage video quality
         videoSimulcastLayers: [
             VideoPresets.h180, // Low bitrate backup
             VideoPresets.h360, // Standard mobile
             VideoPresets.h720, // High quality
         ],
-        // Screen share at higher quality
+        // Screen share at lower fps - slides are nearly static, so 15fps keeps text
+        // sharp at a fraction of the 30fps bitrate
         screenShareSimulcastLayers: [
-            VideoPresets.h720,
-            VideoPresets.h1080,
+            ScreenSharePresets.h720fps15,
+            ScreenSharePresets.h1080fps15,
         ],
         // Backup codec
         backupCodec: true,
-        // Stop tracks when muted
+        // Keep mic hardware open while muted (faster unmute); small battery cost on phones
         stopMicTrackOnMute: false,
     },
 };
