@@ -57,18 +57,12 @@
     <script src="../js/theme-toggle.js"></script>
 
     <script type="module">
-        import { auth, googleProvider } from '../js/firebase-config.js';
-        import { signInWithRedirect, getRedirectResult, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { auth, googleProvider } from '../js/firebase-config.js?v=2';
+        import { signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const errorContainer = document.getElementById('error-container');
         const errorMessage = document.getElementById('error-message');
         const showError = (msg) => { errorMessage.textContent = msg; errorContainer.classList.remove('hidden'); };
-
-        getRedirectResult(auth).then((result) => {
-            if (result) window.location.href = '../dashboard.html';
-        }).catch((err) => {
-            if (err.code !== 'auth/popup-closed-by-user') showError(err.message);
-        });
 
         onAuthStateChanged(auth, (user) => {
             if (user) window.location.href = '../dashboard.html';
@@ -77,9 +71,10 @@
         document.getElementById('google-btn').onclick = async () => {
             errorContainer.classList.add('hidden');
             try {
-                await signInWithRedirect(auth, googleProvider);
+                await signInWithPopup(auth, googleProvider);
+                window.location.href = '../dashboard.html';
             } catch (err) {
-                showError(err.message);
+                if (err.code !== 'auth/popup-closed-by-user') showError(err.message);
             }
         };
     </script>

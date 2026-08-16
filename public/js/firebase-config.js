@@ -9,7 +9,7 @@ import { GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/fi
 
 const firebaseConfig = {
     apiKey: "AIzaSyDhCc-X1SRLHE6MOPBgHWLViUzgj_y6K40",
-    authDomain: "podiumclass.online",
+    authDomain: "lite-class.firebaseapp.com",
     projectId: "lite-class",
     storageBucket: "lite-class.firebasestorage.app",
     messagingSenderId: "628679581170",

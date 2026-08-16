@@ -1,4 +1,4 @@
-const CACHE_NAME = 'podium-v1';
+const CACHE_NAME = 'podium-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -54,11 +54,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for static assets
+  // Cache-first for hashed/immutable assets
   if (
     url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/css/') ||
-    url.pathname.startsWith('/js/') ||
     url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot)$/)
   ) {
     event.respondWith(
@@ -72,6 +70,20 @@ self.addEventListener('fetch', (event) => {
           })
         );
       })
+    );
+    return;
+  }
+
+  // Network-first for app JS/CSS so config changes propagate
+  if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/css/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const cloned = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }

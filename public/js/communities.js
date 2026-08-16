@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db, storage } from './firebase-config.js';
+import { auth, db, storage } from './firebase-config.js?v=2';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
