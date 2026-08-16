@@ -49,12 +49,27 @@ service cloud.firestore {
              get(/databases/$(database)/documents/sessions/$(sessionId)/co_hosts/$(request.auth.uid)).data.isActive == true;
     }
 
+    // Check if user is the session lecturer or host (reads the session doc)
+    function isSessionLecturerOrHost(sessionId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('hostId', '') == request.auth.uid ||
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('lecturerId', '') == request.auth.uid
+      );
+    }
+
+    // Check if user has joined this session (attendance log marker or presence heartbeat)
+    function isSessionParticipant(sessionId) {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid)) ||
+        exists(/databases/$(database)/documents/attendance_logs/$(sessionId + '_' + request.auth.uid))
+      );
+    }
+
     // Check if user is a session moderator (lecturer, host, co-host, or admin)
     function isSessionModerator(sessionId) {
       return isSignedIn() && (
         isAdmin() ||
-        resource.data.get('hostId', '') == request.auth.uid ||
-        resource.data.get('lecturerId', '') == request.auth.uid ||
+        isSessionLecturerOrHost(sessionId) ||
         isSessionCoHost(sessionId)
       );
     }
@@ -71,7 +86,8 @@ service cloud.firestore {
         resource.data.get('groupId', null) == null ||
         isGroupMember(resource.data.groupId) ||
         resource.data.get('lecturerId', '') == request.auth.uid ||
-        isAdmin()
+        isAdmin() ||
+        isSessionParticipant(sessionId)
       );
       allow create: if isSignedIn() && request.resource.data.get('hostId', '') == request.auth.uid;
       allow update: if isSignedIn() && (
@@ -146,6 +162,36 @@ service cloud.firestore {
       match /verifications/{eventId} {
         allow read: if isSignedIn();
         allow write: if isSignedIn() && isSessionModerator(sessionId);
+      }
+
+      // Chat messages subcollection
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && (
+          isSessionLecturerOrHost(sessionId) ||
+          isSessionCoHost(sessionId) ||
+          isAdmin() ||
+          isSessionParticipant(sessionId)
+        );
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && (
+          isSessionLecturerOrHost(sessionId) ||
+          isSessionCoHost(sessionId) ||
+          isAdmin() ||
+          isSessionParticipant(sessionId)
+        );
+      }
+
+      // Chat history (transcript) subcollection
+      match /chat_history/{docId} {
+        allow read: if isSignedIn() && (
+          isSessionLecturerOrHost(sessionId) ||
+          isSessionCoHost(sessionId) ||
+          isAdmin() ||
+          isSessionParticipant(sessionId)
+        );
+        allow write: if isSignedIn() && (
+          isSessionLecturerOrHost(sessionId) ||
+          isAdmin()
+        );
       }
     }
     
