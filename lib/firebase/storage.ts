@@ -1,11 +1,25 @@
-import { app } from './config';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getAuthHeaders } from './api-client';
+
+const STORAGE_PRESIGN_ENDPOINT = '/api/storage/presign';
+const STORAGE_DELETE_ENDPOINT = '/api/storage/delete';
 
 /**
- * Upload profile picture to Firebase Storage
+ * Upload a file body to a presigned MinIO PUT URL.
+ */
+async function putFile(uploadUrl: string, file: Blob | File, contentType?: string): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (contentType) headers['Content-Type'] = contentType;
+    const response = await fetch(uploadUrl, { method: 'PUT', headers, body: file });
+    if (!response.ok) {
+        throw new Error(`Upload failed (${response.status})`);
+    }
+}
+
+/**
+ * Upload profile picture to MinIO (public read).
  * @param userId - User ID
  * @param file - Image file
- * @returns Download URL
+ * @returns Public URL
  */
 export async function uploadProfilePicture(userId: string, file: File): Promise<string> {
     // Validate file type
@@ -21,52 +35,42 @@ export async function uploadProfilePicture(userId: string, file: File): Promise<
     }
 
     try {
-        // Get storage instance dynamically to ensure app is initialized
-        const storage = getStorage(app);
-
-        // Since we compress to JPEG, we'll force the extension to .jpg
-        // This ensures consistency between MIME type and extension
-        const fullPath = `profile-pictures/${userId}.jpg`;
-        console.log(`[Upload] Attempting to upload to: ${fullPath}`);
-        console.log(`[Upload] File size: ${file.size}, Type: ${file.type}`);
-
-        const storageRef = ref(storage, fullPath);
-
-        // Upload file with explicit content type
-        await uploadBytes(storageRef, file, {
-            contentType: 'image/jpeg',
-            cacheControl: 'public, max-age=31536000'
+        const headers = await getAuthHeaders();
+        const response = await fetch(STORAGE_PRESIGN_ENDPOINT, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ kind: 'profile', size: file.size }),
         });
 
-        // Get download URL
-        const downloadURL = await getDownloadURL(storageRef);
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to create upload');
+        }
 
-        return downloadURL;
-    } catch (error) {
+        const { uploadUrl, url } = await response.json();
+        await putFile(uploadUrl, file, 'image/jpeg');
+
+        return url;
+    } catch (error: any) {
         console.error('[Storage:Upload] Error uploading profile picture:', error);
-        throw new Error('Failed to upload profile picture');
+        throw new Error(error.message || 'Failed to upload profile picture');
     }
 }
 
 /**
- * Delete profile picture from Firebase Storage
+ * Delete profile picture from MinIO.
  * @param userId - User ID
  */
 export async function deleteProfilePicture(userId: string): Promise<void> {
     try {
-        const storage = getStorage(app);
-        // We now enforce .jpg, but check others for backward compatibility
-        const extensions = ['jpg', 'jpeg', 'png', 'webp'];
-
-        for (const ext of extensions) {
-            try {
-                const storageRef = ref(storage, `profile-pictures/${userId}.${ext}`);
-                await deleteObject(storageRef);
-                console.log(`Deleted profile picture: ${userId}.${ext}`);
-                return;
-            } catch (error) {
-                // Continue to next extension
-            }
+        const headers = await getAuthHeaders();
+        const response = await fetch(STORAGE_DELETE_ENDPOINT, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ kind: 'profile' }),
+        });
+        if (!response.ok) {
+            console.error('[Storage:Delete] Failed to delete profile picture');
         }
     } catch (error) {
         console.error('[Storage:Delete] Error deleting profile picture:', error);
@@ -151,7 +155,7 @@ export async function compressImage(
 }
 
 /**
- * Upload learning material to Firebase Storage
+ * Upload learning material to MinIO (public read).
  * @param sessionId - Current session ID
  * @param file - The file to upload
  * @returns Metadata about the uploaded file
@@ -164,21 +168,20 @@ export async function uploadLearningMaterial(sessionId: string, file: File): Pro
     }
 
     try {
-        const storage = getStorage(app);
-        const timestamp = Date.now();
-        // Clean filename: remove special chars but keep extension
-        const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const fileName = `${timestamp}_${cleanName}`;
-        const fullPath = `sessions/${sessionId}/materials/${fileName}`;
+        const headers = await getAuthHeaders();
+        const response = await fetch(STORAGE_PRESIGN_ENDPOINT, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ kind: 'material', sessionId, fileName: file.name, size: file.size }),
+        });
 
-        console.log(`[Storage:Materials] Uploading to: ${fullPath}`);
-        const storageRef = ref(storage, fullPath);
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to create upload');
+        }
 
-        // Upload file
-        await uploadBytes(storageRef, file);
-
-        // Get download URL
-        const url = await getDownloadURL(storageRef);
+        const { uploadUrl, url } = await response.json();
+        await putFile(uploadUrl, file);
 
         return {
             url,

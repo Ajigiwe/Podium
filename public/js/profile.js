@@ -1,12 +1,9 @@
 // public/js/profile.js
-import { auth, db, storage } from './firebase-config.js?v=2';
+import { auth, db } from './firebase-config.js?v=2';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     doc, getDoc, updateDoc, setDoc, serverTimestamp, collection, query, where, getDocs, Timestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { 
-    ref, uploadBytesResumable, getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 // DOM Elements
 const userName = document.getElementById('user-name');
@@ -204,16 +201,24 @@ photoUpload.onchange = async (e) => {
     
     setLoading(true);
     try {
-        const storageRef = ref(storage, `profile-pictures/${currentUserId}`);
-        const uploadTask = await uploadBytesResumable(storageRef, file);
-        const url = await getDownloadURL(uploadTask.ref);
-        
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch('/api/storage/presign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ kind: 'profile', size: file.size })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create upload');
+
+        const putRes = await fetch(data.uploadUrl, { method: 'PUT', body: file });
+        if (!putRes.ok) throw new Error(`Upload failed (${putRes.status})`);
+
         await updateDoc(doc(db, 'profiles', currentUserId), { 
-            photoURL: url, 
+            photoURL: data.url, 
             updatedAt: Timestamp.now() 
         });
         
-        userProfile.photoURL = url;
+        userProfile.photoURL = data.url;
         renderProfile();
         showToast('Photo updated.');
     } catch (err) {

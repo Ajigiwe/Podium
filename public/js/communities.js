@@ -1,12 +1,9 @@
 // public/js/communities.js
-import { auth, db, storage } from './firebase-config.js?v=2';
+import { auth, db } from './firebase-config.js?v=2';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { 
-    ref, uploadBytesResumable, getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 // DOM Elements
 const myCommunitiesList = document.getElementById('my-communities-list');
@@ -390,19 +387,39 @@ function setupWorkspaceActions(user, profile) {
         const progressContainer = document.getElementById('upload-progress-container');
         const progressBar = document.getElementById('upload-progress-bar');
         progressContainer.classList.remove('hidden');
-        const storageRef = ref(storage, `group-resources/${currentGroup.id}/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-        uploadTask.on('state_changed', 
-            (snapshot) => { progressBar.style.width = (snapshot.bytesTransferred / snapshot.totalBytes) * 100 + '%'; }, 
-            (error) => { console.error('Upload error:', error); window.showToast('Upload failed.', 'error'); }, 
-            async () => {
-                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                await addDoc(collection(db, 'groups', currentGroup.id, 'resources'), {
-                    title: file.name, url: url, type: 'file', createdAt: serverTimestamp()
-                });
-                progressContainer.classList.add('hidden');
-            }
-        );
+        progressBar.style.width = '0%';
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/storage/presign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ kind: 'resource', groupId: currentGroup.id, fileName: file.name, size: file.size })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to create upload');
+
+            await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', data.uploadUrl);
+                xhr.upload.onprogress = (ev) => {
+                    if (ev.lengthComputable) progressBar.style.width = (ev.loaded / ev.total) * 100 + '%';
+                };
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) resolve();
+                    else reject(new Error(`Upload failed (${xhr.status})`));
+                };
+                xhr.onerror = () => reject(new Error('Upload failed.'));
+                xhr.send(file);
+            });
+
+            await addDoc(collection(db, 'groups', currentGroup.id, 'resources'), {
+                title: file.name, url: data.url, type: 'file', createdAt: serverTimestamp()
+            });
+            progressContainer.classList.add('hidden');
+        } catch (err) {
+            console.error('Upload error:', err);
+            window.showToast(err.message || 'Upload failed.', 'error');
+        }
     };
 
     closeWorkspaceBtn.onclick = () => {

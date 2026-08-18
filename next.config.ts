@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'storage.podiumclass.online',
+      },
+      {
+        protocol: 'https',
         hostname: 'i.ytimg.com',
       },
     ],
