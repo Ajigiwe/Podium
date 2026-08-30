@@ -2,29 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPaymentConfirmation } from '@/lib/email/send';
 
 export const dynamic = 'force-dynamic';
 
-
 /**
  * Paystack Webhook Handler
- * CRITICAL: This endpoint verifies payment completion and grants classroom access
+ * Handles:
+ *  - wallet_topup: credits student's virtual wallet
+ *  - charge.success (legacy): records transaction + subscription activation
+ *  - charge.failed: logs failed attempt
  */
 export async function POST(req: NextRequest) {
     try {
-        // Get the raw body for signature verification
         const body = await req.text();
         const signature = req.headers.get('x-paystack-signature');
 
         if (!signature) {
-            return NextResponse.json(
-                { error: 'No signature provided' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'No signature provided' }, { status: 400 });
         }
 
-        // Verify webhook signature
         const secretKey = process.env.PAYSTACK_SECRET_KEY;
         if (!secretKey) {
             console.error('Paystack secret key not configured');
@@ -38,16 +34,12 @@ export async function POST(req: NextRequest) {
 
         if (hash !== signature) {
             console.error('Invalid webhook signature');
-            return NextResponse.json(
-                { error: 'Invalid signature' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
         }
 
-        // Parse the event
         const event = JSON.parse(body);
 
-        // Handle charge.success event
+        // Handle charge.success
         if (event.event === 'charge.success') {
             const { reference, amount, customer, channel, metadata } = event.data;
 
@@ -56,28 +48,45 @@ export async function POST(req: NextRequest) {
                 amount,
                 userId: metadata.userId,
                 sessionId: metadata.sessionId,
+                type: metadata.type,
             });
 
-            // Create transaction record in Firestore
+            // Record transaction
             await adminDb.collection('transactions').add({
                 userId: metadata.userId,
-                sessionId: metadata.sessionId,
+                sessionId: metadata.sessionId || 'wallet_topup',
                 paystackReference: reference,
-                amount: amount, // Amount in pesewas
+                amount,
                 currency: 'GHS',
-                paymentChannel: channel, // e.g., "mobile_money_mtn"
+                paymentChannel: channel,
                 status: 'succeeded',
                 createdAt: Timestamp.now(),
                 paidAt: Timestamp.now(),
             });
 
-            console.log('Transaction record created successfully');
+            // === WALLET TOP-UP ===
+            if (metadata.type === 'wallet_topup') {
+                const topUpAmount = metadata.topUpAmount || amount;
+                const userRef = adminDb.collection('profiles').doc(metadata.userId);
+                const userSnap = await userRef.get();
+                const currentBalance = userSnap.data()?.walletBalance || 0;
 
-            // Handle Subscription Activation
+                await userRef.update({
+                    walletBalance: currentBalance + topUpAmount,
+                    updatedAt: Timestamp.now(),
+                });
+
+                console.log('Wallet credited:', {
+                    userId: metadata.userId,
+                    topUpAmount,
+                    newBalance: currentBalance + topUpAmount,
+                });
+            }
+
+            // === LEGACY SUBSCRIPTION (backward compat) ===
             if (metadata.type === 'subscription') {
                 console.log('Activating subscription for user:', metadata.userId);
                 try {
-                    // Calculate expiry (4 months from now)
                     const now = new Date();
                     const expiryDate = new Date(now);
                     expiryDate.setMonth(now.getMonth() + 4);
@@ -92,49 +101,16 @@ export async function POST(req: NextRequest) {
                     console.error('Error activating subscription:', subError);
                 }
             }
-
-            // Send payment confirmation email
-            try {
-                // Fetch user profile
-                const userDoc = await adminDb.collection('profiles').doc(metadata.userId).get();
-                const userData = userDoc.data();
-
-                // Fetch session details
-                const sessionDoc = await adminDb.collection('sessions').doc(metadata.sessionId).get();
-                const sessionData = sessionDoc.data();
-
-                if (userData?.email && sessionData?.title) {
-                    await sendPaymentConfirmation({
-                        to: userData.email,
-                        userName: userData.fullName || 'Student',
-                        sessionTitle: sessionData.title,
-                        amount: amount,
-                        currency: 'GHS',
-                        transactionId: reference,
-                        sessionId: metadata.sessionId,
-                    });
-                    console.log('Payment confirmation email sent to:', userData.email);
-                }
-            } catch (emailError) {
-                // Don't fail the webhook if email fails
-                console.error('Failed to send confirmation email:', emailError);
-            }
         }
 
-        // Handle charge.failed event
+        // Handle charge.failed
         if (event.event === 'charge.failed') {
             const { reference, metadata } = event.data;
+            console.log('Payment failed:', { reference, userId: metadata?.userId });
 
-            console.log('Payment failed:', {
-                reference,
-                userId: metadata?.userId,
-                sessionId: metadata?.sessionId,
-            });
-
-            // Optionally log failed payment attempts
             await adminDb.collection('transactions').add({
                 userId: metadata?.userId || 'unknown',
-                sessionId: metadata?.sessionId || 'unknown',
+                sessionId: metadata?.sessionId || 'wallet_topup',
                 paystackReference: reference,
                 amount: 0,
                 currency: 'GHS',
@@ -148,9 +124,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true }, { status: 200 });
     } catch (error: any) {
         console.error('Webhook error:', error);
-        return NextResponse.json(
-            { error: error.message },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

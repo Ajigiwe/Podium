@@ -10,7 +10,7 @@ import { SystemSettings } from '@/lib/firebase/types';
 import { initializeSubscription } from '@/lib/payments/initializeSubscription';
 import { useAlert } from '@/contexts/AlertContext';
 import {
-    LayoutDashboard, LogOut, Menu, X, GraduationCap, History as HistoryIcon, User, CircleUser, Shield, ShieldCheck
+    LayoutDashboard, LogOut, Menu, X, GraduationCap, History as HistoryIcon, User, CircleUser, Shield, ShieldCheck, Wallet
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode; }) {
@@ -56,6 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const navigation = [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Wallet', href: '/dashboard/wallet', icon: Wallet },
         { name: 'History', href: '/dashboard/history', icon: GraduationCap },
         { name: 'Settings', href: '/dashboard/profile', icon: CircleUser },
     ];

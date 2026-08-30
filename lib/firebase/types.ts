@@ -18,6 +18,7 @@ export interface Profile {
     university?: string;
     classCount?: number; // Total unique classes joined (aggregated)
     isVerified?: boolean; // For Course Reps to create groups
+    walletBalance?: number; // Virtual wallet balance in pesewas (GHS 1 = 100 pesewas)
 }
 
 export type UserProfile = Profile;
@@ -29,6 +30,7 @@ export interface SystemSettings {
     currency: string;
     durationMonths: number;
     isPayToUse?: boolean; // Toggle for "Pay before use" feature
+    perClassFee?: number; // Fee per class in pesewas (default 600 = GHS 6)
     updatedAt: Timestamp;
 }
 
@@ -68,6 +70,8 @@ export interface Session {
     auto_alert_triggered?: boolean;
     auto_alert_triggered_at?: Timestamp;
     createdAt: Timestamp;
+    startedAt?: Timestamp; // When the lecturer actually started the session
+    endedAt?: Timestamp; // When the session was ended
     groupId?: string; // Optional: Link session to a persistent group
 }
 
