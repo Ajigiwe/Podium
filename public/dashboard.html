@@ -24,6 +24,7 @@
 
         .stat-glow-blue { box-shadow: 0 0 0 1px rgba(24,69,212,0.08), 0 4px 24px rgba(24,69,212,0.06); }
         .stat-glow-amber { box-shadow: 0 0 0 1px rgba(245,158,11,0.10), 0 4px 24px rgba(245,158,11,0.06); }
+        .stat-glow-green { box-shadow: 0 0 0 1px rgba(34,197,94,0.08), 0 4px 24px rgba(34,197,94,0.06); }
         .stat-glow-emerald { box-shadow: 0 0 0 1px rgba(16,185,129,0.08), 0 4px 24px rgba(16,185,129,0.06); }
 
         .card-hover { transition: all 0.2s ease; }
@@ -243,8 +244,21 @@
                             <p class="text-[11px] text-amber-600 font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-all">Manage classes <i class="fas fa-arrow-right text-[9px]"></i></p>
                         </div>
 
+                        
+                        <!-- Wallet Balance Card -->
+                        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-green">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600">
+                                    <i class="fas fa-wallet text-sm"></i>
+                                </div>
+                                <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Wallet</span>
+                            </div>
+                            <div id="wallet-balance" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">GHS 0</div>
+                            <button onclick="openTopUpModal()" class="mt-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-green-100 transition-all">Top Up</button>
+                        </div>
+
                         <!-- Quick Join Card -->
-                        <div class="col-span-2 bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 flex flex-col justify-center">
+                        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 flex flex-col justify-center">
                             <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest mb-3">Join a class</p>
                             <form id="join-form" class="flex gap-2">
                                 <input type="text" id="join-link" placeholder="Enter meeting code..." class="flex-1 px-4 py-2.5 bg-[#F5F6FA] dark:bg-slate-800 border border-[#DDE0F0] dark:border-slate-700 rounded-lg text-[13px] font-medium outline-none focus:border-[#1845D4] focus:ring-2 focus:ring-blue-600/10 transition-all" autocomplete="off">
@@ -703,6 +717,67 @@
     <script type="module" src="./js/sidebar.js?v=2"></script>
     <script type="module" src="./js/dashboard.js?v=2"></script>
     <script type="module" src="./js/attendance.js?v=2"></script>
+    
+    <!-- Top-Up Modal -->
+    <div id="modal-topup" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
+        <div class="absolute inset-0 bg-[#0D0D1A]/40 backdrop-blur-sm" onclick="document.getElementById('modal-topup').classList.add('hidden')"></div>
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-8 relative shadow-2xl">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-xl font-serif font-black tracking-tight text-slate-900 dark:text-white">Top Up Wallet</h2>
+                    <p class="text-[12px] text-slate-500 mt-1">Add funds. GHS 6 deducted per class entry.</p>
+                </div>
+                <button onclick="document.getElementById('modal-topup').classList.add('hidden')" class="w-8 h-8 flex items-center justify-center border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-100">X</button>
+            </div>
+            <div class="space-y-4">
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="setTopUpAmount(500)" class="topup-preset px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold hover:border-[#1845D4] transition-all">GHS 5</button>
+                    <button onclick="setTopUpAmount(1000)" class="topup-preset px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold hover:border-[#1845D4] transition-all">GHS 10</button>
+                    <button onclick="setTopUpAmount(2000)" class="topup-preset px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold hover:border-[#1845D4] transition-all">GHS 20</button>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Custom Amount (GHS)</label>
+                    <input id="topup-amount" type="number" min="1" placeholder="Enter amount" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-[#1845D4] rounded-xl outline-none text-sm font-medium">
+                </div>
+                <button id="topup-btn" onclick="processTopUp()" class="w-full py-3.5 bg-[#1845D4] hover:bg-[#0F2FA8] text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/10 active:scale-95">Pay Now</button>
+                <p class="text-[8px] text-[#8888A8] font-bold uppercase tracking-widest text-center">Secure Checkout via Paystack</p>
+            </div>
+        </div>
+    </div>
+
     <script src="./js/theme-toggle.js"></script>
+
+    <script type="module">
+        import { auth, db } from './js/firebase-config.js?v=2';
+        import { doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        let currentUser = null;
+        auth.onAuthStateChanged((user) => { if (user) { currentUser = user; loadWalletBalance(); } });
+        function loadWalletBalance() {
+            if (!currentUser) return;
+            onSnapshot(doc(db, 'profiles', currentUser.uid), (snap) => {
+                if (snap.exists()) {
+                    const balance = snap.data().walletBalance || 0;
+                    document.getElementById('wallet-balance').textContent = 'GHS ' + (balance / 100).toFixed(2);
+                }
+            });
+        }
+        window.openTopUpModal = () => { document.getElementById('modal-topup').classList.remove('hidden'); document.getElementById('topup-amount').value = ''; };
+        window.setTopUpAmount = (pesewas) => { document.getElementById('topup-amount').value = pesewas / 100; };
+        window.processTopUp = async () => {
+            const amt = parseFloat(document.getElementById('topup-amount').value);
+            if (!amt || amt < 1) return alert('Minimum top-up is GHS 1');
+            const btn = document.getElementById('topup-btn');
+            btn.disabled = true; btn.textContent = 'Initializing...';
+            try {
+                const token = await currentUser.getIdToken();
+                const res = await fetch('/api/wallet/topup', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ amount: Math.round(amt * 100) }) });
+                const data = await res.json();
+                if (data.authorizationUrl) window.location.href = data.authorizationUrl;
+                else alert(data.error || 'Failed');
+            } catch (e) { alert('Network error'); }
+            btn.disabled = false; btn.textContent = 'Pay Now';
+        };
+    </script>
+
 </body>
 </html>

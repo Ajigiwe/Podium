@@ -107,13 +107,28 @@ export default function ClassroomPage() {
                 
                 console.log('[Classroom:VerifyAccess] Fetching system_settings/subscription...');
                 const subDoc = await getDoc(doc(db, 'system_settings', 'subscription'));
-                console.log('[Classroom:VerifyAccess] system_settings/subscription exists:', subDoc.exists());
-                const isPayToUse = subDoc.data()?.isPayToUse ?? true;
-                console.log('[Classroom:VerifyAccess] isPayToUse:', isPayToUse, 'profile.subscriptionStatus:', profile?.subscriptionStatus);
-                if (!isModerator && isPayToUse && profile?.subscriptionStatus !== 'active') { 
-                    console.warn('[Classroom:VerifyAccess] Unpaid student access denied, redirecting.');
-                    window.location.href = '/dashboard.html'; 
-                    return; 
+                const subData = subDoc.data();
+                const isPayToUse = subData?.isPayToUse ?? true;
+                const perClassFee = subData?.perClassFee ?? 600; // default GHS 6 = 600 pesewas
+
+                // Wallet balance check for students
+                if (!isModerator && isPayToUse) {
+                    const walletBalance = profile?.walletBalance || 0;
+                    console.log('[Classroom:VerifyAccess] walletBalance:', walletBalance, 'perClassFee:', perClassFee);
+                    if (walletBalance < perClassFee) {
+                        console.warn('[Classroom:VerifyAccess] Insufficient wallet balance, redirecting.');
+                        showAlert('Insufficient wallet balance. Please top up to join this class.', 'error');
+                        window.location.href = '/dashboard.html';
+                        return;
+                    }
+
+                    // Deduct class fee from wallet
+                    const { doc: fsDoc, updateDoc: fsUpdate } = await import('firebase/firestore');
+                    await fsUpdate(fsDoc(db, 'profiles', user.uid), {
+                        walletBalance: walletBalance - perClassFee,
+                        updatedAt: serverTimestamp(),
+                    });
+                    console.log('[Classroom:VerifyAccess] Deducted', perClassFee, 'from wallet. New balance:', walletBalance - perClassFee);
                 }
 
                 console.log('[Classroom:VerifyAccess] Fetching attendance log for sessionId:', sessionId, 'userId:', user.uid);
@@ -161,7 +176,7 @@ export default function ClassroomPage() {
                     if (!scheduledTime || scheduledTime <= new Date()) {
                         try {
                             console.log('[Classroom:VerifyAccess] Moderator auto-activating session...');
-                            await updateDoc(doc(db, 'sessions', sessionId), { isActive: true });
+                            await updateDoc(doc(db, 'sessions', sessionId), { isActive: true, startedAt: serverTimestamp() });
                             console.log('[Classroom:VerifyAccess] Session activated.');
                         } catch (err) {
                             console.error('[Classroom:AutoActivate] Failed to activate session:', err);
