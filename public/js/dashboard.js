@@ -24,6 +24,7 @@ const userRole = document.getElementById('user-role');
 const userAvatar = document.getElementById('user-avatar');
 const enrolledCount = document.getElementById('enrolled-count');
 const hostedCount = document.getElementById('hosted-count');
+const totalSessionsCount = document.getElementById('total-sessions-count');
 const recordsList = document.getElementById('records-list');
 const recordsListDrawer = document.getElementById('records-list-drawer');
 const greetingName = document.getElementById('greeting-name');
@@ -276,6 +277,7 @@ function setupHostedSessions() {
         hostedSessionsData = snapshot.docs
             .map(d => ({ id: d.id, ...d.data() }));
         hostedCount.innerText = hostedSessionsData.length;
+        updateTotalSessions();
         renderInlineRecords();
         renderQuickAccess();
     }, (err) => console.error('[HostedSessions] Error:', err));
@@ -287,6 +289,7 @@ function setupEnrolledSessions() {
         if (snapshot.empty) {
             enrolledSessionsData = [];
             enrolledCount.innerText = '0';
+            updateTotalSessions();
             renderRecords();
             return;
         }
@@ -299,9 +302,16 @@ function setupEnrolledSessions() {
             .map(s => ({ id: s.id, ...s.data() }));
             
         enrolledCount.innerText = enrolledSessionsData.length;
+        updateTotalSessions();
         renderInlineRecords();
         renderQuickAccess();
     }, (err) => console.error('[EnrolledSessions] Error:', err));
+}
+
+function updateTotalSessions() {
+    if (totalSessionsCount) {
+        totalSessionsCount.innerText = (enrolledSessionsData.length || 0) + (hostedSessionsData.length || 0);
+    }
 }
 
 function renderQuickAccess() {

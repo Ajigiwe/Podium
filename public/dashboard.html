@@ -220,6 +220,15 @@
                         </button>
                     </div>
 
+                    <!-- Quick Join (compact, above stats) -->
+                    <div class="bg-white dark:bg-slate-900 rounded-xl px-5 py-4 border border-[#DDE0F0] dark:border-slate-800 flex flex-col sm:flex-row sm:items-center gap-3">
+                        <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest whitespace-nowrap">Join a class</p>
+                        <form id="join-form" class="flex gap-2 flex-1">
+                            <input type="text" id="join-link" placeholder="Enter meeting code..." class="flex-1 min-w-0 px-4 py-2.5 bg-[#F5F6FA] dark:bg-slate-800 border border-[#DDE0F0] dark:border-slate-700 rounded-lg text-[13px] font-medium outline-none focus:border-[#1845D4] focus:ring-2 focus:ring-blue-600/10 transition-all" autocomplete="off">
+                            <button type="submit" class="px-5 py-2.5 bg-[#1845D4] text-white rounded-lg text-[13px] font-bold hover:bg-[#0F2FA8] transition-all shadow-md shadow-blue-600/10 shrink-0">Join</button>
+                        </form>
+                    </div>
+
                     <!-- Stat Cards -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div onclick="window.openRecordsDrawer('join')" class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-blue cursor-pointer card-hover group">
@@ -230,7 +239,6 @@
                                 <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Enrolled</span>
                             </div>
                             <div id="enrolled-count" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">0</div>
-                            <p class="text-[11px] text-[#1845D4] font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-all">View classes <i class="fas fa-arrow-right text-[9px]"></i></p>
                         </div>
 
                         <div onclick="window.openRecordsDrawer('host')" class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-amber cursor-pointer card-hover group">
@@ -241,10 +249,8 @@
                                 <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Hosted</span>
                             </div>
                             <div id="hosted-count" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">0</div>
-                            <p class="text-[11px] text-amber-600 font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-all">Manage classes <i class="fas fa-arrow-right text-[9px]"></i></p>
                         </div>
 
-                        
                         <!-- Wallet Balance Card -->
                         <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-green">
                             <div class="flex items-center gap-3 mb-3">
@@ -253,17 +259,19 @@
                                 </div>
                                 <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Wallet</span>
                             </div>
-                            <div id="wallet-balance" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">GHS 0</div>
+                            <div id="wallet-balance" class="text-2xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">GHS 0</div>
                             <button onclick="openTopUpModal()" class="mt-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-green-100 transition-all">Top Up</button>
                         </div>
 
-                        <!-- Quick Join Card -->
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 flex flex-col justify-center">
-                            <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest mb-3">Join a class</p>
-                            <form id="join-form" class="flex gap-2">
-                                <input type="text" id="join-link" placeholder="Enter meeting code..." class="flex-1 px-4 py-2.5 bg-[#F5F6FA] dark:bg-slate-800 border border-[#DDE0F0] dark:border-slate-700 rounded-lg text-[13px] font-medium outline-none focus:border-[#1845D4] focus:ring-2 focus:ring-blue-600/10 transition-all" autocomplete="off">
-                                <button type="submit" class="px-5 py-2.5 bg-[#1845D4] text-white rounded-lg text-[13px] font-bold hover:bg-[#0F2FA8] transition-all shadow-md shadow-blue-600/10">Join</button>
-                            </form>
+                        <!-- Quick Stats Card -->
+                        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-emerald">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
+                                    <i class="fas fa-clipboard-check text-sm"></i>
+                                </div>
+                                <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Sessions</span>
+                            </div>
+                            <div id="total-sessions-count" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">0</div>
                         </div>
                     </div>
 
