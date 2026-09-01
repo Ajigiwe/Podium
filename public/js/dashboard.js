@@ -707,28 +707,6 @@ confirmJoinBtn.onclick = async () => {
             }
         }
 
-        // Wallet block at enroll
-        try{
-            const sessSnap=await getDoc(doc(db,'sessions',pendingSessionId));
-            if(sessSnap.exists()){
-                const s=sessSnap.data();
-                const price=s.price||0;
-                const isFree=s.isFree||price===0;
-                let communityFree=false;
-                if(s.groupId){ try{ const g=await getDoc(doc(db,'groups',s.groupId)); communityFree=g.exists() && g.data().isFreeSessions===true; }catch{} }
-                const isModerator=s.hostId===currentUserId||s.lecturerId===currentUserId||userProfile?.role==='lecturer'||userProfile?.role==='admin';
-                let isCoHost=false; try{ const ch=await getDoc(doc(db,'sessions',pendingSessionId,'co_hosts',currentUserId)); isCoHost=ch.exists() && ch.data().isActive; }catch{}
-                if(!isFree && !communityFree && price>0 && !isModerator && !isCoHost && walletSettings.isWalletPayToUse){
-                    const paidQ=await getDocs(query(collection(db,'transactions'), where('userId','==',currentUserId), where('sessionId','==',pendingSessionId), where('status','==','succeeded')));
-                    const alreadyPaid=paidQ.docs.some(d=>{ const t=d.data(); return t.type==='session_payment'||!t.type; });
-                    if(!alreadyPaid && (userProfile?.walletBalance||0) < price){
-                        showToast(`Insufficient balance. Need GHS ${(price/100).toFixed(2)}, you have GHS ${((userProfile?.walletBalance||0)/100).toFixed(2)}. Please top up.`,'error',true);
-                        confirmJoinBtn.disabled=false; confirmJoinBtn.innerText='Enter Classroom'; return;
-                    }
-                }
-            }
-        }catch(e){ console.error('wallet block check',e); }
-
         // Enroll Logic (isHidden handling, amount 0 record for dashboard list; actual deduct happens at classroom entry)
         const qTx = query(collection(db, 'transactions'), where('userId', '==', currentUserId), where('sessionId', '==', pendingSessionId));
         const snap = await getDocs(qTx);

@@ -42,6 +42,7 @@ export default function ClassroomPage() {
     const [studentIndex, setStudentIndex] = useState('');
     const [submittingProfile, setSubmittingProfile] = useState(false);
     const [joinMicEnabled, setJoinMicEnabled] = useState(true);
+    const [insufficientBalance, setInsufficientBalance] = useState<{ needed: number; have: number } | null>(null);
 
     console.log('[ClassroomPage] Render - loading:', loading, 'authLoading:', authLoading, 'sessionLoading:', sessionLoading, 'sessionError:', !!sessionError, 'user:', !!user, 'session:', !!session, 'profile:', !!profile);
 
@@ -109,16 +110,32 @@ export default function ClassroomPage() {
                 const subDoc = await getDoc(doc(db, 'system_settings', 'subscription'));
                 const subData = subDoc.data();
                 const isPayToUse = subData?.isPayToUse ?? true;
-                const perClassFee = subData?.perClassFee ?? 600; // default GHS 6 = 600 pesewas
+
+                // Get session price (admin-set per class) or fallback to wallet default
+                let perClassFee = session.price || 0;
+                if (!perClassFee) {
+                    const walletDoc = await getDoc(doc(db, 'system_settings', 'wallet'));
+                    const walletData = walletDoc.data();
+                    perClassFee = walletData?.defaultSessionFee ?? 600;
+                }
+
+                // Check if session is free
+                let isFree = session.isFree || perClassFee === 0;
+                if (!isFree && session.groupId) {
+                    try {
+                        const groupSnap = await getDoc(doc(db, 'groups', session.groupId));
+                        if (groupSnap.exists() && groupSnap.data()?.isFreeSessions) isFree = true;
+                    } catch {}
+                }
 
                 // Wallet balance check for students
-                if (!isModerator && isPayToUse) {
+                if (!isModerator && isPayToUse && !isFree) {
                     const walletBalance = profile?.walletBalance || 0;
                     console.log('[Classroom:VerifyAccess] walletBalance:', walletBalance, 'perClassFee:', perClassFee);
                     if (walletBalance < perClassFee) {
-                        console.warn('[Classroom:VerifyAccess] Insufficient wallet balance, redirecting.');
-                        showAlert('Insufficient wallet balance. Please top up to join this class.', 'error');
-                        window.location.href = '/dashboard.html';
+                        console.warn('[Classroom:VerifyAccess] Insufficient wallet balance.');
+                        setInsufficientBalance({ needed: perClassFee, have: walletBalance });
+                        setLoading(false);
                         return;
                     }
 
@@ -251,6 +268,32 @@ export default function ClassroomPage() {
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8F9FF]"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
 
+    if (insufficientBalance) {
+        return (
+            <div className="min-h-screen bg-[#F8F9FF] flex items-center justify-center p-8 animate-in fade-in duration-500">
+                <div className="max-w-md w-full space-y-8 text-center">
+                    <div className="space-y-4">
+                        <div className="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mx-auto border border-red-100">
+                            <span className="text-3xl">💰</span>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-red-500 uppercase tracking-[0.4em]">Insufficient Balance</p>
+                            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Top Up Required</h1>
+                            <p className="text-sm text-slate-500 font-medium">You need GHS {(insufficientBalance.needed / 100).toFixed(2)} to enter this class. Your balance is GHS {(insufficientBalance.have / 100).toFixed(2)}.</p>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+                        <p className="text-xs text-slate-500">Add funds to your wallet to join this class.</p>
+                        <div className="flex gap-3">
+                            <a href="/wallet.html" className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/10 active:scale-95 transition-all text-center">Top Up Wallet</a>
+                            <a href="/dashboard.html" className="flex-1 py-3.5 bg-white text-slate-500 rounded-xl font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:text-indigo-600 transition-all text-center">Back to Dashboard</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (isScheduledWait || waitingForLecturer) {
         return (
             <div className="min-h-screen bg-[#F8F9FF] flex items-center justify-center p-8 animate-in fade-in duration-700">
@@ -276,7 +319,7 @@ export default function ClassroomPage() {
         );
     }
 
-    if (!session || (!canAccess && !showProfileModal)) return null;
+    if (!session || (!canAccess && !showProfileModal && !insufficientBalance)) return null;
 
     return (
         <div className="min-h-screen bg-black">
