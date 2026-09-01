@@ -723,7 +723,6 @@ confirmJoinBtn.onclick = async () => {
                     const alreadyPaid=paidQ.docs.some(d=>{ const t=d.data(); return t.type==='session_payment'||!t.type; });
                     if(!alreadyPaid && (userProfile?.walletBalance||0) < price){
                         showToast(`Insufficient balance. Need GHS ${(price/100).toFixed(2)}, you have GHS ${((userProfile?.walletBalance||0)/100).toFixed(2)}. Please top up.`,'error',true);
-                        document.getElementById('modal-topup')?.classList.remove('hidden');
                         confirmJoinBtn.disabled=false; confirmJoinBtn.innerText='Enter Classroom'; return;
                     }
                 }
