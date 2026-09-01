@@ -62,7 +62,12 @@ export async function POST(req: NextRequest) {
         const userDoc = await adminDb.collection('profiles').doc(userId).get();
         const user = userDoc.data();
 
-        if (!user?.email) {
+        let email = user?.email;
+        if (!email) {
+            const authUser = await adminAuth.getUser(userId);
+            email = authUser.email;
+        }
+        if (!email) {
             return NextResponse.json(
                 { error: 'User email not found' },
                 { status: 400 }
@@ -71,7 +76,7 @@ export async function POST(req: NextRequest) {
 
         // Initialize Paystack transaction
         const paystackResponse = await initializeTransaction({
-            email: user.email,
+            email: email,
             amount: session.price, // Already in pesewas
             userId,
             sessionId,

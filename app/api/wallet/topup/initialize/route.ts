@@ -43,7 +43,11 @@ export async function POST(req: NextRequest) {
 
         const userDoc = await adminDb.collection('profiles').doc(userId).get();
         const userData = userDoc.data();
-        const email = userData?.email || decoded.email;
+        let email = userData?.email || decoded.email;
+        if (!email) {
+            const authUser = await adminAuth.getUser(userId);
+            email = authUser.email;
+        }
         if (!email) {
             return NextResponse.json({ error: 'User email not found' }, { status: 400 });
         }
