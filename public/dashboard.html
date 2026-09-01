@@ -252,15 +252,18 @@
                         </div>
 
                         <!-- Wallet Balance Card -->
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-green">
+                        <div onclick="openTopUpModal()" class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-green cursor-pointer card-hover group">
                             <div class="flex items-center gap-3 mb-3">
                                 <div class="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600">
                                     <i class="fas fa-wallet text-sm"></i>
                                 </div>
                                 <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Wallet</span>
+                                <button onclick="event.stopPropagation(); refreshWallet()" class="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-[#8888A8] hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-all" title="Refresh balance">
+                                    <i id="wallet-refresh-icon" class="fas fa-sync-alt text-[10px]"></i>
+                                </button>
                             </div>
                             <div id="wallet-balance" class="text-2xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">GHS 0</div>
-                            <button onclick="openTopUpModal()" class="mt-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-green-100 transition-all">Top Up</button>
+                            <p class="text-[11px] text-green-600 font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-all">Top up <i class="fas fa-arrow-right text-[9px]"></i></p>
                         </div>
 
                         <!-- Quick Stats Card -->
@@ -772,6 +775,20 @@
         }
         window.openTopUpModal = () => { document.getElementById('modal-topup').classList.remove('hidden'); document.getElementById('topup-amount').value = ''; };
         window.setTopUpAmount = (pesewas) => { document.getElementById('topup-amount').value = pesewas / 100; };
+        window.refreshWallet = async () => {
+            const icon = document.getElementById('wallet-refresh-icon');
+            if (!currentUser || !icon) return;
+            icon.classList.add('animate-spin');
+            try {
+                const token = await currentUser.getIdToken();
+                const res = await fetch('/api/wallet/reconcile', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (data.newBalance !== undefined) {
+                    document.getElementById('wallet-balance').textContent = 'GHS ' + (data.newBalance / 100).toFixed(2);
+                }
+            } catch (e) { console.error('refresh wallet failed', e); }
+            icon.classList.remove('animate-spin');
+        };
         window.processTopUp = async () => {
             const amt = parseFloat(document.getElementById('topup-amount').value);
             if (!amt || amt < 1) return alert('Minimum top-up is GHS 1');
