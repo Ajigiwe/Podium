@@ -111,41 +111,36 @@ export default function ClassroomPage() {
                 const subData = subDoc.data();
                 const isPayToUse = subData?.isPayToUse ?? true;
 
-                // Get session price (admin-set per class) or fallback to wallet default
-                let perClassFee = session.price || 0;
-                if (!perClassFee) {
-                    const walletDoc = await getDoc(doc(db, 'system_settings', 'wallet'));
-                    const walletData = walletDoc.data();
-                    perClassFee = walletData?.defaultSessionFee ?? 600;
-                }
-
-                // Check if session is free
-                let isFree = session.isFree || perClassFee === 0;
-                if (!isFree && session.groupId) {
+                // Use /api/wallet/deduct for all wallet checks and deductions (Admin SDK)
+                if (!isModerator && isPayToUse) {
                     try {
-                        const groupSnap = await getDoc(doc(db, 'groups', session.groupId));
-                        if (groupSnap.exists() && groupSnap.data()?.isFreeSessions) isFree = true;
-                    } catch {}
-                }
+                        const token = await user.getIdToken();
+                        const deductRes = await fetch('/api/wallet/deduct', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ sessionId }),
+                        });
+                        const deductData = await deductRes.json();
 
-                // Wallet balance check for students
-                if (!isModerator && isPayToUse && !isFree) {
-                    const walletBalance = profile?.walletBalance || 0;
-                    console.log('[Classroom:VerifyAccess] walletBalance:', walletBalance, 'perClassFee:', perClassFee);
-                    if (walletBalance < perClassFee) {
-                        console.warn('[Classroom:VerifyAccess] Insufficient wallet balance.');
-                        setInsufficientBalance({ needed: perClassFee, have: walletBalance });
-                        setLoading(false);
+                        if (deductRes.status === 402 || deductData.insufficient) {
+                            console.warn('[Classroom:VerifyAccess] Insufficient wallet balance.');
+                            setInsufficientBalance({ needed: deductData.required || deductData.price || 0, have: deductData.balance || 0 });
+                            setLoading(false);
+                            return;
+                        }
+                        if (!deductRes.ok && !deductData.alreadyPaid && !deductData.free) {
+                            console.error('[Classroom:VerifyAccess] Deduct failed:', deductData);
+                            showAlert(deductData.error || 'Payment failed', 'error');
+                            window.location.href = '/dashboard.html';
+                            return;
+                        }
+                        console.log('[Classroom:VerifyAccess] Deduct result:', deductData);
+                    } catch (e) {
+                        console.error('[Classroom:VerifyAccess] Deduct error:', e);
+                        showAlert('Network error. Please try again.', 'error');
+                        window.location.href = '/dashboard.html';
                         return;
                     }
-
-                    // Deduct class fee from wallet
-                    const { doc: fsDoc, updateDoc: fsUpdate } = await import('firebase/firestore');
-                    await fsUpdate(fsDoc(db, 'profiles', user.uid), {
-                        walletBalance: walletBalance - perClassFee,
-                        updatedAt: serverTimestamp(),
-                    });
-                    console.log('[Classroom:VerifyAccess] Deducted', perClassFee, 'from wallet. New balance:', walletBalance - perClassFee);
                 }
 
                 console.log('[Classroom:VerifyAccess] Fetching attendance log for sessionId:', sessionId, 'userId:', user.uid);
