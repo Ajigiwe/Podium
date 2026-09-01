@@ -106,13 +106,8 @@ export default function ClassroomPage() {
                     }
                 }
                 
-                console.log('[Classroom:VerifyAccess] Fetching system_settings/subscription...');
-                const subDoc = await getDoc(doc(db, 'system_settings', 'subscription'));
-                const subData = subDoc.data();
-                const isPayToUse = subData?.isPayToUse ?? true;
-
                 // Use /api/wallet/deduct for all wallet checks and deductions (Admin SDK)
-                if (!isModerator && isPayToUse) {
+                if (!isModerator) {
                     try {
                         const token = await user.getIdToken();
                         const deductRes = await fetch('/api/wallet/deduct', {
