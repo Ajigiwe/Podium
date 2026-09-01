@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
         // Initialize Paystack transaction
         const paystackResponse = await initializeTransaction({
-            email: user.email,
+            email: email,
             amount,
             userId,
             sessionId: 'wallet_topup',
