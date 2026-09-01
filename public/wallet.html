@@ -28,10 +28,11 @@
 </main>
 </div>
 <div id="modal-topup" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6"><div class="absolute inset-0 bg-[#0D0D1A]/40" onclick="this.parentElement.classList.add('hidden')"></div><div class="bg-white w-full max-w-sm rounded-2xl p-8 relative"><h3 class="font-bold">Top Up Wallet</h3><p class="text-[11px] text-[#8888A8]">GHS only, min GHS 1</p><form id="topup-form" class="mt-4 space-y-3"><input id="topup-amount" type="number" step="0.01" required placeholder="5.00" class="w-full px-4 py-3 border-2 border-[#DDE0F0] rounded-xl text-sm outline-none"><button type="submit" class="w-full py-3 bg-[#1845D4] text-white rounded-xl text-[11px] font-bold uppercase tracking-widest">Pay with Paystack</button></form></div></div>
+<script src="https://js.paystack.co/v2/inline.js"></script>
 <script type="module">
 import { auth, db } from './js/firebase-config.js?v=2';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 onAuthStateChanged(auth, async user=>{
  if(!user){ window.location.href='./auth/login.html'; return;}
  // Auto-reconcile wallet on page load (permanent fix for stuck credits)
@@ -40,9 +41,9 @@ onAuthStateChanged(auth, async user=>{
    const rec=await fetch('/api/wallet/reconcile',{method:'POST',headers:{Authorization:`Bearer ${tok}`}});
    if(rec.ok){ const rj=await rec.json(); if(rj.newBalance!==undefined) console.log('reconciled',rj); }
  }catch(e){ console.error('reconcile failed',e); }
- const pSnap=await getDoc(doc(db,'profiles',user.uid));
- const bal=(pSnap.data()?.walletBalance||0)/100;
- document.getElementById('wallet-balance').innerText='GHS '+bal.toFixed(2);
+ onSnapshot(doc(db,'profiles',user.uid),(snap)=>{
+   if(snap.exists()){ document.getElementById('wallet-balance').innerText='GHS '+(snap.data().walletBalance/100).toFixed(2); }
+ });
  load();
   async function load(){
    const token=await user.getIdToken();
@@ -66,18 +67,34 @@ onAuthStateChanged(auth, async user=>{
   document.getElementById('topup-form').addEventListener('submit', async e=>{
    e.preventDefault();
    const ghs=parseFloat(document.getElementById('topup-amount').value);
+   if(!gs || ghs<1) return alert('Minimum top-up is GHS 1');
    const amt=Math.round(ghs*100);
-   const token=await auth.currentUser.getIdToken();
-   const cb = window.location.origin + '/wallet.html?topup=success';
-   const r=await fetch('/api/wallet/topup/initialize',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({amount:amt, callbackUrl: cb})});
-   const d=await r.json();
-   if(!r.ok){ alert(d.error||'Failed'); return;}
-   window.location.href=d.authorizationUrl;
+   const btn=e.target.querySelector('button[type=submit]');
+   btn.disabled=true; btn.textContent='Initializing...';
+   try{
+    const token=await auth.currentUser.getIdToken();
+    const r=await fetch('/api/wallet/topup/initialize',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({amount:amt})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Failed');
+    const handler=PaystackPop.setup({
+      key:'pk_live_dfaef9f68d88d002fdc2e89eb8156370c5fba1dd',
+      email:user.email||'student@podiumclass.online',
+      amount:amt,
+      currency:'GHS',
+      ref:d.reference,
+      channels:['card','mobile_money'],
+      onClose:()=>{ btn.disabled=false; btn.textContent='Pay with Paystack'; },
+      callback:async(response)=>{
+        try{
+          const vr=await fetch('/api/paystack/verify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({reference:response.reference})});
+        }catch(e){}
+        document.getElementById('modal-topup').classList.add('hidden');
+        btn.disabled=false; btn.textContent='Pay with Paystack';
+      }
+    });
+    handler.openIframe();
+   }catch(err){ alert(err.message||'Network error'); btn.disabled=false; btn.textContent='Pay with Paystack'; }
   });
-  // handle topup return (Paystack may use reference or trxref)
-  const p=new URLSearchParams(window.location.search);
-  const retRef = p.get('reference') || p.get('trxref') || p.get('trRef');
-  if(p.get('topup')==='success' && retRef){ fetch('/api/paystack/verify?reference='+retRef).then(r=>r.json()).then(d=>{ if(d.success) location.reload(); }).catch(()=>{}); }
 });
 </script>
 </body>

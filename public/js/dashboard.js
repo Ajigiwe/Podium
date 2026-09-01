@@ -164,23 +164,7 @@ function updateWalletUI(){
     const minLabel=document.getElementById('topup-min-label');
     if(minLabel) minLabel.innerText = 'Minimum GHS ' + (walletSettings.minTopUpAmount/100).toFixed(2) + ' · GHS only';
 }
-// Top-up modal wiring
-document.getElementById('topup-btn')?.addEventListener('click', ()=> document.getElementById('modal-topup')?.classList.remove('hidden'));
-document.getElementById('topup-form')?.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const ghs=parseFloat(document.getElementById('topup-amount').value);
-    const amt=Math.round(ghs*100);
-    if(isNaN(amt) || amt < walletSettings.minTopUpAmount){ showToast('Minimum GHS '+(walletSettings.minTopUpAmount/100).toFixed(2),'error'); return;}
-    const btn=document.getElementById('topup-submit'); btn.disabled=true; btn.innerText='Redirecting...';
-    try{
-        const token=await auth.currentUser.getIdToken();
-        const cb = window.location.origin + '/dashboard.html?topup=success';
-        const r=await fetch('/api/wallet/topup/initialize',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({amount:amt, callbackUrl: cb})});
-        const d=await r.json();
-        if(!r.ok) throw new Error(d.error||'Failed');
-        window.location.href=d.authorizationUrl;
-    }catch(err){ showToast(err.message,'error'); btn.disabled=false; btn.innerText='Pay with Paystack';}
-});
+// Top-up modal wiring — handled by inline script in dashboard.html (PaystackPop inline)
 
 // UI Helpers
 const loadingBar = document.getElementById('top-loading-bar');

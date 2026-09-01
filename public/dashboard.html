@@ -753,6 +753,7 @@
         </div>
     </div>
 
+    <script src="https://js.paystack.co/v2/inline.js"></script>
     <script src="./js/theme-toggle.js"></script>
 
     <script type="module">
@@ -778,12 +779,39 @@
             btn.disabled = true; btn.textContent = 'Initializing...';
             try {
                 const token = await currentUser.getIdToken();
-                const res = await fetch('/api/wallet/topup', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ amount: Math.round(amt * 100) }) });
+                const res = await fetch('/api/wallet/topup/initialize', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ amount: Math.round(amt * 100) }) });
                 const data = await res.json();
-                if (data.authorizationUrl) window.location.href = data.authorizationUrl;
-                else alert(data.error || 'Failed');
-            } catch (e) { alert('Network error'); }
-            btn.disabled = false; btn.textContent = 'Pay Now';
+                if (!res.ok) throw new Error(data.error || 'Failed');
+
+                const handler = PaystackPop.setup({
+                    key: 'pk_live_dfaef9f68d88d002fdc2e89eb8156370c5fba1dd',
+                    email: currentUser.email || 'student@podiumclass.online',
+                    amount: Math.round(amt * 100),
+                    currency: 'GHS',
+                    ref: data.reference,
+                    channels: ['card', 'mobile_money'],
+                    onClose: () => { btn.disabled = false; btn.textContent = 'Pay Now'; },
+                    callback: async (response) => {
+                        btn.textContent = 'Verifying...';
+                        try {
+                            const vRes = await fetch('/api/paystack/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ reference: response.reference }) });
+                            const vData = await vRes.json();
+                            if (vData.success || vData.status) {
+                                document.getElementById('modal-topup').classList.add('hidden');
+                                showToast('Top-up successful!', 'success');
+                            } else {
+                                showToast('Payment received. Balance will update shortly.', 'success');
+                                document.getElementById('modal-topup').classList.add('hidden');
+                            }
+                        } catch (e) {
+                            showToast('Payment received. Balance will update shortly.', 'success');
+                            document.getElementById('modal-topup').classList.add('hidden');
+                        }
+                        btn.disabled = false; btn.textContent = 'Pay Now';
+                    }
+                });
+                handler.openIframe();
+            } catch (e) { alert(e.message || 'Network error'); btn.disabled = false; btn.textContent = 'Pay Now'; }
         };
     </script>
 

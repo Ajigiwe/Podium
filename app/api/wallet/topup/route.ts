@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             authorizationUrl: paystackResponse.data.authorization_url,
             reference: paystackResponse.data.reference,
+            accessCode: paystackResponse.data.access_code,
         });
     } catch (error: any) {
         console.error('Wallet top-up error:', error);
