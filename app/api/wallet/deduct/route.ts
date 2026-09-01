@@ -32,7 +32,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Session not found' }, { status: 404 });
         }
         const session: any = sessionSnap.data();
-        const price: number = session.price ?? 0;
+        let price: number = session.price ?? 0;
+
+        // Fall back to wallet default session fee if session has no custom price
+        if (!price) {
+            try {
+                const walletDoc = await adminDb.collection('system_settings').doc('wallet').get();
+                if (walletDoc.exists) {
+                    price = walletDoc.data()?.defaultSessionFee ?? 0;
+                }
+            } catch {}
+        }
+
         const isFree: boolean = session.isFree === true || price === 0;
 
         // Moderator bypass
