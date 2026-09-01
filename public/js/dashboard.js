@@ -722,7 +722,7 @@ confirmJoinBtn.onclick = async () => {
                     const paidQ=await getDocs(query(collection(db,'transactions'), where('userId','==',currentUserId), where('sessionId','==',pendingSessionId), where('status','==','succeeded')));
                     const alreadyPaid=paidQ.docs.some(d=>{ const t=d.data(); return t.type==='session_payment'||!t.type; });
                     if(!alreadyPaid && (userProfile?.walletBalance||0) < price){
-                        showToast(`Insufficient balance. Need GHS ${(price/100).toFixed(2)}, you have GHS ${((userProfile?.walletBalance||0)/100).toFixed(2)}. Please top up.`,'error');
+                        showToast(`Insufficient balance. Need GHS ${(price/100).toFixed(2)}, you have GHS ${((userProfile?.walletBalance||0)/100).toFixed(2)}. Please top up.`,'error',true);
                         document.getElementById('modal-topup')?.classList.remove('hidden');
                         confirmJoinBtn.disabled=false; confirmJoinBtn.innerText='Enter Classroom'; return;
                     }
@@ -767,15 +767,18 @@ if (openCreateCommBtn) openCreateCommBtn.onclick = () => openModal('modal-create
 if (openJoinCommBtn) openJoinCommBtn.onclick = () => openModal('modal-join-community');
 
 // Toast Helper
-function showToast(msg, type = 'success') {
+function showToast(msg, type = 'success', sticky = false) {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
+    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300 ${sticky ? 'cursor-pointer' : ''}`;
     toast.innerText = msg;
+    if (sticky) toast.title = 'Tap to dismiss';
     document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    const dismiss = () => { toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom'); setTimeout(() => toast.remove(), 300); };
+    if (sticky) {
+        toast.addEventListener('click', dismiss);
+    } else {
+        setTimeout(dismiss, 3000);
+    }
 }
 window.showToast = showToast;
 
