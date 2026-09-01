@@ -67,7 +67,7 @@ onAuthStateChanged(auth, async user=>{
   document.getElementById('topup-form').addEventListener('submit', async e=>{
    e.preventDefault();
    const ghs=parseFloat(document.getElementById('topup-amount').value);
-   if(!gs || ghs<1) return alert('Minimum top-up is GHS 1');
+   if(!ghs || ghs<1) return alert('Minimum top-up is GHS 1');
    const amt=Math.round(ghs*100);
    const btn=e.target.querySelector('button[type=submit]');
    btn.disabled=true; btn.textContent='Initializing...';
