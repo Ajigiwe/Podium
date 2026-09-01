@@ -3,14 +3,9 @@ import { verifyTransaction } from '@/lib/paystack/initialize';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
-/**
- * Verify Paystack payment via API
- * This is a fallback if the webhook fails or is delayed
- */
-export async function GET(req: NextRequest) {
-    const searchParams = req.nextUrl.searchParams;
-    const reference = searchParams.get('reference') || searchParams.get('trxref') || searchParams.get('trRef');
+export const dynamic = 'force-dynamic';
 
+async function handleVerify(reference: string) {
     if (!reference) {
         return NextResponse.json(
             { error: 'Transaction reference is required' },
@@ -19,7 +14,6 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // 1. Verify with Paystack
         const response = await verifyTransaction(reference);
 
         if (!response.status || response.data.status !== 'success') {
@@ -31,14 +25,12 @@ export async function GET(req: NextRequest) {
 
         const { amount, metadata, channel } = response.data;
 
-        // 2. Check if transaction already exists in Firestore to avoid duplicates
         const existingTxDocs = await adminDb
             .collection('transactions')
             .where('paystackReference', '==', reference)
             .get();
 
         if (!existingTxDocs.empty) {
-            // Permanent fix: if this is a top_up but wallet not yet credited, reconcile
             const existing = existingTxDocs.docs[0].data() as any;
             const isTopUpExisting = existing.type === 'top_up' || response.data.metadata?.type === 'top_up';
             if (isTopUpExisting) {
@@ -56,7 +48,7 @@ export async function GET(req: NextRequest) {
                             if(t.type==='top_up') correct+=t.amount;
                             else if(t.type==='refund') correct+=t.amount;
                             else if(t.type==='session_payment') correct-=t.amount;
-                            else if(!t.type && t.sessionId==='wallet_topup' && t.amount>0) correct+=t.amount; // legacy top_up without type
+                            else if(!t.type && t.sessionId==='wallet_topup' && t.amount>0) correct+=t.amount;
                         });
                         if (correct < 0) correct = 0;
                         const profSnap = await adminDb.collection('profiles').doc(uid).get();
@@ -86,14 +78,12 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        // 3. Create transaction record if it doesn't exist
-        // Wallet top-up also credits balance atomically
         const isTopUp = metadata?.type === 'top_up';
         const transactionData: any = {
             userId: metadata.userId || 'unknown',
             sessionId: metadata.sessionId || 'unknown',
             paystackReference: reference,
-            amount: amount, // Amount in pesewas
+            amount: amount,
             currency: 'GHS',
             paymentChannel: channel,
             status: 'succeeded',
@@ -108,7 +98,6 @@ export async function GET(req: NextRequest) {
             if (!userId || userId === 'unknown') {
                 return NextResponse.json({ error: 'Missing userId in metadata' }, { status: 400 });
             }
-            // Idempotent: re-check before crediting (webhook may have already credited)
             const already = await adminDb.collection('transactions').where('paystackReference', '==', reference).get();
             if (!already.empty) {
                 return NextResponse.json({
@@ -117,7 +106,6 @@ export async function GET(req: NextRequest) {
                     data: already.docs[0].data()
                 });
             }
-            // Atomically credit wallet
             const profileRef = adminDb.collection('profiles').doc(userId);
             await adminDb.runTransaction(async (tx) => {
                 const profileSnap = await tx.get(profileRef);
@@ -154,5 +142,20 @@ export async function GET(req: NextRequest) {
             { error: error.message || 'Failed to verify payment' },
             { status: 500 }
         );
+    }
+}
+
+export async function GET(req: NextRequest) {
+    const searchParams = req.nextUrl.searchParams;
+    const reference = searchParams.get('reference') || searchParams.get('trxref') || searchParams.get('trRef');
+    return handleVerify(reference || '');
+}
+
+export async function POST(req: NextRequest) {
+    try {
+        const body = await req.json();
+        return handleVerify(body.reference || '');
+    } catch {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 }
