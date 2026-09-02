@@ -34,7 +34,15 @@ export async function POST(req: NextRequest) {
         const session: any = sessionSnap.data();
         let price: number = session.price ?? 0;
 
-        // Fall back to wallet default session fee if session has no custom price
+        // Fee precedence: session.price > subscription.perClassFee (admin panel setting) > wallet.defaultSessionFee
+        if (!price) {
+            try {
+                const subDoc = await adminDb.collection('system_settings').doc('subscription').get();
+                if (subDoc.exists) {
+                    price = subDoc.data()?.perClassFee ?? 0;
+                }
+            } catch {}
+        }
         if (!price) {
             try {
                 const walletDoc = await adminDb.collection('system_settings').doc('wallet').get();
