@@ -493,7 +493,12 @@ window.toggleLive = async (id, current, e) => {
         if(nextState){ updates.startedAt=serverTimestamp(); updates.endedAt=null; updates.refundProcessed=false; }
         else { updates.endedAt=serverTimestamp(); updates.status='ended'; }
         await updateDoc(doc(db, 'sessions', id), updates);
-        if(!nextState){ fetch('/api/wallet/refund',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:id})}).catch(()=>{}); }
+        if(!nextState){
+            try {
+                const token = await auth.currentUser.getIdToken();
+                fetch('/api/wallet/refund',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({sessionId:id})}).catch(()=>{});
+            } catch(err) { console.error('Failed to call refund API', err); }
+        }
         
         // Notification Logic (Optional Parity)
         if (nextState) {
