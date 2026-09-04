@@ -343,7 +343,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <button id="open-join-community-modal" class="px-4 py-2.5 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 text-[#0D0D1A] dark:text-white text-[13px] font-semibold rounded-lg hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-all">Join by Code</button>
-                            <button id="open-create-community-modal" class="px-5 py-2.5 bg-[#1845D4] text-white text-[13px] font-bold rounded-lg hover:bg-[#0F2FA8] transition-all flex items-center gap-2 shadow-lg shadow-blue-600/10">
+                            <button id="open-create-community-modal" class="px-5 py-2.5 bg-[#1845D4] text-white text-[13px] font-bold rounded-lg hover:bg-[#0F2FA8] transition-all flex items-center gap-2">
                                 <i class="fas fa-plus text-xs"></i> Create Space
                             </button>
                         </div>
@@ -351,10 +351,7 @@
 
                     <div class="space-y-8">
                         <div class="space-y-4">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-id-badge text-[#1845D4] text-xs"></i>
-                                <h3 class="text-[12px] font-bold text-[#8888A8] uppercase tracking-widest">My Registry</h3>
-                            </div>
+                            <h3 class="text-[12px] font-bold text-[#8888A8] uppercase tracking-widest">My Communities</h3>
                             <div id="my-communities-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 <div class="h-48 skeleton rounded-xl"></div>
                                 <div class="h-48 skeleton rounded-xl"></div>
@@ -363,10 +360,7 @@
                         </div>
 
                         <div class="space-y-4">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-globe text-emerald-600 text-xs"></i>
-                                <h3 class="text-[12px] font-bold text-[#8888A8] uppercase tracking-widest">Discover Public Spaces</h3>
-                            </div>
+                            <h3 class="text-[12px] font-bold text-[#8888A8] uppercase tracking-widest">Discover</h3>
                             <div id="public-communities-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
                         </div>
                     </div>
@@ -430,16 +424,16 @@
     <div id="workspace-view" class="hidden fixed inset-0 z-[100] bg-[#F8F9FC] dark:bg-[#080810] overflow-y-auto">
         <nav class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 h-16 flex items-center sticky top-0 z-10 transition-all">
             <div class="max-w-6xl mx-auto px-6 w-full flex justify-between items-center">
-                <button id="close-workspace" class="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all bg-slate-100 hover:bg-slate-200/70 dark:bg-slate-800 dark:hover:bg-slate-700/80 px-4 py-2 rounded-full text-xs font-semibold tracking-wide shadow-sm">
+                <button id="close-workspace" class="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all px-3 py-2 rounded-lg text-xs font-semibold">
                     <i class="fas fa-arrow-left text-xs"></i>
-                    <span>Exit Workspace</span>
+                    <span>Exit</span>
                 </button>
                 <div class="text-center hidden sm:block">
-                    <h2 id="workspace-title" class="text-[17px] font-serif font-black tracking-tight text-slate-900 dark:text-white">Community Name</h2>
-                    <p id="workspace-code" class="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full uppercase tracking-[0.25em] mt-1 inline-block">CODE: XXXXXX</p>
+                    <h2 id="workspace-title" class="text-[16px] font-bold tracking-tight text-slate-900 dark:text-white">Community Name</h2>
+                    <p id="workspace-code" class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">CODE: XXXXXX</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button id="header-grant-lecturer-btn" class="hidden px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-full text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all flex items-center gap-1.5 active:scale-95">
+                    <button id="header-grant-lecturer-btn" class="hidden px-4 py-2 bg-[#1845D4] hover:bg-[#0F2FA8] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5">
                         <i class="fas fa-user-plus text-xs"></i> Grant Lecturer
                     </button>
                 </div>
@@ -447,43 +441,40 @@
         </nav>
         <div class="max-w-6xl mx-auto px-6 py-10">
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <aside class="space-y-1.5">
-                    <button onclick="window.switchWorkspaceTab('bulletin')" id="w-tab-bulletin" class="w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-600 dark:border-indigo-400 shadow-sm shadow-indigo-500/5">
+                <aside class="space-y-1">
+                    <button onclick="window.switchWorkspaceTab('bulletin')" id="w-tab-bulletin" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
                         <i class="fas fa-bullhorn w-4"></i> Bulletin
                     </button>
-                    <button onclick="window.switchWorkspaceTab('live')" id="w-tab-live" class="w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white">
-                        <div class="flex items-center gap-3"><i class="fas fa-video w-4"></i> Live Classes</div>
+                    <button onclick="window.switchWorkspaceTab('live')" id="w-tab-live" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
+                        <i class="fas fa-video w-4"></i> <span class="flex-1 text-left">Live Classes</span>
                         <span id="live-indicator" class="hidden w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
                     </button>
-                    <button onclick="window.switchWorkspaceTab('resources')" id="w-tab-resources" class="w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white">
+                    <button onclick="window.switchWorkspaceTab('resources')" id="w-tab-resources" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
                         <i class="fas fa-folder-open w-4"></i> Resources
                     </button>
-                    <button onclick="window.switchWorkspaceTab('members')" id="w-tab-members" class="w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white">
-                        <i class="fas fa-users w-4"></i> Member Registry
+                    <button onclick="window.switchWorkspaceTab('members')" id="w-tab-members" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
+                        <i class="fas fa-users w-4"></i> Members
                     </button>
-                    <button onclick="window.switchWorkspaceTab('requests')" id="w-tab-requests" class="hidden w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white">
-                        <div class="flex items-center gap-3"><i class="fas fa-user-plus w-4"></i> Requests</div>
-                        <span id="requests-count" class="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[9px] font-bold">0</span>
+                    <button onclick="window.switchWorkspaceTab('requests')" id="w-tab-requests" class="hidden w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
+                        <i class="fas fa-user-plus w-4"></i> <span class="flex-1 text-left">Requests</span>
+                        <span id="requests-count" class="bg-[#1845D4] text-white px-2 py-0.5 rounded-full text-[9px] font-bold">0</span>
                     </button>
                 </aside>
                 <div class="lg:col-span-3 space-y-10">
                     <div id="w-content-bulletin" class="space-y-8">
-                        <div id="announcement-composer" class="hidden bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4 transition-all">
-                            <h4 class="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.25em] block mb-1">Broadcast Announcement</h4>
+                        <div id="announcement-composer" class="hidden bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 space-y-4">
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">New Announcement</h4>
                             <textarea id="announcement-text" class="w-full h-24 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl outline-none text-[13px] font-medium resize-none transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400" placeholder="What's the update for today?"></textarea>
                             <div class="flex justify-end">
-                                <button id="post-announcement" class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl text-[11px] font-bold uppercase tracking-[0.15em] hover:shadow-lg hover:shadow-indigo-500/10 active:scale-[0.98] transition-all shadow-md shadow-indigo-500/5">Post Update</button>
+                                <button id="post-announcement" class="px-5 py-2.5 bg-[#1845D4] hover:bg-[#0F2FA8] text-white rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all">Post</button>
                             </div>
                         </div>
                         <div id="announcements-list" class="space-y-6"></div>
                     </div>
 
-                    <div id="w-content-live" class="hidden space-y-6">
-                        <div class="flex items-center gap-2 px-2">
-                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                            <h3 class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Happening Now</h3>
-                        </div>
-                        <div id="workspace-live-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                    <div id="w-content-live" class="hidden space-y-4">
+                        <h3 class="text-[12px] font-bold text-[#8888A8] uppercase tracking-widest">Live Classes</h3>
+                        <div id="workspace-live-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                     </div>
 
                     <div id="w-content-resources" class="hidden space-y-8">
@@ -516,9 +507,9 @@
                     </div>
 
                     <div id="w-content-members" class="hidden space-y-6">
-                        <div id="lecturer-management-section" class="hidden bg-[#FDFBF7] dark:bg-slate-900 border-2 border-[#1845D4]/20 rounded-xl p-6 shadow-sm mb-6">
-                            <h4 class="text-[11px] font-bold text-[#1845D4] uppercase tracking-[0.1em] mb-4">Grant Lecturer Access</h4>
-                            <p class="text-[12px] text-[#444460] dark:text-slate-400 mb-4">Grant a lecturer the ability to create classes for this space.</p>
+                        <div id="lecturer-management-section" class="hidden bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-5 mb-6">
+                            <h4 class="text-[11px] font-bold text-[#1845D4] uppercase tracking-widest mb-3">Grant Lecturer Access</h4>
+                            <p class="text-[12px] text-[#8888A8] mb-3">Allow a lecturer to create classes for this space.</p>
                             <div class="flex gap-2">
                                 <input id="grant-lecturer-email" type="email" class="flex-1 px-4 py-2 border border-[#DDE0F0] dark:border-slate-800 rounded-lg outline-none text-[13px] font-medium dark:bg-slate-950 focus:border-[#1845D4]" placeholder="Lecturer's Email">
                                 <button id="grant-lecturer-btn" class="px-6 py-2 bg-[#1845D4] text-white rounded-lg text-[11px] font-bold uppercase tracking-widest hover:bg-[#0F2FA8] transition-all">Grant</button>
@@ -654,7 +645,7 @@
                 <div class="flex items-center gap-2 px-1"><input type="checkbox" id="comm-is-public" checked class="w-4 h-4 rounded border-[#DDE0F0] dark:border-slate-800 text-[#1845D4] focus:ring-[#1845D4]"><label for="comm-is-public" class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest cursor-pointer">Public Discovery</label></div>
                 <div class="flex gap-3 justify-end pt-5">
                     <button type="button" class="close-modal px-6 py-2.5 border-2 border-[#DDE0F0] dark:border-slate-800 text-[#0D0D1A] dark:text-white rounded-lg text-[14px] font-medium hover:border-[#1845D4]">Cancel</button>
-                    <button type="submit" class="px-6 py-2.5 bg-[#1845D4] text-white rounded-lg text-[14px] font-bold hover:bg-[#0F2FA8] transition-all shadow-lg shadow-blue-600/10">Establish Community</button>
+                    <button type="submit" class="px-6 py-2.5 bg-[#1845D4] text-white rounded-lg text-[14px] font-bold hover:bg-[#0F2FA8] transition-all">Create Community</button>
                 </div>
             </form>
         </div>
@@ -668,7 +659,7 @@
                 <button class="close-modal w-8 h-8 flex items-center justify-center border border-[#DDE0F0] dark:border-slate-800 rounded-lg text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-950 transition-colors"><i class="fas fa-times text-xs"></i></button>
             </div>
             <form id="join-community-form" class="space-y-6 text-center">
-                <input type="text" id="comm-join-code" required placeholder="XXXXXX" class="w-full px-6 py-4 bg-[#F5F6FA] dark:bg-slate-950 border-2 border-[#DDE0F0] dark:border-slate-800 focus:border-[#1845D4] rounded-xl outline-none text-2xl font-black text-center tracking-[0.5em] uppercase transition-all">
+                <input type="text" id="comm-join-code" required placeholder="XXXXXX" class="w-full px-6 py-4 bg-[#F5F6FA] dark:bg-slate-950 border border-[#DDE0F0] dark:border-slate-800 focus:border-[#1845D4] rounded-xl outline-none text-xl font-bold text-center tracking-[0.4em] uppercase transition-all">
                 <button type="submit" class="w-full py-4 bg-[#1845D4] text-white rounded-xl font-bold text-[11px] uppercase tracking-widest shadow-xl shadow-blue-600/10 active:scale-95">Request Access</button>
             </form>
         </div>
@@ -698,14 +689,14 @@
         <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-8 relative shadow-2xl animate-in zoom-in-95 duration-200">
             <div class="flex justify-between items-start mb-6">
                 <div>
-                    <h2 class="text-xl font-serif font-black tracking-tight text-slate-900 dark:text-white">Grant Lecturer Access</h2>
+                    <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Grant Lecturer Access</h2>
                     <p class="text-[12px] text-slate-500 mt-1">Allow a lecturer to create classes for this space.</p>
                 </div>
                 <button onclick="document.getElementById('modal-grant-lecturer').classList.add('hidden')" class="w-8 h-8 flex items-center justify-center border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-950 transition-colors">✕</button>
             </div>
             <div class="space-y-4">
                 <div class="space-y-1.5"><label class="text-[11px] font-bold uppercase tracking-widest text-slate-500">Lecturer's Email</label><input id="grant-lecturer-email-modal" type="email" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 rounded-xl outline-none text-[13px] font-medium transition-all text-slate-800 dark:text-slate-100" placeholder="name@university.edu"></div>
-                <button id="grant-lecturer-btn-modal" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl text-[11px] font-bold uppercase tracking-widest hover:shadow-lg hover:shadow-indigo-500/10 active:scale-[0.98] transition-all">Grant Access</button>
+                <button id="grant-lecturer-btn-modal" class="w-full py-3 bg-[#1845D4] hover:bg-[#0F2FA8] text-white rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all">Grant Access</button>
             </div>
         </div>
     </div>
