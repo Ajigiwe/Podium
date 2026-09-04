@@ -487,39 +487,28 @@
                     </div>
 
                     <div id="w-content-resources" class="hidden space-y-8">
-                        <div class="flex items-center justify-between border-b-2 border-[#DDE0F0] dark:border-slate-800 pb-4">
-                            <div>
-                                <h3 class="text-2xl font-serif font-black text-[#1845D4] dark:text-white tracking-tight">The Library</h3>
-                                <p class="text-[13px] text-[#8888A8] font-serif italic mt-1">A curated catalog of academic materials and references.</p>
-                            </div>
-                            <div class="w-12 h-12 bg-[#F5F6FA] dark:bg-slate-900 border-2 border-[#DDE0F0] dark:border-slate-800 rounded-full flex items-center justify-center text-[#1845D4] dark:text-blue-400">
-                                <i class="fas fa-book-reader text-lg"></i>
-                            </div>
+                        <div class="flex items-center gap-4 pb-4 border-b border-[#DDE0F0] dark:border-slate-800">
+                            <h3 class="text-xl font-serif font-bold text-[#1845D4] dark:text-white tracking-tight">The Library</h3>
+                            <p class="text-[12px] text-[#8888A8] font-medium">Study materials and references</p>
                         </div>
-                        <div id="resource-composer" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="bg-white dark:bg-slate-900 rounded-lg p-6 border border-[#DDE0F0] dark:border-slate-800 shadow-sm relative overflow-hidden">
-                                <div class="absolute top-0 right-0 w-16 h-16 bg-[#F5F6FA]/50 dark:bg-slate-800/50 rounded-bl-full -z-0"></div>
-                                <div class="relative z-10 space-y-4">
-                                    <h4 class="text-[10px] font-serif font-bold text-[#1845D4] dark:text-[#8888A8] uppercase tracking-[0.2em] flex items-center gap-2"><i class="fas fa-bookmark"></i> Catalog Reference</h4>
-                                    <input id="res-link-title" class="w-full px-0 py-2 border-b-2 border-[#DDE0F0] dark:border-slate-700 bg-transparent focus:border-[#1845D4] dark:focus:border-[#1845D4] outline-none text-[14px] font-serif font-medium text-[#0D0D1A] dark:text-white transition-colors" placeholder="Title (e.g. Course Syllabus)">
-                                    <div class="flex gap-4 items-end">
-                                        <input id="res-link-url" class="flex-1 px-0 py-2 border-b-2 border-[#DDE0F0] dark:border-slate-700 bg-transparent focus:border-[#1845D4] dark:focus:border-[#1845D4] outline-none text-[14px] font-serif text-[#0D0D1A] dark:text-white transition-colors" placeholder="Paste URL here...">
-                                        <button id="share-link" class="px-5 py-2 bg-[#1845D4] dark:bg-[#1845D4] text-white dark:text-white rounded text-[11px] font-serif font-bold uppercase tracking-widest hover:bg-[#0F2FA8] dark:hover:bg-[#0F2FA8] transition-all">Index</button>
-                                    </div>
+                        <div id="resource-composer" class="hidden grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 space-y-4">
+                                <h4 class="text-[10px] font-bold text-[#1845D4] uppercase tracking-wider flex items-center gap-2"><i class="fas fa-bookmark"></i> Catalog Reference</h4>
+                                <input id="res-link-title" class="w-full px-0 py-2 border-b border-[#DDE0F0] dark:border-slate-700 bg-transparent focus:border-[#1845D4] outline-none text-[14px] font-medium text-slate-900 dark:text-white" placeholder="Title (e.g. Course Syllabus)">
+                                <div class="flex gap-3 items-end">
+                                    <input id="res-link-url" class="flex-1 px-0 py-2 border-b border-[#DDE0F0] dark:border-slate-700 bg-transparent focus:border-[#1845D4] outline-none text-[14px] text-slate-900 dark:text-white" placeholder="Paste URL here...">
+                                    <button id="share-link" class="px-5 py-2 bg-[#1845D4] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider hover:bg-[#0F2FA8] transition-all">Index</button>
                                 </div>
                             </div>
-                            <div class="bg-white dark:bg-slate-900 rounded-lg p-6 border border-[#DDE0F0] dark:border-slate-800 shadow-sm relative overflow-hidden">
-                                <div class="absolute top-0 right-0 w-16 h-16 bg-[#F5F6FA]/50 dark:bg-slate-800/50 rounded-bl-full -z-0"></div>
-                                <div class="relative z-10 space-y-4">
-                                    <h4 class="text-[10px] font-serif font-bold text-[#1845D4] dark:text-[#8888A8] uppercase tracking-[0.2em] flex items-center gap-2"><i class="fas fa-archive"></i> Archive Material</h4>
-                                    <label class="w-full h-20 border-2 border-dashed border-[#8888A8]/40 dark:border-slate-700 rounded-lg flex items-center justify-center gap-3 transition-all cursor-pointer hover:border-[#1845D4] dark:hover:border-[#1845D4] hover:bg-[#F5F6FA] dark:hover:bg-slate-800 group">
-                                        <div class="w-8 h-8 rounded-full bg-[#E8EEFF] dark:bg-slate-700 flex items-center justify-center text-[#1845D4] dark:text-slate-400 group-hover:bg-[#1845D4] dark:group-hover:bg-[#1845D4] group-hover:text-white dark:group-hover:text-white transition-colors"><i class="fas fa-upload text-xs"></i></div>
-                                        <span class="text-[11px] font-serif font-bold text-[#1845D4] dark:text-slate-400 uppercase tracking-widest">Select Document</span>
-                                        <input type="file" id="res-file-input" class="hidden">
-                                    </label>
-                                    <div id="upload-progress-container" class="hidden h-1 w-full bg-[#DDE0F0] dark:bg-slate-800 rounded-full overflow-hidden">
-                                        <div id="upload-progress-bar" class="h-full bg-[#1845D4] dark:bg-[#1845D4] transition-all duration-300" style="width: 0%"></div>
-                                    </div>
+                            <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 space-y-4">
+                                <h4 class="text-[10px] font-bold text-[#1845D4] uppercase tracking-wider flex items-center gap-2"><i class="fas fa-archive"></i> Archive Material</h4>
+                                <label class="w-full h-16 border-2 border-dashed border-[#8888A8]/40 dark:border-slate-700 rounded-lg flex items-center justify-center gap-3 cursor-pointer hover:border-[#1845D4] hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-all">
+                                    <i class="fas fa-upload text-xs text-[#1845D4]"></i>
+                                    <span class="text-[11px] font-bold text-[#1845D4] uppercase tracking-widest">Select Document</span>
+                                    <input type="file" id="res-file-input" class="hidden">
+                                </label>
+                                <div id="upload-progress-container" class="hidden h-1 w-full bg-[#DDE0F0] dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <div id="upload-progress-bar" class="h-full bg-[#1845D4] transition-all duration-300" style="width: 0%"></div>
                                 </div>
                             </div>
                         </div>
