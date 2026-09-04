@@ -1,5 +1,5 @@
 // public/js/profile.js
-import { auth, db } from './firebase-config.js?v=2';
+import { auth, db } from './firebase-config.js?v=3';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     doc, getDoc, updateDoc, setDoc, serverTimestamp, collection, query, where, getDocs, Timestamp 
