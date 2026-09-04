@@ -13,10 +13,12 @@ import { isMeetingCode, normalizeCode, generateMeetingCode } from '@/lib/meeting
 import { Skeleton } from '@/components/ui/Skeleton';
 import { deleteSession } from '@/lib/firebase/session-utils';
 import {
-    History, ArrowRight, Trash2, Video, Users, X, Plus, Copy, Check, Calendar, Clock, MonitorPlay, Sparkles, Search, GraduationCap, Laptop, MoreHorizontal, BookOpen, ChevronRight, HardDrive
+    History, ArrowRight, Trash2, Video, Users, X, Plus, Copy, Check, Calendar, Clock, MonitorPlay, Sparkles, Search, GraduationCap, Laptop, MoreHorizontal, BookOpen, ChevronRight, HardDrive, Wallet
 } from 'lucide-react';
 import { useClassroom } from '@/contexts/ClassroomContext';
 import GroupsHub from '@/components/dashboard/GroupsHub';
+import { initializeTopUp } from '@/lib/payments/initializeTopUp';
+import { deductForSession } from '@/lib/payments/deductForSession';
 
 function UniversalDashboardContent() {
     const router = useRouter();
@@ -37,6 +39,13 @@ function UniversalDashboardContent() {
     const [program, setProgram] = useState('');
     const [course, setCourse] = useState('');
     const [scheduledStartTime, setScheduledStartTime] = useState('');
+    const [sessionPriceGhs, setSessionPriceGhs] = useState<string>('');
+    const [isFreeSession, setIsFreeSession] = useState(false);
+    const [defaultFeePesewas, setDefaultFeePesewas] = useState(2000);
+    const [minTopUpPesewas, setMinTopUpPesewas] = useState(500);
+    const [showTopUpModal, setShowTopUpModal] = useState(false);
+    const [topUpGhs, setTopUpGhs] = useState('');
+    const [toppingUp, setToppingUp] = useState(false);
     
     const [enrolledSessions, setEnrolledSessions] = useState<Session[]>([]);
     const [joining, setJoining] = useState(false);
@@ -60,6 +69,30 @@ function UniversalDashboardContent() {
         };
         fetchOwnedGroups();
     }, [user, profile]);
+
+    // Fetch wallet settings (default fee, min top-up)
+    useEffect(() => {
+        if (!user) return;
+        getDoc(doc(db, 'system_settings', 'wallet')).then(s => {
+            if (s.exists()) {
+                const d:any = s.data();
+                if (d.defaultSessionFee) setDefaultFeePesewas(d.defaultSessionFee);
+                if (d.minTopUpAmount) setMinTopUpPesewas(d.minTopUpAmount);
+            }
+        }).catch(()=>{});
+        // also handle topup=success return (Paystack may use reference or trxref)
+        const p = new URLSearchParams(window.location.search);
+        const ref2 = p.get('reference') || p.get('trxref') || p.get('trRef');
+        if (p.get('topup') === 'success' && ref2) {
+            fetch(`/api/paystack/verify?reference=${ref2}`).then(r=>r.json()).then(d=>{
+                if(d.success) showAlert('Top-up credited! Balance updating...','success');
+            }).catch(()=>{});
+            showAlert('Top-up verifying... balance will update shortly.', 'success');
+        }
+    }, [user]);
+
+    const walletBalancePesewas = profile?.walletBalance ?? 0;
+    const isAdmin = profile?.role === 'admin';
 
     useEffect(() => {
         if (!user) return;
@@ -88,10 +121,23 @@ function UniversalDashboardContent() {
     const handleCreateSession = async (e: React.FormEvent) => {
         e.preventDefault(); if (!user || !title.trim()) return showAlert('Title required.', 'error');
         try {
+            // Only admin can set price/free; others use default fee
+            const effectiveIsFree = isAdmin ? isFreeSession : false;
+            const effectivePriceGhs = isAdmin ? sessionPriceGhs : '';
+            const pricePesewas = effectiveIsFree ? 0 : (effectivePriceGhs.trim() ? Math.round(parseFloat(effectivePriceGhs) * 100) : defaultFeePesewas);
+            if (!effectiveIsFree && (isNaN(pricePesewas) || pricePesewas < 0)) return showAlert('Invalid price.', 'error');
             const docRef = doc(collection(db, 'sessions'));
-            await setDoc(docRef, { id: docRef.id, title, hostId: user.uid, lecturerId: user.uid, isActive: false, status: 'active', price: 0, currency: 'GHS', isFree: true, meetingCode: generateMeetingCode(docRef.id), lecturerName: lecturerName || profile?.fullName || 'Unknown', program, course, groupId: selectedGroupId || null, youtubeVideoId: null, scheduledStartTime: scheduledStartTime ? Timestamp.fromDate(new Date(scheduledStartTime)) : null, durationMinutes: 60, verificationCount: 2, requireGuestDetails: true, isDeleted: false, createdAt: serverTimestamp() });
-            setTitle(''); setProgram(''); setCourse(''); setSelectedGroupId(''); setShowCreateModal(false); showAlert('Class created.', 'success');
+            await setDoc(docRef, { id: docRef.id, title, hostId: user.uid, lecturerId: user.uid, isActive: false, status: 'active', price: pricePesewas, currency: 'GHS', isFree: effectiveIsFree || pricePesewas === 0, meetingCode: generateMeetingCode(docRef.id), lecturerName: lecturerName || profile?.fullName || 'Unknown', program, course, groupId: selectedGroupId || null, youtubeVideoId: null, scheduledStartTime: scheduledStartTime ? Timestamp.fromDate(new Date(scheduledStartTime)) : null, durationMinutes: 60, verificationCount: 2, requireGuestDetails: true, isDeleted: false, createdAt: serverTimestamp() });
+            setTitle(''); setProgram(''); setCourse(''); setSelectedGroupId(''); setSessionPriceGhs(''); setIsFreeSession(false); setShowCreateModal(false); showAlert('Class created.', 'success');
         } catch (error: any) { showAlert('Failed to create.', 'error'); }
+    };
+
+    const handleTopUp = async (e: React.FormEvent) => {
+        e.preventDefault(); if (!topUpGhs.trim()) return;
+        const amt = Math.round(parseFloat(topUpGhs) * 100);
+        if (isNaN(amt) || amt < minTopUpPesewas) return showAlert(`Minimum top-up is GHS ${(minTopUpPesewas/100).toFixed(2)}`, 'error');
+        setToppingUp(true);
+        try { const url = await initializeTopUp(amt); window.location.href = url; } catch (err:any) { showAlert(err.message||'Top-up failed','error'); setToppingUp(false); }
     };
 
     const handleJoinByLink = async (e: React.FormEvent) => {
@@ -113,18 +159,49 @@ function UniversalDashboardContent() {
     const enrollInClass = async (sId: string) => {
         if (!user) return false;
         try {
-            if (enrolledSessions.some(s => s.id === sId)) return true;
-            const snap = await getDocs(query(collection(db, 'transactions'), where('userId', '==', user.uid), where('sessionId', '==', sId)));
-            if (!snap.empty) { if (snap.docs[0].data().isHidden !== false) await updateDoc(snap.docs[0].ref, { isHidden: false }); return true; }
-            await addDoc(collection(db, 'transactions'), { userId: user.uid, sessionId: sId, amount: 0, currency: 'GHS', paystackReference: `join_${sId}_${Date.now()}`, paymentChannel: 'direct', status: 'succeeded', email: user.email || '', isHidden: false, createdAt: serverTimestamp(), paidAt: serverTimestamp() });
-            return true;
-        } catch (err) { return false; }
+            // Check if session is free or already paid — block at enroll if insufficient wallet
+            const sessSnap = await getDoc(doc(db, 'sessions', sId));
+            if (sessSnap.exists()) {
+                const s:any = sessSnap.data();
+                const price = s.price ?? 0;
+                const isFree = s.isFree || price===0;
+                // community free check
+                if (!isFree && s.groupId) {
+                    try { const g = await getDoc(doc(db,'groups', s.groupId)); if (g.exists() && (g.data() as any).isFreeSessions) return await doEnroll(sId); } catch {}
+                }
+                const isModerator = s.hostId===user.uid || s.lecturerId===user.uid || profile?.role==='lecturer' || profile?.role==='admin';
+                let isCoHost=false; try{ const ch=await getDoc(doc(db,'sessions',sId,'co_hosts',user.uid)); isCoHost=ch.exists() && (ch.data() as any).isActive; }catch{}
+                if (!isFree && !isModerator && !isCoHost) {
+                    // already paid check
+                    const paid = await getDocs(query(collection(db,'transactions'), where('userId','==',user.uid), where('sessionId','==',sId), where('status','==','succeeded')));
+                    const alreadyPaid = paid.docs.some(d=>{ const t:any=d.data(); return t.type==='session_payment' || !t.type; });
+                    if (!alreadyPaid) {
+                        if ((profile?.walletBalance??0) < price) { showAlert(`Insufficient balance. Need GHS ${(price/100).toFixed(2)}, you have GHS ${((profile?.walletBalance??0)/100).toFixed(2)}. Please top up.`, 'error'); setShowTopUpModal(true); return false; }
+                    }
+                }
+            }
+            return await doEnroll(sId);
+        } catch (err) { console.error(err); return false; }
+    };
+    const doEnroll = async (sId: string) => {
+        if (enrolledSessions.some(s => s.id === sId)) return true;
+        const snap = await getDocs(query(collection(db, 'transactions'), where('userId', '==', user!.uid), where('sessionId', '==', sId)));
+        if (!snap.empty) { if (snap.docs[0].data().isHidden !== false) await updateDoc(snap.docs[0].ref, { isHidden: false }); return true; }
+        await addDoc(collection(db, 'transactions'), { userId: user!.uid, sessionId: sId, amount: 0, currency: 'GHS', paystackReference: `join_${sId}_${Date.now()}`, paymentChannel: 'direct', status: 'succeeded', email: user!.email || '', isHidden: false, type: 'session_payment', createdAt: serverTimestamp(), paidAt: serverTimestamp() });
+        return true;
     };
 
     const handleToggleActive = async (session: Session, current: boolean) => { 
         try { 
             const nextState = !current;
-            await updateDoc(doc(db, 'sessions', session.id), { isActive: nextState }); 
+            const updates:any = { isActive: nextState };
+            if (nextState) { updates.startedAt = serverTimestamp(); updates.endedAt = null; updates.refundProcessed = false; }
+            else { updates.endedAt = serverTimestamp(); updates.status = 'ended'; }
+            await updateDoc(doc(db, 'sessions', session.id), updates); 
+            if (!nextState) {
+                // Fire refund check async (non-blocking)
+                fetch('/api/wallet/refund', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sessionId: session.id }) }).catch(()=>{});
+            }
             
             if (nextState && session.groupId) {
                 // Fetch Group details for name
@@ -166,6 +243,20 @@ function UniversalDashboardContent() {
 
     return (
         <div className="space-y-8">
+            {/* Wallet Banner */}
+            <div className="bg-white border border-[#DDE0F0] rounded-lg p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#E8EEFF] rounded-lg flex items-center justify-center text-[#1845D4]"><Wallet className="w-5 h-5" /></div>
+                    <div>
+                        <div className="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Wallet Balance</div>
+                        <div className="text-xl font-black text-[#0D0D1A] tracking-tight">GHS {(walletBalancePesewas/100).toFixed(2)}</div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button onClick={()=> setShowTopUpModal(true)} className="px-4 py-2 bg-[#1845D4] text-white text-[11px] font-bold uppercase tracking-widest rounded-md hover:bg-[#0F2FA8]">Top Up</button>
+                    <button onClick={()=> router.push('/dashboard/wallet')} className="px-4 py-2 bg-white border border-[#DDE0F0] text-[#0D0D1A] text-[11px] font-bold uppercase tracking-widest rounded-md hover:border-[#1845D4]">History</button>
+                </div>
+            </div>
             {/* Page Head (Based on dashboard.html) */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
                 <div>
@@ -311,6 +402,24 @@ function UniversalDashboardContent() {
                                     </select>
                                 </div>
                             )}
+                            {/* Price & Free toggle — admin only */}
+                            {isAdmin && (
+                            <>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[13px] font-bold text-[#0D0D1A]">Price (GHS) </label>
+                                    <input type="number" min="0" step="0.01" value={sessionPriceGhs} onChange={(e)=> setSessionPriceGhs(e.target.value)} disabled={isFreeSession} placeholder={isFreeSession ? 'Free' : `Default GHS ${(defaultFeePesewas/100).toFixed(2)}`} className="w-full px-4 py-2.5 bg-white border-2 border-[#DDE0F0] focus:border-[#1845D4] rounded-md outline-none text-[14px] transition-all disabled:bg-[#F5F6FA]" />
+                                </div>
+                                <div className="flex items-end pb-2">
+                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input type="checkbox" checked={isFreeSession} onChange={(e)=> setIsFreeSession(e.target.checked)} className="w-4 h-4 rounded border-[#DDE0F0] text-[#1845D4]" />
+                                        <span className="text-[13px] font-bold text-[#0D0D1A]">Free session</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <p className="text-[11px] text-[#8888A8] -mt-2">Leave blank to use default fee. Free bypasses wallet.</p>
+                            </>
+                            )}
                             <div className="flex gap-3 justify-end pt-5">
                                 <button type="button" onClick={() => setShowCreateModal(false)} className="px-6 py-2.5 border-2 border-[#DDE0F0] text-[#0D0D1A] rounded-md text-[14px] font-medium hover:border-[#1845D4] transition-all">Cancel</button>
                                 <button type="submit" className="px-6 py-2.5 bg-[#1845D4] text-white rounded-md text-[14px] font-medium hover:bg-[#0F2FA8] transition-all shadow-lg shadow-blue-600/10">Create class</button>
@@ -328,10 +437,28 @@ function UniversalDashboardContent() {
                         <div className="w-16 h-16 bg-blue-50 rounded-lg flex items-center justify-center mx-auto text-[#1845D4] mb-6 shadow-lg shadow-blue-600/5"><GraduationCap className="w-8 h-8" /></div>
                         <h2 className="text-2xl font-serif text-[#0D0D1A] tracking-tighter leading-tight mb-2">{selectedSessionForJoin.title}</h2>
                         <p className="text-[13px] text-[#8888A8] font-bold uppercase tracking-widest">{selectedSessionForJoin.lecturerName || 'Faculty Member'}</p>
+                        <p className="text-[12px] mt-2">{selectedSessionForJoin.isFree ? <span className="text-emerald-600 font-bold">Free</span> : <span className="font-bold">GHS {((selectedSessionForJoin.price||0)/100).toFixed(2)}</span>} <span className="text-[#8888A8]">· Wallet: GHS {(walletBalancePesewas/100).toFixed(2)}</span></p>
                         <div className="space-y-3 mt-10">
                             <button disabled={enrolling} onClick={async () => { setEnrolling(true); if (await enrollInClass(selectedSessionForJoin.id)) router.push(`/classroom/${selectedSessionForJoin.id}`); setEnrolling(false); }} className="w-full py-3.5 bg-[#1845D4] text-white rounded-lg font-bold text-[11px] uppercase tracking-widest shadow-xl shadow-blue-600/10 active:scale-95 disabled:opacity-50">{enrolling ? 'Processing...' : 'Enter Classroom'}</button>
                             <button onClick={() => setShowJoinPreview(false)} className="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest hover:text-[#0D0D1A] transition-all">Go Back</button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Top-up Modal */}
+            {showTopUpModal && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+                    <div className="absolute inset-0 bg-[#0D0D1A]/40 backdrop-blur-sm" onClick={()=> setShowTopUpModal(false)} />
+                    <div className="bg-white w-full max-w-sm rounded-lg p-8 relative shadow-2xl animate-in fade-in zoom-in-95">
+                        <h3 className="text-lg font-bold text-[#0D0D1A]">Top Up Wallet</h3>
+                        <p className="text-[11px] text-[#8888A8] uppercase tracking-widest font-bold mt-1">Minimum GHS {(minTopUpPesewas/100).toFixed(2)} · GHS only</p>
+                        <form onSubmit={handleTopUp} className="mt-6 space-y-4">
+                            <input type="number" min="0" step="0.01" value={topUpGhs} onChange={(e)=> setTopUpGhs(e.target.value)} placeholder={`e.g. ${(minTopUpPesewas/100).toFixed(2)}`} required className="w-full px-4 py-3 bg-white border-2 border-[#DDE0F0] focus:border-[#1845D4] rounded-md outline-none text-[14px]" />
+                            <div className="flex gap-3">
+                                <button type="button" onClick={()=> setShowTopUpModal(false)} className="flex-1 py-3 border-2 border-[#DDE0F0] rounded-md text-[11px] font-bold uppercase tracking-widest">Cancel</button>
+                                <button type="submit" disabled={toppingUp} className="flex-1 py-3 bg-[#1845D4] text-white rounded-md text-[11px] font-bold uppercase tracking-widest disabled:opacity-50">{toppingUp ? 'Redirecting...' : 'Pay with Paystack'}</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

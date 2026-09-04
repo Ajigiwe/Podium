@@ -24,6 +24,7 @@ const userRole = document.getElementById('user-role');
 const userAvatar = document.getElementById('user-avatar');
 const enrolledCount = document.getElementById('enrolled-count');
 const hostedCount = document.getElementById('hosted-count');
+const totalSessionsCount = document.getElementById('total-sessions-count');
 const recordsList = document.getElementById('records-list');
 const recordsListDrawer = document.getElementById('records-list-drawer');
 const greetingName = document.getElementById('greeting-name');
@@ -36,6 +37,7 @@ let currentUserId = null;
 let userProfile = null;
 let enrolledSessionsData = [];
 let hostedSessionsData = [];
+let walletSettings = { defaultSessionFee: 2000, minTopUpAmount: 500, isWalletPayToUse: true };
 
 // Initialize Date
 todayDate.innerText = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -51,6 +53,24 @@ onAuthStateChanged(auth, async (user) => {
     // Fetch Profile
     const profileSnap = await getDoc(doc(db, 'profiles', user.uid));
     userProfile = profileSnap.data() || {};
+    if (userProfile.walletBalance === undefined) userProfile.walletBalance = 0;
+    // Fetch wallet settings
+    try {
+        const wSnap = await getDoc(doc(db, 'system_settings', 'wallet'));
+        if (wSnap.exists()) { const w=wSnap.data(); walletSettings.defaultSessionFee=w.defaultSessionFee||2000; walletSettings.minTopUpAmount=w.minTopUpAmount||500; walletSettings.isWalletPayToUse = w.isWalletPayToUse !== false; }
+    } catch {}
+    updateWalletUI();
+    // handle topup success return (Paystack may send reference or trxref)
+    const urlP = new URLSearchParams(window.location.search);
+    const retRef = urlP.get('reference') || urlP.get('trxref') || urlP.get('trRef');
+    if (urlP.get('topup')==='success' && retRef) {
+        // Credit wallet via verify fallback (works even if webhook not reachable on localhost)
+        fetch('/api/paystack/verify?reference='+retRef).then(r=>r.json()).then(d=>{
+            if(d.success){ showToast('Top-up successful! New balance loading...','success'); setTimeout(async()=>{
+                const fresh=await getDoc(doc(db,'profiles',user.uid)); userProfile=fresh.data()|| userProfile; updateWalletUI();
+            },1000); } else { showToast(d.error||'Verification failed','error'); }
+        }).catch(()=>{ showToast('Verifying...','success'); });
+    }
     
     // Update UI
     userName.innerText = userProfile.fullName?.split(' ')[0] || user.email.split('@')[0];
@@ -95,6 +115,12 @@ onAuthStateChanged(auth, async (user) => {
             openCreateBtn.classList.add('hidden');
         }
     }
+    // Admin-only price controls
+    const adminPriceControls = document.getElementById('admin-price-controls');
+    if (adminPriceControls) {
+        if (userProfile.role === 'admin') adminPriceControls.classList.remove('hidden');
+        else adminPriceControls.classList.add('hidden');
+    }
     
     setupGroupOptions();
     setTimeout(() => {
@@ -131,6 +157,14 @@ onAuthStateChanged(auth, async (user) => {
     
     console.log('[Dashboard] Initialized for:', user.email);
 });
+
+function updateWalletUI(){
+    const el=document.getElementById('wallet-balance');
+    if(el) el.innerText = 'GHS ' + ((userProfile?.walletBalance||0)/100).toFixed(2);
+    const minLabel=document.getElementById('topup-min-label');
+    if(minLabel) minLabel.innerText = 'Minimum GHS ' + (walletSettings.minTopUpAmount/100).toFixed(2) + ' · GHS only';
+}
+// Top-up modal wiring — handled by inline script in dashboard.html (PaystackPop inline)
 
 // UI Helpers
 const loadingBar = document.getElementById('top-loading-bar');
@@ -227,6 +261,7 @@ function setupHostedSessions() {
         hostedSessionsData = snapshot.docs
             .map(d => ({ id: d.id, ...d.data() }));
         hostedCount.innerText = hostedSessionsData.length;
+        updateTotalSessions();
         renderInlineRecords();
         renderQuickAccess();
     }, (err) => console.error('[HostedSessions] Error:', err));
@@ -238,6 +273,7 @@ function setupEnrolledSessions() {
         if (snapshot.empty) {
             enrolledSessionsData = [];
             enrolledCount.innerText = '0';
+            updateTotalSessions();
             renderRecords();
             return;
         }
@@ -250,9 +286,16 @@ function setupEnrolledSessions() {
             .map(s => ({ id: s.id, ...s.data() }));
             
         enrolledCount.innerText = enrolledSessionsData.length;
+        updateTotalSessions();
         renderInlineRecords();
         renderQuickAccess();
     }, (err) => console.error('[EnrolledSessions] Error:', err));
+}
+
+function updateTotalSessions() {
+    if (totalSessionsCount) {
+        totalSessionsCount.innerText = (enrolledSessionsData.length || 0) + (hostedSessionsData.length || 0);
+    }
 }
 
 function renderQuickAccess() {
@@ -446,7 +489,16 @@ window.toggleLive = async (id, current, e) => {
     if (e) e.stopPropagation();
     try {
         const nextState = !current;
-        await updateDoc(doc(db, 'sessions', id), { isActive: nextState });
+        const updates={isActive: nextState};
+        if(nextState){ updates.startedAt=serverTimestamp(); updates.endedAt=null; updates.refundProcessed=false; }
+        else { updates.endedAt=serverTimestamp(); updates.status='ended'; }
+        await updateDoc(doc(db, 'sessions', id), updates);
+        if(!nextState){
+            try {
+                const token = await auth.currentUser.getIdToken();
+                fetch('/api/wallet/refund',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({sessionId:id})}).catch(()=>{});
+            } catch(err) { console.error('Failed to call refund API', err); }
+        }
         
         // Notification Logic (Optional Parity)
         if (nextState) {
@@ -490,7 +542,7 @@ if (openCreateCardBtn) openCreateCardBtn.onclick = () => openModal('modal-create
 
 document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', () => {
-        const modals = ['modal-create-class', 'modal-join-preview', 'modal-create-community', 'modal-join-community'];
+        const modals = ['modal-create-class', 'modal-join-preview', 'modal-create-community', 'modal-join-community', 'modal-topup'];
         modals.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.add('hidden');
@@ -542,6 +594,10 @@ if (createForm) {
         const groupId = groupSelect.value;
         const scheduleDate = document.getElementById('class-schedule-date')?.value;
         const scheduleTime = document.getElementById('class-schedule-time')?.value;
+        let priceGhs = document.getElementById('class-price')?.value;
+        let isFree = document.getElementById('class-is-free')?.checked;
+        // Only admin can set price/free; force defaults for others
+        if (userProfile.role !== 'admin') { priceGhs = ''; isFree = false; }
         const submitBtn = createForm.querySelector('button[type="submit"]');
 
         submitBtn.disabled = true;
@@ -552,6 +608,7 @@ if (createForm) {
             const arr = new Uint32Array(2);
             crypto.getRandomValues(arr);
             const code = `pod-${arr[0].toString(36).substring(0, 4)}-${arr[1].toString(36).substring(0, 4)}`;
+            const price = isFree ? 0 : (priceGhs && priceGhs.trim() ? Math.round(parseFloat(priceGhs)*100) : walletSettings.defaultSessionFee);
 
             const sessionData = {
                 id: sessionRef.id,
@@ -566,6 +623,9 @@ if (createForm) {
                 lecturerName: userProfile.fullName || 'Faculty',
                 isActive: false,
                 status: 'active',
+                price,
+                currency: 'GHS',
+                isFree: isFree || price===0,
                 meetingCode: code,
                 createdAt: serverTimestamp()
             };
@@ -624,6 +684,13 @@ window.openJoinPreview = (session) => {
     pendingSessionGroupId = session.groupId || null;
     joinTitle.innerText = session.title;
     joinFaculty.innerText = session.lecturerName || 'Faculty Member';
+    const priceEl=document.getElementById('join-preview-price');
+    if(priceEl){
+        const price=session.price||0;
+        const isFree=session.isFree||price===0;
+        priceEl.innerHTML = isFree ? '<span class="text-emerald-600">Free</span>' : `GHS ${(price/100).toFixed(2)} <span class="text-[#8888A8]">· Wallet: GHS ${((userProfile?.walletBalance||0)/100).toFixed(2)}</span>`;
+        priceEl.className = isFree ? 'text-xs mt-2 font-bold text-emerald-600' : 'text-xs mt-2 font-bold';
+    }
     joinPreviewModal.classList.remove('hidden');
 };
 
@@ -645,7 +712,7 @@ confirmJoinBtn.onclick = async () => {
             }
         }
 
-        // Enroll Logic
+        // Enroll Logic (isHidden handling, amount 0 record for dashboard list; actual deduct happens at classroom entry)
         const qTx = query(collection(db, 'transactions'), where('userId', '==', currentUserId), where('sessionId', '==', pendingSessionId));
         const snap = await getDocs(qTx);
         
@@ -655,6 +722,9 @@ confirmJoinBtn.onclick = async () => {
                 sessionId: pendingSessionId,
                 amount: 0,
                 status: 'succeeded',
+                type: 'session_payment',
+                paymentChannel: 'direct',
+                currency: 'GHS',
                 email: auth.currentUser.email,
                 isHidden: false,
                 createdAt: serverTimestamp()
@@ -679,15 +749,18 @@ if (openCreateCommBtn) openCreateCommBtn.onclick = () => openModal('modal-create
 if (openJoinCommBtn) openJoinCommBtn.onclick = () => openModal('modal-join-community');
 
 // Toast Helper
-function showToast(msg, type = 'success') {
+function showToast(msg, type = 'success', sticky = false) {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
+    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300 ${sticky ? 'cursor-pointer' : ''}`;
     toast.innerText = msg;
+    if (sticky) toast.title = 'Tap to dismiss';
     document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    const dismiss = () => { toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom'); setTimeout(() => toast.remove(), 300); };
+    if (sticky) {
+        toast.addEventListener('click', dismiss);
+    } else {
+        setTimeout(dismiss, 3000);
+    }
 }
 window.showToast = showToast;
 

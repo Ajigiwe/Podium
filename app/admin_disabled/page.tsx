@@ -21,11 +21,15 @@ type SortOrder = 'asc' | 'desc';
 
 export default function AdminPage() {
     const { showAlert, showConfirm } = useAlert();
-    const [activeTab, setActiveTab] = useState<'settings' | 'users'>('settings');
+    const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'wallet'>('settings');
     const [fee, setFee] = useState<number>(200);
     const [isPayToUse, setIsPayToUse] = useState<boolean>(true);
+    const [walletEnabled, setWalletEnabled] = useState<boolean>(true);
+    const [defaultFeeGhs, setDefaultFeeGhs] = useState<string>('20');
+    const [minTopUpGhs, setMinTopUpGhs] = useState<string>('5');
     const [loadingSettings, setLoadingSettings] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [savingWallet, setSavingWallet] = useState(false);
 
     const [users, setUsers] = useState<(UserProfile & { classCount?: number })[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
@@ -50,6 +54,13 @@ export default function AdminPage() {
                     const data = docSnap.data() as SystemSettings;
                     setFee(data.semesterFee);
                     setIsPayToUse(data.isPayToUse !== undefined ? data.isPayToUse : true);
+                }
+                const walletSnap = await getDoc(doc(db, 'system_settings', 'wallet'));
+                if (walletSnap.exists()) {
+                    const w:any = walletSnap.data();
+                    setWalletEnabled(w.isWalletPayToUse !== false);
+                    if (w.defaultSessionFee) setDefaultFeeGhs((w.defaultSessionFee/100).toFixed(2));
+                    if (w.minTopUpAmount) setMinTopUpGhs((w.minTopUpAmount/100).toFixed(2));
                 }
             } catch (error) {} finally { setLoadingSettings(false); }
         };
@@ -133,12 +144,33 @@ export default function AdminPage() {
         } catch (error) { showAlert('Failed to update.', 'error'); } finally { setSaving(false); }
     };
 
+    const handleSaveWallet = async (e: React.FormEvent) => {
+        e.preventDefault(); setSavingWallet(true);
+        try {
+            const defaultPesewas = Math.round(parseFloat(defaultFeeGhs||'0')*100);
+            const minPesewas = Math.round(parseFloat(minTopUpGhs||'0')*100);
+            if (isNaN(defaultPesewas) || defaultPesewas <0) throw new Error('Invalid default fee');
+            if (isNaN(minPesewas) || minPesewas <100) throw new Error('Minimum top-up at least GHS 1');
+            await setDoc(doc(db, 'system_settings', 'wallet'), { id:'wallet', isWalletPayToUse: walletEnabled, defaultSessionFee: defaultPesewas, minTopUpAmount: minPesewas, currency:'GHS', updatedAt: serverTimestamp() }, { merge: true });
+            showAlert('Wallet policies saved.', 'success');
+        } catch (error:any) { showAlert(error.message||'Failed to save wallet', 'error'); } finally { setSavingWallet(false); }
+    };
+
     const handleUserAction = async (userId: string, action: 'role' | 'delete' | 'verify', data?: any) => {
         setManagingUser(null);
         try {
+            if (action === 'verify') {
+                // Use wallet lecturer verify API for lecturers
+                const { auth } = await import('@/lib/firebase/config');
+                const token = await auth.currentUser?.getIdToken();
+                const res = await fetch('/api/admin/verify-lecturer', { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body: JSON.stringify({ userId, approve: !!data }) });
+                const result = await res.json();
+                if (result.success) { fetchGlobalStats(); fetchUsers(); showAlert(data ? 'Lecturer verified.' : 'Verification revoked.', 'success'); }
+                else showAlert(result.error||'Failed','error');
+                return;
+            }
             const body: any = { userId };
             if (action === 'role') body.role = data;
-            if (action === 'verify') body.isVerified = data;
             
             const performAction = async () => {
                 const res = await fetch('/api/admin/users', { method: action === 'delete' ? 'DELETE' : 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -173,6 +205,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex p-1 bg-white border border-[#DDE0F0] rounded-lg shadow-sm w-fit">
                     <button onClick={() => setActiveTab('settings')} className={`px-5 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded transition-all flex items-center gap-2 ${activeTab === 'settings' ? 'bg-[#1845D4] text-white' : 'text-[#8888A8] hover:text-[#0D0D1A]'}`}><Settings className="w-3.5 h-3.5" /> Settings</button>
+                    <button onClick={() => setActiveTab('wallet')} className={`px-5 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded transition-all flex items-center gap-2 ${activeTab === 'wallet' ? 'bg-[#1845D4] text-white' : 'text-[#8888A8] hover:text-[#0D0D1A]'}`}><DollarSign className="w-3.5 h-3.5" /> Wallet</button>
                     <button onClick={() => setActiveTab('users')} className={`px-5 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded transition-all flex items-center gap-2 ${activeTab === 'users' ? 'bg-[#1845D4] text-white' : 'text-[#8888A8] hover:text-[#0D0D1A]'}`}><Users className="w-3.5 h-3.5" /> Users</button>
                 </div>
             </div>
@@ -182,7 +215,7 @@ export default function AdminPage() {
                     <div className="lg:col-span-1 space-y-4">
                         <div className="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm">
                             <h3 className="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-4">Institutional Policy</h3>
-                            <p className="text-[13px] text-[#444460] font-light leading-relaxed">Control global subscription requirements and fee structures.</p>
+                            <p className="text-[13px] text-[#444460] font-light leading-relaxed">Control global subscription requirements and fee structures. (Legacy, kept)</p>
                         </div>
                     </div>
                     <div className="lg:col-span-2">
@@ -199,6 +232,38 @@ export default function AdminPage() {
                                 <input type="number" value={fee} onChange={(e) => setFee(Number(e.target.value))} className="w-full px-4 py-2.5 bg-white border-2 border-[#DDE0F0] focus:border-[#1845D4] rounded-md outline-none text-[14px] transition-all" />
                             </div>
                             <button type="submit" disabled={saving} className="px-8 py-2.5 bg-[#1845D4] text-white rounded-md font-bold text-[13px] uppercase tracking-widest shadow-lg shadow-blue-600/10 active:scale-95 transition-all">{saving ? 'Preserving...' : 'Update Policies'}</button>
+                        </form>
+                    </div>
+                </div>
+            ) : activeTab === 'wallet' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-1 space-y-4">
+                        <div className="bg-white border border-[#DDE0F0] rounded-lg p-6 shadow-sm">
+                            <h3 className="text-[11px] font-bold text-[#8888A8] uppercase tracking-[0.08em] mb-4">Wallet Policy</h3>
+                            <p className="text-[13px] text-[#444460] font-light leading-relaxed">Per-session wallet: admin sets default fee, free sessions/communities, min top-up (GHS).</p>
+                        </div>
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 text-[11px] text-emerald-700">GHS only. Amounts stored as pesewas. Refund if session &lt;30m is automatic on end.</div>
+                    </div>
+                    <div className="lg:col-span-2">
+                        <form onSubmit={handleSaveWallet} className="bg-white border border-[#DDE0F0] rounded-lg p-8 shadow-sm space-y-6">
+                            <div className="flex items-center justify-between p-6 bg-[#F5F6FA] rounded border border-[#DDE0F0]">
+                                <div>
+                                    <h4 className="text-[14px] font-bold text-[#0D0D1A]">Wallet Pay-To-Use</h4>
+                                    <p className="text-[10px] text-[#8888A8] font-bold uppercase tracking-widest">Deduct at classroom entry</p>
+                                </div>
+                                <button type="button" onClick={() => setWalletEnabled(!walletEnabled)} className={`relative h-6 w-11 rounded-full transition-all ${walletEnabled ? 'bg-[#1845D4]' : 'bg-[#DDE0F0]'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-all ${walletEnabled ? 'translate-x-6' : 'translate-x-1'}`} /></button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[13px] font-bold text-[#0D0D1A]">Default Session Fee (GHS)</label>
+                                    <input type="number" min="0" step="0.01" value={defaultFeeGhs} onChange={(e)=> setDefaultFeeGhs(e.target.value)} className="w-full px-4 py-2.5 bg-white border-2 border-[#DDE0F0] focus:border-[#1845D4] rounded-md outline-none text-[14px]" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[13px] font-bold text-[#0D0D1A]">Min Top-up (GHS)</label>
+                                    <input type="number" min="1" step="0.01" value={minTopUpGhs} onChange={(e)=> setMinTopUpGhs(e.target.value)} className="w-full px-4 py-2.5 bg-white border-2 border-[#DDE0F0] focus:border-[#1845D4] rounded-md outline-none text-[14px]" />
+                                </div>
+                            </div>
+                            <button type="submit" disabled={savingWallet} className="px-8 py-2.5 bg-[#1845D4] text-white rounded-md font-bold text-[13px] uppercase tracking-widest shadow-lg shadow-blue-600/10 active:scale-95 disabled:opacity-50">{savingWallet ? 'Saving...' : 'Save Wallet Settings'}</button>
                         </form>
                     </div>
                 </div>
@@ -277,7 +342,7 @@ export default function AdminPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${u.role === 'admin' ? 'bg-slate-900 text-white' : 'bg-[#F5F6FA] text-[#8888A8]'}`}>{u.role}</span>
-                                                    {u.role === 'student' && (
+                                                    {(u.role === 'student' || u.role === 'lecturer') && (
                                                         <button onClick={() => handleUserAction(u.id, 'verify', !u.isVerified)} className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 ${u.isVerified ? 'bg-blue-50 text-[#1845D4]' : 'bg-[#F5F6FA] text-[#8888A8] hover:text-[#0D0D1A]'}`}><ShieldCheck className="w-3 h-3" /> {u.isVerified ? 'Verified' : 'Verify'}</button>
                                                     )}
                                                 </div>

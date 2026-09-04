@@ -39,9 +39,17 @@ export async function POST(req: NextRequest) {
 
         const event = JSON.parse(body);
 
-        // Handle charge.success
         if (event.event === 'charge.success') {
-            const { reference, amount, customer, channel, metadata } = event.data;
+            const { reference, amount, channel, metadata } = event.data;
+
+            if (!reference || typeof reference !== 'string' || !reference.trim()) {
+                console.warn('Rejecting charge.success webhook: invalid reference', { event: event.event });
+                return NextResponse.json({ received: true, rejected: 'invalid reference' }, { status: 200 });
+            }
+            if (!metadata?.userId || typeof metadata.userId !== 'string' || !metadata.userId.trim()) {
+                console.warn('Rejecting charge.success webhook: invalid userId', { reference, userId: metadata?.userId });
+                return NextResponse.json({ received: true, rejected: 'invalid userId' }, { status: 200 });
+            }
 
             console.log('Payment successful:', {
                 reference,
@@ -51,35 +59,72 @@ export async function POST(req: NextRequest) {
                 type: metadata.type,
             });
 
-            // Record transaction
-            await adminDb.collection('transactions').add({
-                userId: metadata.userId,
-                sessionId: metadata.sessionId || 'wallet_topup',
-                paystackReference: reference,
-                amount,
-                currency: 'GHS',
-                paymentChannel: channel,
-                status: 'succeeded',
-                createdAt: Timestamp.now(),
-                paidAt: Timestamp.now(),
+            // Deduplicate transaction writes so replayed payment confirmations
+            // cannot create duplicate transaction rows.
+            const existingTransactionRef = adminDb.collection('transaction_credits').doc(reference);
+            const existingTransaction = await existingTransactionRef.get();
+            if (existingTransaction.exists) {
+                console.log('Duplicate charge.success webhook skipped:', { reference, userId: metadata.userId });
+                return NextResponse.json({ received: true, skipped_duplicate: true }, { status: 200 });
+            }
+
+            await adminDb.runTransaction(async (transaction) => {
+                const txRef = adminDb.collection('transactions').doc();
+                transaction.set(txRef, {
+                    userId: metadata.userId,
+                    sessionId: metadata.sessionId || 'wallet_topup',
+                    paystackReference: reference,
+                    amount,
+                    currency: 'GHS',
+                    paymentChannel: channel || 'unknown',
+                    status: 'succeeded',
+                    createdAt: Timestamp.now(),
+                    paidAt: Timestamp.now(),
+                });
+                transaction.set(existingTransactionRef, {
+                    userId: metadata.userId,
+                    reference,
+                    status: 'succeeded',
+                    createdAt: Timestamp.now(),
+                });
             });
 
             // === WALLET TOP-UP ===
-            if (metadata.type === 'wallet_topup') {
+            if (metadata.type === 'wallet_topup' || metadata.type === 'top_up') {
                 const topUpAmount = metadata.topUpAmount || amount;
                 const userRef = adminDb.collection('profiles').doc(metadata.userId);
                 const userSnap = await userRef.get();
                 const currentBalance = userSnap.data()?.walletBalance || 0;
 
-                await userRef.update({
-                    walletBalance: currentBalance + topUpAmount,
-                    updatedAt: Timestamp.now(),
+                const existingTopupRef = adminDb.collection('topup_credits').doc(reference);
+                const existingTopup = await existingTopupRef.get();
+                if (existingTopup.exists) {
+                    console.log('Duplicate wallet topup webhook skipped:', { reference, userId: metadata.userId });
+                    return NextResponse.json({ received: true, skipped_duplicate: true }, { status: 200 });
+                }
+
+                await adminDb.runTransaction(async (transaction) => {
+                    const userDoc = await transaction.get(userRef);
+                    const balanceAtStart = userDoc.data()?.walletBalance || 0;
+                    transaction.update(userRef, {
+                        walletBalance: balanceAtStart + topUpAmount,
+                        updatedAt: Timestamp.now(),
+                    });
+                    transaction.set(existingTopupRef, {
+                        userId: metadata.userId,
+                        reference,
+                        amount: topUpAmount,
+                        channel: channel || 'unknown',
+                        status: 'succeeded',
+                        createdAt: Timestamp.now(),
+                    });
                 });
 
                 console.log('Wallet credited:', {
                     userId: metadata.userId,
                     topUpAmount,
                     newBalance: currentBalance + topUpAmount,
+                    reference,
                 });
             }
 
@@ -105,19 +150,43 @@ export async function POST(req: NextRequest) {
 
         // Handle charge.failed
         if (event.event === 'charge.failed') {
-            const { reference, metadata } = event.data;
-            console.log('Payment failed:', { reference, userId: metadata?.userId });
+            const { reference, channel, metadata } = event.data;
+
+            if (!reference || typeof reference !== 'string' || !reference.trim()) {
+                console.warn('Rejecting charge.failed webhook: invalid reference', { event: event.event });
+                return NextResponse.json({ received: true, rejected: 'invalid reference' }, { status: 200 });
+            }
+            if (!metadata?.userId || typeof metadata.userId !== 'string' || !metadata.userId.trim()) {
+                console.warn('Rejecting charge.failed webhook: invalid userId', { reference, userId: metadata?.userId });
+                return NextResponse.json({ received: true, rejected: 'invalid userId' }, { status: 200 });
+            }
+
+            console.log('Payment failed:', { reference, userId: metadata.userId });
+
+            const existingFailedRef = adminDb.collection('transaction_credits').doc(reference);
+            const existingFailed = await existingFailedRef.get();
+            if (existingFailed.exists) {
+                console.log('Duplicate charge.failed webhook skipped:', { reference, userId: metadata.userId });
+                return NextResponse.json({ received: true, skipped_duplicate: true }, { status: 200 });
+            }
 
             await adminDb.collection('transactions').add({
-                userId: metadata?.userId || 'unknown',
-                sessionId: metadata?.sessionId || 'wallet_topup',
+                userId: metadata.userId,
+                sessionId: metadata.sessionId || 'wallet_topup',
                 paystackReference: reference,
                 amount: 0,
                 currency: 'GHS',
-                paymentChannel: 'unknown',
+                paymentChannel: channel || 'unknown',
                 status: 'failed',
                 createdAt: Timestamp.now(),
                 paidAt: null,
+            });
+
+            await adminDb.collection('transaction_credits').doc(reference).set({
+                userId: metadata.userId,
+                reference,
+                status: 'failed',
+                createdAt: Timestamp.now(),
             });
         }
 
