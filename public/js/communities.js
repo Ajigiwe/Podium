@@ -52,10 +52,10 @@ window.switchWorkspaceTab = (tab) => {
         
         const isActive = t === tab;
         if (isActive) {
-            btn.className = 'w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-600 dark:border-indigo-400 shadow-sm shadow-indigo-500/5';
+            btn.className = 'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all bg-[#E8EEFF] text-[#1845D4]';
             content.classList.remove('hidden');
         } else {
-            btn.className = 'w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white';
+            btn.className = 'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white';
             content.classList.add('hidden');
         }
     });
@@ -102,26 +102,19 @@ function setupPublicCommunities(uid) {
 
 function createCommunityCard(group, isMember) {
     const div = document.createElement('div');
-    div.className = 'group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-8 relative overflow-hidden flex flex-col justify-between shadow-sm hover:border-[#1845D4] hover:shadow-lg transition-all';
+    div.className = 'group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between hover:border-[#1845D4] transition-all';
     
     div.innerHTML = `
-        <div class="space-y-6">
-            <div class="flex justify-between items-start">
-                <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 flex items-center justify-center">
-                    <i class="fas fa-users text-[#1845D4] dark:text-blue-400 text-xl"></i>
-                </div>
-                <span class="px-3 py-1 bg-[#F5F6FA] dark:bg-slate-950 border border-[#DDE0F0] dark:border-slate-800 rounded-full text-[9px] font-bold uppercase tracking-widest text-[#8888A8]">
-                    ${group.memberCount || 0} Members
-                </span>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between gap-2">
+                <h4 class="font-bold text-[15px] line-clamp-1 text-[#0D0D1A] dark:text-white">${group.name}</h4>
+                <span class="shrink-0 text-[10px] font-bold text-[#8888A8]">${group.memberCount || 0} members</span>
             </div>
-            <div>
-                <h4 class="font-serif font-black text-xl line-clamp-1 tracking-tight text-[#0D0D1A] dark:text-white">${group.name}</h4>
-                <p class="text-[13px] text-[#444460] dark:text-slate-400 line-clamp-2 mt-2 font-medium leading-relaxed">${group.description}</p>
-            </div>
-            <button class="w-full py-3.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${isMember ? 'bg-[#F5F6FA] dark:bg-slate-800 text-[#0D0D1A] dark:text-white border border-[#DDE0F0] dark:border-slate-700 hover:bg-[#1845D4] hover:text-white' : 'bg-[#0D0D1A] dark:bg-slate-100 text-white dark:text-[#0D0D1A] hover:bg-black'}">
-                ${isMember ? 'Enter Workspace' : 'Request to Join'}
-            </button>
+            <p class="text-[12px] text-[#8888A8] line-clamp-2 leading-relaxed">${group.description}</p>
         </div>
+        <button class="w-full mt-4 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${isMember ? 'bg-[#E8EEFF] text-[#1845D4] hover:bg-[#1845D4] hover:text-white' : 'bg-[#1845D4] text-white hover:bg-[#0F2FA8]'}">
+            ${isMember ? 'Enter' : 'Request to Join'}
+        </button>
     `;
     
     div.querySelector('button').onclick = () => {
@@ -207,18 +200,18 @@ function setupWorkspaceListeners(groupId) {
         snap.forEach(doc => {
             const ann = doc.data();
             const div = document.createElement('div');
-            div.className = 'bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all group';
+            div.className = 'bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 transition-all';
             div.innerHTML = `
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-500/10">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 rounded-full bg-[#E8EEFF] dark:bg-slate-800 flex items-center justify-center text-[#1845D4] dark:text-blue-400 font-bold text-xs shrink-0">
                         ${ann.authorName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <p class="text-[13px] font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">${ann.authorName}</p>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mt-0.5">${ann.createdAt?.toDate().toLocaleDateString('en-GB')}</p>
+                        <p class="text-[13px] font-bold text-slate-900 dark:text-white">${ann.authorName}</p>
+                        <p class="text-[10px] text-slate-400">${ann.createdAt?.toDate().toLocaleDateString('en-GB')}</p>
                     </div>
                 </div>
-                <p class="text-[13px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed pl-14">${ann.content}</p>
+                <p class="text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed">${ann.content}</p>
             `;
             announcementsList.appendChild(div);
         });
@@ -264,19 +257,19 @@ function setupWorkspaceListeners(groupId) {
             const mem = doc.data();
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="px-6 py-4">
+                <td class="px-5 py-3.5">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center font-bold text-[#8888A8] dark:text-slate-400 uppercase text-[10px]">
                             ${mem.userName.charAt(0)}
                         </div>
                         <div>
                             <p class="text-[13px] font-bold text-[#0D0D1A] dark:text-white">${mem.userName}</p>
-                            <p class="text-[9px] text-[#8888A8] uppercase tracking-widest font-bold">${mem.userEmail || ''}</p>
+                            <p class="text-[10px] text-[#8888A8]">${mem.userEmail || ''}</p>
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4">
-                    <span class="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${mem.role === 'owner' ? 'bg-blue-50 text-[#1845D4]' : 'bg-[#F5F6FA] text-[#8888A8]'}">
+                <td class="px-5 py-3.5">
+                    <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${mem.role === 'owner' ? 'bg-[#E8EEFF] text-[#1845D4]' : 'bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8]'}">
                         ${mem.role}
                     </span>
                 </td>
@@ -304,20 +297,20 @@ function setupWorkspaceListeners(groupId) {
             snap.forEach(docSnap => {
                 const req = docSnap.data();
                 const div = document.createElement('div');
-                div.className = 'bg-white p-6 rounded-xl border border-[#DDE0F0] shadow-sm flex items-center justify-between';
+                div.className = 'bg-white dark:bg-slate-900 p-4 rounded-xl border border-[#DDE0F0] dark:border-slate-800 flex items-center justify-between gap-3';
                 div.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-[#F5F6FA] flex items-center justify-center text-[#8888A8] font-bold text-xs uppercase">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-full bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center text-[#8888A8] font-bold text-xs uppercase shrink-0">
                             ${req.userName.charAt(0)}
                         </div>
-                        <div>
-                            <p class="text-sm font-bold text-[#0D0D1A]">${req.userName}</p>
-                            <p class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest">${req.userEmail}</p>
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-[#0D0D1A] dark:text-white truncate">${req.userName}</p>
+                            <p class="text-[11px] text-[#8888A8] truncate">${req.userEmail}</p>
                         </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="window.processRequest('${docSnap.id}', 'approved')" class="px-4 py-2 bg-[#1845D4] text-white rounded-lg text-[10px] font-bold uppercase tracking-widest">Approve</button>
-                        <button onclick="window.processRequest('${docSnap.id}', 'rejected')" class="px-4 py-2 bg-[#F5F6FA] text-[#444460] rounded-lg text-[10px] font-bold uppercase tracking-widest">Reject</button>
+                    <div class="flex gap-2 shrink-0">
+                        <button onclick="window.processRequest('${docSnap.id}', 'approved')" class="px-4 py-2 bg-[#1845D4] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider">Approve</button>
+                        <button onclick="window.processRequest('${docSnap.id}', 'rejected')" class="px-4 py-2 bg-[#F5F6FA] dark:bg-slate-800 text-[#444460] dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-wider">Reject</button>
                     </div>
                 `;
                 requestsContent.appendChild(div);
@@ -328,29 +321,19 @@ function setupWorkspaceListeners(groupId) {
 
 function createWorkspaceSessionCard(s) {
     const div = document.createElement('div');
-    div.className = `bg-white border-2 rounded-xl p-8 transition-all group relative overflow-hidden ${s.isActive ? 'border-[#1845D4]/20 shadow-lg shadow-[#1845D4]/5' : 'border-[#DDE0F0] opacity-80'}`;
+    div.className = `bg-white dark:bg-slate-900 border rounded-xl p-6 transition-all ${s.isActive ? 'border-[#1845D4]/40' : 'border-[#DDE0F0] dark:border-slate-800 opacity-75'}`;
     
     div.innerHTML = `
-        <div class="absolute top-0 right-0 p-6">
-            ${s.isActive ? `
-                <div class="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest flex items-center gap-2 animate-pulse">
-                    <span class="w-1.5 h-1.5 bg-red-600 rounded-full"></span> Live
-                </div>
-            ` : `
-                <div class="bg-[#F5F6FA] text-[#8888A8] px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest flex items-center gap-2 border border-[#DDE0F0]">
-                    <span class="w-1.5 h-1.5 bg-[#8888A8]/30 rounded-full"></span> Active
-                </div>
-            `}
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <h4 class="text-[15px] font-bold tracking-tight leading-tight text-[#0D0D1A] dark:text-white">${s.title}</h4>
+            ${s.isActive ? `<span class="shrink-0 flex items-center gap-1.5 text-red-600 text-[10px] font-bold uppercase tracking-widest">
+                <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live
+            </span>` : ''}
         </div>
-        <div class="space-y-6">
-            <div>
-                <h4 class="text-xl font-serif font-black tracking-tight leading-tight text-[#0D0D1A]">${s.title}</h4>
-                <p class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest mt-2">${s.lecturerName}</p>
-            </div>
-            <button onclick="window.location.href='/classroom/${s.id}'" class="w-full py-3.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${s.isActive ? 'bg-[#1845D4] text-white shadow-xl shadow-[#1845D4]/20' : 'bg-[#F5F6FA] text-[#8888A8] cursor-not-allowed border border-[#DDE0F0]'}" ${!s.isActive ? 'disabled' : ''}>
-                ${s.isActive ? 'Join Classroom' : 'Waiting to start...'}
-            </button>
-        </div>
+        <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest mb-4">${s.lecturerName}</p>
+        <button onclick="window.location.href='/classroom/${s.id}'" class="w-full py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${s.isActive ? 'bg-[#1845D4] text-white hover:bg-[#0F2FA8]' : 'bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] cursor-not-allowed'}" ${!s.isActive ? 'disabled' : ''}>
+            ${s.isActive ? 'Join Classroom' : 'Waiting to start...'}
+        </button>
     `;
     return div;
 }
@@ -669,7 +652,7 @@ function setupCommunityForms(user, profile) {
 
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
+    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[11px] font-bold rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
     toast.innerText = msg;
     document.body.appendChild(toast);
     setTimeout(() => {
