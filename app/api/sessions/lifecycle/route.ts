@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { RoomServiceClient } from 'livekit-server-sdk';
-import { refundSession } from '@/app/api/wallet/refund/route';
+import { refundSession } from './refund-session';
 
 export const dynamic = 'force-dynamic';
 
