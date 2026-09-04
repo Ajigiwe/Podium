@@ -230,30 +230,29 @@ function setupWorkspaceListeners(groupId) {
         resourcesList.innerHTML = '';
         snap.forEach(doc => {
             const res = doc.data();
-            const div = document.createElement('div');
-            div.className = 'bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group relative';
-            div.innerHTML = `
-                <div class="absolute top-4 right-4 text-[9px] font-serif font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                    ${res.type === 'link' ? 'Ref' : 'Doc'} // ${new Date(res.createdAt?.toDate() || Date.now()).getFullYear()}
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/70 dark:border-slate-700/70 p-5 hover:shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-all';
+            const year = new Date(res.createdAt?.toDate() || Date.now()).getFullYear();
+            const isLink = res.type === 'link';
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-slate-700">
+                            <i class="fas ${isLink ? 'fa-bookmark' : 'fa-book'} text-xs"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h5 class="text-[14px] font-semibold text-slate-900 dark:text-white leading-snug line-clamp-2">${res.title}</h5>
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${isLink ? 'Ref' : 'Doc'} // ${year}</span>
+                        </div>
+                    </div>
+                    ${isLink && res.url ? `<a href="${res.url}" target="_blank" class="shrink-0 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
                 </div>
-                <div class="flex items-start gap-4 mb-4 pt-2">
-                    <div class="mt-1 w-8 h-8 rounded-full bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-slate-200/50 dark:border-slate-700">
-                        <i class="fas ${res.type === 'link' ? 'fa-bookmark' : 'fa-book'} text-xs"></i>
-                    </div>
-                    <div class="flex-1 pr-4">
-                        <h5 class="text-[15px] font-serif font-bold leading-snug text-slate-900 dark:text-white line-clamp-2">${res.title}</h5>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
-                    <div class="text-[10px] font-serif font-bold text-slate-400 uppercase tracking-[0.1em]">
-                        ${res.type === 'link' ? 'External Reference' : 'Archived Material'}
-                    </div>
-                    <a href="${res.url}" target="_blank" class="px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all border border-indigo-100 dark:border-slate-700">
-                        Access
-                    </a>
+                <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${isLink ? 'External Reference' : 'Archived Material'}</span>
+                    ${!isLink && res.url ? `<a href="${res.url}" target="_blank" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
                 </div>
             `;
-            resourcesList.appendChild(div);
+            resourcesList.appendChild(card);
         });
     }));
 
