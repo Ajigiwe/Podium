@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=8';
+import { auth, db } from './firebase-config.js?v=9';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -275,7 +275,7 @@ function setupWorkspaceListeners(groupId) {
             const exact = ann.createdAt?.toDate()?.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) || '';
             div.innerHTML = `
                 <div class="flex items-start gap-3 p-4 sm:p-5">
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#1845D4] to-[#0F2FA8] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">${initial}</div>
+                    <div class="w-10 h-10 rounded-full bg-[#1845D4] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">${initial}</div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
@@ -292,7 +292,7 @@ function setupWorkspaceListeners(groupId) {
                                 <i class="fas fa-trash text-[10px]"></i>
                             </button>` : ''}
                         </div>
-                        <p class="text-[13.5px] text-slate-700 dark:text-slate-300 leading-relaxed mt-2.5 whitespace-pre-wrap break-words">${content}</p>
+                        <p class="text-[14px] text-slate-700 dark:text-slate-300 leading-relaxed mt-2.5 whitespace-pre-wrap break-words">${content}</p>
                     </div>
                 </div>
             `;
