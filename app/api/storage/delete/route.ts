@@ -25,9 +25,15 @@ export async function POST(request: NextRequest) {
         const kind = body?.kind as string;
 
         if (kind === 'profile') {
-            const bucket = 'profile-pictures';
-            const key = `${decoded.uid}.jpg`;
-            await client.removeObject(bucket, key);
+            // Delete ALL photos under the user's prefix (uploads use uid/timestamp.jpg)
+            const objectStream = client.listObjectsV2('profile-pictures', `${decoded.uid}/`, true);
+            const toDelete: string[] = [];
+            for await (const obj of objectStream) toDelete.push(obj.name);
+            // Also try the legacy flat key
+            toDelete.push(`${decoded.uid}.jpg`);
+            for (const key of toDelete) {
+                try { await client.removeObject('profile-pictures', key); } catch { /* object may not exist */ }
+            }
             return NextResponse.json({ success: true });
         }
 
