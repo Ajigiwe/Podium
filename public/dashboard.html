@@ -486,15 +486,15 @@
         <!-- Main Content -->
         <main class="h-full overflow-y-auto lg:pl-64 pt-16 lg:pt-0">
             <div class="max-w-5xl mx-auto px-5 py-6 lg:px-8 lg:py-8 space-y-8">
-                    <div id="w-content-bulletin" class="space-y-8">
-                        <div id="announcement-composer" class="hidden bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 space-y-4">
-                            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">New Announcement</h4>
-                            <textarea id="announcement-text" class="w-full h-24 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl outline-none text-[13px] font-medium resize-none transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400" placeholder="What's the update for today?"></textarea>
-                            <div class="flex justify-end">
-                                <button id="post-announcement" class="px-5 py-2.5 bg-[#1845D4] hover:bg-[#0F2FA8] text-white rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all">Post</button>
+                    <div id="w-content-bulletin" class="space-y-6">
+                        <div id="announcement-composer" class="hidden bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden focus-within:border-[#1845D4] focus-within:ring-2 focus-within:ring-[#1845D4]/10 transition-all">
+                            <textarea id="announcement-text" class="w-full px-4 pt-4 pb-2 bg-transparent border-0 outline-none text-[13.5px] font-medium resize-none text-slate-800 dark:text-slate-100 placeholder:text-slate-400" rows="3" placeholder="Share an update with your community…"></textarea>
+                            <div class="flex items-center justify-between px-4 py-2.5 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800">
+                                <span class="text-[10px] text-slate-400 font-medium">Visible to all members</span>
+                                <button id="post-announcement" class="px-5 py-2 bg-[#1845D4] hover:bg-[#0F2FA8] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all">Post</button>
                             </div>
                         </div>
-                        <div id="announcements-list" class="space-y-6"></div>
+                        <div id="announcements-list" class="space-y-4"></div>
                     </div>
 
                     <div id="w-content-live" class="hidden space-y-4">
@@ -735,9 +735,9 @@
             if (el) el.textContent = greeting;
         })();
     </script>
-    <script type="module" src="./js/sidebar.js?v=7"></script>
-    <script type="module" src="./js/dashboard.js?v=7"></script>
-    <script type="module" src="./js/attendance.js?v=7"></script>
+    <script type="module" src="./js/sidebar.js?v=8"></script>
+    <script type="module" src="./js/dashboard.js?v=8"></script>
+    <script type="module" src="./js/attendance.js?v=8"></script>
     
     <!-- Top-Up Modal -->
     <div id="modal-topup" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
@@ -770,7 +770,7 @@
     <script src="./js/theme-toggle.js"></script>
 
     <script type="module">
-        import { auth, db } from './js/firebase-config.js?v=7';
+        import { auth, db } from './js/firebase-config.js?v=8';
         import { doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         let currentUser = null;
         auth.onAuthStateChanged((user) => { if (user) { currentUser = user; loadWalletBalance(); } });

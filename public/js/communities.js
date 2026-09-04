@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=7';
+import { auth, db } from './firebase-config.js?v=8';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -252,22 +252,53 @@ function setupWorkspaceListeners(groupId) {
     const qAnn = query(collection(db, 'groups', groupId, 'announcements'), orderBy('createdAt', 'desc'));
     workspaceUnsubscribes.push(onSnapshot(qAnn, (snap) => {
         announcementsList.innerHTML = '';
+        if (snap.empty) {
+            announcementsList.innerHTML = `
+                <div class="py-16 text-center">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <p class="text-[13px] font-semibold text-slate-500">No announcements yet</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Updates from your community lead will appear here.</p>
+                </div>
+            `;
+            return;
+        }
         snap.forEach(doc => {
             const ann = doc.data();
             const div = document.createElement('div');
-            div.className = 'bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 transition-all';
+            div.className = 'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden hover:shadow-sm transition-all';
+            const initial = (ann.authorName || '?').charAt(0).toUpperCase();
+            const author = escapeHtml(ann.authorName || 'Unknown');
+            const content = escapeHtml(ann.content || '');
+            const when = timeAgo(ann.createdAt?.toDate());
+            const exact = ann.createdAt?.toDate()?.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) || '';
             div.innerHTML = `
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-8 h-8 rounded-full bg-[#E8EEFF] dark:bg-slate-800 flex items-center justify-center text-[#1845D4] dark:text-blue-400 font-bold text-xs shrink-0">
-                        ${ann.authorName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                        <p class="text-[13px] font-bold text-slate-900 dark:text-white">${ann.authorName}</p>
-                        <p class="text-[10px] text-slate-400">${ann.createdAt?.toDate().toLocaleDateString('en-GB')}</p>
+                <div class="flex items-start gap-3 p-4 sm:p-5">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#1845D4] to-[#0F2FA8] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">${initial}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-[13px] font-bold text-slate-900 dark:text-white truncate">${author}</p>
+                                    <span class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-[#E8EEFF] dark:bg-blue-900/30 text-[#1845D4] dark:text-blue-400">
+                                        <i class="fas fa-bullhorn text-[7px]"></i> Announcement
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-0.5" title="${exact}">${when}</p>
+                            </div>
+                            ${isOwner ? `
+                            <button data-del-ann="${doc.id}" title="Delete" class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                                <i class="fas fa-trash text-[10px]"></i>
+                            </button>` : ''}
+                        </div>
+                        <p class="text-[13.5px] text-slate-700 dark:text-slate-300 leading-relaxed mt-2.5 whitespace-pre-wrap break-words">${content}</p>
                     </div>
                 </div>
-                <p class="text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed">${ann.content}</p>
             `;
+            div.querySelectorAll('[data-del-ann]').forEach(btn => {
+                btn.addEventListener('click', () => window.deleteAnnouncement(btn.getAttribute('data-del-ann')));
+            });
             announcementsList.appendChild(div);
         });
     }));
@@ -406,16 +437,32 @@ function createWorkspaceSessionCard(s) {
 
 // --- ACTIONS ---
 function setupWorkspaceActions(user, profile) {
-    document.getElementById('post-announcement').onclick = async () => {
-        const text = document.getElementById('announcement-text').value;
-        if (!text.trim()) return;
-        await addDoc(collection(db, 'groups', currentGroup.id, 'announcements'), {
-            content: text,
-            authorId: user.uid,
-            authorName: profile.fullName || user.email,
-            createdAt: serverTimestamp()
-        });
-        document.getElementById('announcement-text').value = '';
+    const annText = document.getElementById('announcement-text');
+    const postBtn = document.getElementById('post-announcement');
+    if (annText && postBtn) {
+        annText.addEventListener('input', () => { postBtn.disabled = !annText.value.trim(); });
+    }
+    postBtn.onclick = async () => {
+        const text = annText.value.trim();
+        if (!text) return;
+        postBtn.disabled = true;
+        postBtn.textContent = 'Posting…';
+        try {
+            await addDoc(collection(db, 'groups', currentGroup.id, 'announcements'), {
+                content: text,
+                authorId: user.uid,
+                authorName: profile.fullName || user.email,
+                createdAt: serverTimestamp()
+            });
+            annText.value = '';
+            showToast('Announcement posted.');
+        } catch (err) {
+            console.error('Post announcement failed:', err);
+            showToast('Could not post announcement.', 'error');
+        } finally {
+            postBtn.textContent = 'Post';
+            postBtn.disabled = !annText.value.trim();
+        }
     };
 
     document.getElementById('share-link').onclick = async () => {
@@ -611,6 +658,38 @@ window.kickMember = async (groupId, userId) => {
     showConfirm('Remove this member?', async () => {
         await deleteDoc(doc(db, 'group_memberships', `${userId}_${groupId}`));
         await updateDoc(doc(db, 'groups', groupId), { memberCount: increment(-1) });
+    });
+};
+
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function timeAgo(date) {
+    if (!date) return '';
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+window.deleteAnnouncement = async (announcementId) => {
+    if (!currentGroup) return;
+    showConfirm('Delete this announcement?', async () => {
+        try {
+            await deleteDoc(doc(db, 'groups', currentGroup.id, 'announcements', announcementId));
+            showToast('Announcement deleted.');
+        } catch (err) {
+            console.error('Delete announcement failed:', err);
+            showToast('Could not delete announcement.', 'error');
+        }
     });
 };
 
