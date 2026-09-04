@@ -6,8 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAlert } from '@/contexts/AlertContext';
 import { db } from '@/lib/firebase/config';
 import { doc, updateDoc, setDoc, serverTimestamp, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase/config';
+import { getAuthHeaders } from '@/lib/firebase/api-client';
 import { Camera, User, Mail, Lock, Info, List, Verified, Check, GraduationCap, Sparkles, ShieldCheck } from 'lucide-react';
 import AttendanceHistoryModal from '@/components/AttendanceHistoryModal';
 import ImageCropperModal from '@/components/ImageCropperModal';
@@ -69,12 +68,20 @@ export default function ProfilePage() {
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('No ctx');
             canvas.width = 300; canvas.height = 300; ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, 300, 300);
             const croppedBlob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(), 'image/jpeg', 0.8));
-            const uploadTask = uploadBytesResumable(ref(storage, `profile-pictures/${user.uid}`), croppedBlob);
-            uploadTask.on('state_changed', null, null, async () => {
-                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                await updateDoc(doc(db, 'profiles', user.uid), { photoURL: url, updatedAt: Timestamp.now() });
-                queryClient.invalidateQueries({ queryKey: ['profile', user.uid] }); setPhotoURL(url); setSubmitting(false); setTempImage(null); showAlert('Registry updated.', 'success');
+            // Upload via MinIO presign API (no Firebase Storage)
+            const headers = await getAuthHeaders();
+            const presignRes = await fetch('/api/storage/presign', {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kind: 'profile', size: croppedBlob.size }),
             });
+            const presignData = await presignRes.json();
+            if (!presignRes.ok) throw new Error(presignData.error || 'Failed to create upload');
+            const putRes = await fetch(presignData.uploadUrl, { method: 'PUT', body: croppedBlob });
+            if (!putRes.ok) throw new Error('Upload failed');
+            const url = presignData.url;
+            await updateDoc(doc(db, 'profiles', user.uid), { photoURL: url, updatedAt: Timestamp.now() });
+            queryClient.invalidateQueries({ queryKey: ['profile', user.uid] }); setPhotoURL(url); setSubmitting(false); setTempImage(null); showAlert('Registry updated.', 'success');
         } catch (error: any) { showAlert('Upload failed.', 'error'); setSubmitting(false); }
     };
 

@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=4';
+import { auth, db } from './firebase-config.js?v=5';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -255,23 +255,25 @@ function setupWorkspaceListeners(groupId) {
             card.className = 'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/70 dark:border-slate-700/70 p-5 hover:shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-all';
             const year = new Date(res.createdAt?.toDate() || Date.now()).getFullYear();
             const isLink = res.type === 'link';
+            const isDead = res.storageStatus === 'unavailable' || (!res.url && !isLink);
             card.innerHTML = `
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-slate-700">
-                            <i class="fas ${isLink ? 'fa-bookmark' : 'fa-book'} text-xs"></i>
+                        <div class="w-8 h-8 rounded-lg ${isDead ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : 'bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400'} flex items-center justify-center border ${isDead ? 'border-slate-200 dark:border-slate-700' : 'border-indigo-100 dark:border-slate-700'}">
+                            <i class="fas ${isDead ? 'fa-triangle-exclamation' : (isLink ? 'fa-bookmark' : 'fa-book')} text-xs"></i>
                         </div>
                         <div class="min-w-0">
-                            <h5 class="text-[14px] font-semibold text-slate-900 dark:text-white leading-snug line-clamp-2">${res.title}</h5>
-                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${isLink ? 'Ref' : 'Doc'} // ${year}</span>
+                            <h5 class="text-[14px] font-semibold ${isDead ? 'text-slate-400 line-clamp-2' : 'text-slate-900 dark:text-white leading-snug line-clamp-2'}">${res.title}</h5>
+                            <span class="text-[9px] font-bold uppercase tracking-widest ${isDead ? 'text-red-400' : 'text-slate-400'}">${isDead ? 'File unavailable — re-upload' : `${isLink ? 'Ref' : 'Doc'} // ${year}`}</span>
                         </div>
                     </div>
-                    ${isLink && res.url ? `<a href="${res.url}" target="_blank" class="shrink-0 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
+                    ${!isDead && isLink && res.url ? `<a href="${res.url}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
                 </div>
+                ${!isDead ? `
                 <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${isLink ? 'External Reference' : 'Archived Material'}</span>
-                    ${!isLink && res.url ? `<a href="${res.url}" target="_blank" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
-                </div>
+                    ${!isLink && res.url ? `<a href="${res.url}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
+                </div>` : ''}
             `;
             resourcesList.appendChild(card);
         });

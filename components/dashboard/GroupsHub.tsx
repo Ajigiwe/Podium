@@ -13,11 +13,9 @@ import {
     FileText, Upload, File, Loader2, Video, GraduationCap
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { storage } from '@/lib/firebase/config';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getAuthHeaders } from '@/lib/firebase/api-client';
 import { useAlert } from '@/contexts/AlertContext';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { getAuthHeaders } from '@/lib/firebase/api-client';
 
 export default function GroupsHub() {
     const { user, profile } = useAuth();
@@ -467,25 +465,36 @@ function ResourcesTab({ resources, isOwner, onAdd, groupId }: { resources: any[]
         }
 
         setUploading(true);
-        const storageRef = ref(storage, `group-resources/${groupId}/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
+        try {
+            // Upload via MinIO presign API (matches the static dashboard Library flow)
+            const headers = await getAuthHeaders();
+            const presignRes = await fetch('/api/storage/presign', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ kind: 'resource', groupId, fileName: file.name, size: file.size }),
+            });
+            const presignData = await presignRes.json();
+            if (!presignRes.ok) throw new Error(presignData.error || 'Failed to create upload');
 
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setProgress(p);
-            },
-            (error) => {
-                console.error(error);
-                setUploading(false);
-            },
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                onAdd(file.name, downloadURL, 'file');
-                setUploading(false);
-                setProgress(0);
-            }
-        );
+            await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', presignData.uploadUrl);
+                xhr.upload.onprogress = (ev) => {
+                    if (ev.lengthComputable) setProgress((ev.loaded / ev.total) * 100);
+                };
+                xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed (${xhr.status})`)));
+                xhr.onerror = () => reject(new Error('Upload failed.'));
+                xhr.send(file);
+            });
+
+            onAdd(file.name, presignData.url, 'file');
+        } catch (err) {
+            console.error(err);
+            showAlert(err instanceof Error ? err.message : 'Upload failed', 'error');
+        } finally {
+            setUploading(false);
+            setProgress(0);
+        }
     };
 
     return (
