@@ -107,6 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     email: user.email,
                     fullName,
                     role: 'student',
+                    walletBalance: 0,
+                    walletCurrency: 'GHS',
+                    walletUpdatedAt: Timestamp.now(),
                     createdAt: Timestamp.now(),
                     updatedAt: Timestamp.now()
                 });
@@ -172,6 +175,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             email: user.email,
                             fullName: user.displayName || 'User',
                             role: 'student',
+                            walletBalance: 0,
+                            walletCurrency: 'GHS',
+                            walletUpdatedAt: Timestamp.now(),
                             createdAt: Timestamp.now(),
                             updatedAt: Timestamp.now()
                         });

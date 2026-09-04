@@ -74,10 +74,13 @@ service cloud.firestore {
       );
     }
     
-    // Profiles collection
+    // Profiles collection — walletBalance only via Admin SDK
     match /profiles/{userId} {
       allow read: if isSignedIn();
-      allow write: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow write: if isAdmin() || (
+        isSignedIn() && request.auth.uid == userId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['walletBalance', 'walletUpdatedAt', 'walletCurrency', 'lecturerVerifiedAt', 'lecturerVerifiedBy'])
+      );
     }
     
     // Sessions collection
@@ -263,7 +266,11 @@ service cloud.firestore {
     
     match /transactions/{transactionId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isLecturer() || isAdmin());
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.amount == 0;
+      // Client may only create free hide/show (amount 0); paid wallet/top_up/refund must go via Admin SDK
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.amount == 0 && request.resource.data.get('paymentChannel','') == 'direct';
+      allow update, delete: if false; // only Admin SDK via APIs
     }
+
+    // Wallet history is same as transactions read; no separate collection needed
   }
 }

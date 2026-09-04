@@ -42,6 +42,7 @@ export default function ClassroomPage() {
     const [studentIndex, setStudentIndex] = useState('');
     const [submittingProfile, setSubmittingProfile] = useState(false);
     const [joinMicEnabled, setJoinMicEnabled] = useState(true);
+    const [insufficientBalance, setInsufficientBalance] = useState<{ needed: number; have: number } | null>(null);
 
     console.log('[ClassroomPage] Render - loading:', loading, 'authLoading:', authLoading, 'sessionLoading:', sessionLoading, 'sessionError:', !!sessionError, 'user:', !!user, 'session:', !!session, 'profile:', !!profile);
 
@@ -105,30 +106,36 @@ export default function ClassroomPage() {
                     }
                 }
                 
-                console.log('[Classroom:VerifyAccess] Fetching system_settings/subscription...');
-                const subDoc = await getDoc(doc(db, 'system_settings', 'subscription'));
-                const subData = subDoc.data();
-                const isPayToUse = subData?.isPayToUse ?? true;
-                const perClassFee = subData?.perClassFee ?? 600; // default GHS 6 = 600 pesewas
+                // Use /api/wallet/deduct for all wallet checks and deductions (Admin SDK)
+                if (!isModerator) {
+                    try {
+                        const token = await user.getIdToken();
+                        const deductRes = await fetch('/api/wallet/deduct', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ sessionId }),
+                        });
+                        const deductData = await deductRes.json();
 
-                // Wallet balance check for students
-                if (!isModerator && isPayToUse) {
-                    const walletBalance = profile?.walletBalance || 0;
-                    console.log('[Classroom:VerifyAccess] walletBalance:', walletBalance, 'perClassFee:', perClassFee);
-                    if (walletBalance < perClassFee) {
-                        console.warn('[Classroom:VerifyAccess] Insufficient wallet balance, redirecting.');
-                        showAlert('Insufficient wallet balance. Please top up to join this class.', 'error');
+                        if (deductRes.status === 402 || deductData.insufficient) {
+                            console.warn('[Classroom:VerifyAccess] Insufficient wallet balance.');
+                            setInsufficientBalance({ needed: deductData.required || deductData.price || 0, have: deductData.balance || 0 });
+                            setLoading(false);
+                            return;
+                        }
+                        if (!deductRes.ok && !deductData.alreadyPaid && !deductData.free) {
+                            console.error('[Classroom:VerifyAccess] Deduct failed:', deductData);
+                            showAlert(deductData.error || 'Payment failed', 'error');
+                            window.location.href = '/dashboard.html';
+                            return;
+                        }
+                        console.log('[Classroom:VerifyAccess] Deduct result:', deductData);
+                    } catch (e) {
+                        console.error('[Classroom:VerifyAccess] Deduct error:', e);
+                        showAlert('Network error. Please try again.', 'error');
                         window.location.href = '/dashboard.html';
                         return;
                     }
-
-                    // Deduct class fee from wallet
-                    const { doc: fsDoc, updateDoc: fsUpdate } = await import('firebase/firestore');
-                    await fsUpdate(fsDoc(db, 'profiles', user.uid), {
-                        walletBalance: walletBalance - perClassFee,
-                        updatedAt: serverTimestamp(),
-                    });
-                    console.log('[Classroom:VerifyAccess] Deducted', perClassFee, 'from wallet. New balance:', walletBalance - perClassFee);
                 }
 
                 console.log('[Classroom:VerifyAccess] Fetching attendance log for sessionId:', sessionId, 'userId:', user.uid);
@@ -251,6 +258,32 @@ export default function ClassroomPage() {
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8F9FF]"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
 
+    if (insufficientBalance) {
+        return (
+            <div className="min-h-screen bg-[#F8F9FF] flex items-center justify-center p-8 animate-in fade-in duration-500">
+                <div className="max-w-md w-full space-y-8 text-center">
+                    <div className="space-y-4">
+                        <div className="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mx-auto border border-red-100">
+                            <span className="text-3xl">💰</span>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-red-500 uppercase tracking-[0.4em]">Insufficient Balance</p>
+                            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Top Up Required</h1>
+                            <p className="text-sm text-slate-500 font-medium">You need GHS {(insufficientBalance.needed / 100).toFixed(2)} to enter this class. Your balance is GHS {(insufficientBalance.have / 100).toFixed(2)}.</p>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+                        <p className="text-xs text-slate-500">Add funds to your wallet to join this class.</p>
+                        <div className="flex gap-3">
+                            <a href="/wallet.html" className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/10 active:scale-95 transition-all text-center">Top Up Wallet</a>
+                            <a href="/dashboard.html" className="flex-1 py-3.5 bg-white text-slate-500 rounded-xl font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:text-indigo-600 transition-all text-center">Back to Dashboard</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (isScheduledWait || waitingForLecturer) {
         return (
             <div className="min-h-screen bg-[#F8F9FF] flex items-center justify-center p-8 animate-in fade-in duration-700">
@@ -276,7 +309,7 @@ export default function ClassroomPage() {
         );
     }
 
-    if (!session || (!canAccess && !showProfileModal)) return null;
+    if (!session || (!canAccess && !showProfileModal && !insufficientBalance)) return null;
 
     return (
         <div className="min-h-screen bg-black">

@@ -28,13 +28,18 @@ export async function POST(req: NextRequest) {
         const userDoc = await adminDb.collection('profiles').doc(userId).get();
         const user = userDoc.data();
 
-        if (!user?.email) {
+        let email = user?.email || decodedToken.email;
+        if (!email) {
+            const authUser = await adminAuth.getUser(userId);
+            email = authUser.email;
+        }
+        if (!email) {
             return NextResponse.json({ error: 'User email not found' }, { status: 400 });
         }
 
         // Initialize Paystack transaction
         const paystackResponse = await initializeTransaction({
-            email: user.email,
+            email: email,
             amount,
             userId,
             sessionId: 'wallet_topup',
@@ -49,6 +54,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             authorizationUrl: paystackResponse.data.authorization_url,
             reference: paystackResponse.data.reference,
+            accessCode: paystackResponse.data.access_code,
         });
     } catch (error: any) {
         console.error('Wallet top-up error:', error);

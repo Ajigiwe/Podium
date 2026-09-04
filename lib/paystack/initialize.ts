@@ -28,6 +28,8 @@ export async function initializeTransaction(
 ): Promise<PaystackResponse> {
     const { email, amount, userId, sessionId, sessionTitle, callbackUrl } = params;
 
+    // Wallet top-ups allow card + mobile_money, session payments mobile_money only
+    const channels = params.customMetadata?.type === 'top_up' ? ['mobile_money', 'card'] : ['mobile_money'];
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
         headers: {
@@ -38,7 +40,7 @@ export async function initializeTransaction(
             email,
             amount, // Amount in pesewas
             currency: 'GHS',
-            channels: ['mobile_money'], // Restrict to mobile money only
+            channels,
             metadata: {
                 userId,
                 sessionId,

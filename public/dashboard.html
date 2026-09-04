@@ -152,6 +152,12 @@
                             </span>
                             <span class="flex-1 text-left">History</span>
                         </a>
+                        <a href="./wallet.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 hover:text-[#0D0D1A] dark:hover:text-white">
+                            <span class="nav-icon w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 transition-colors">
+                                <i class="fas fa-wallet text-xs"></i>
+                            </span>
+                            <span class="flex-1 text-left">Transactions</span>
+                        </a>
                     </div>
                 </div>
 
@@ -220,6 +226,15 @@
                         </button>
                     </div>
 
+                    <!-- Quick Join (compact, above stats) -->
+                    <div class="bg-white dark:bg-slate-900 rounded-xl px-5 py-4 border border-[#DDE0F0] dark:border-slate-800 flex flex-col sm:flex-row sm:items-center gap-3">
+                        <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest whitespace-nowrap">Join a class</p>
+                        <form id="join-form" class="flex gap-2 flex-1">
+                            <input type="text" id="join-link" placeholder="Enter meeting code..." class="flex-1 min-w-0 px-4 py-2.5 bg-[#F5F6FA] dark:bg-slate-800 border border-[#DDE0F0] dark:border-slate-700 rounded-lg text-[13px] font-medium outline-none focus:border-[#1845D4] focus:ring-2 focus:ring-blue-600/10 transition-all" autocomplete="off">
+                            <button type="submit" class="px-5 py-2.5 bg-[#1845D4] text-white rounded-lg text-[13px] font-bold hover:bg-[#0F2FA8] transition-all shadow-md shadow-blue-600/10 shrink-0">Join</button>
+                        </form>
+                    </div>
+
                     <!-- Stat Cards -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div onclick="window.openRecordsDrawer('join')" class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-blue cursor-pointer card-hover group">
@@ -230,7 +245,6 @@
                                 <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Enrolled</span>
                             </div>
                             <div id="enrolled-count" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">0</div>
-                            <p class="text-[11px] text-[#1845D4] font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-all">View classes <i class="fas fa-arrow-right text-[9px]"></i></p>
                         </div>
 
                         <div onclick="window.openRecordsDrawer('host')" class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-amber cursor-pointer card-hover group">
@@ -241,29 +255,32 @@
                                 <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Hosted</span>
                             </div>
                             <div id="hosted-count" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">0</div>
-                            <p class="text-[11px] text-amber-600 font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-all">Manage classes <i class="fas fa-arrow-right text-[9px]"></i></p>
                         </div>
 
-                        
                         <!-- Wallet Balance Card -->
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-green">
+                        <div onclick="openTopUpModal()" class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-green cursor-pointer card-hover group">
                             <div class="flex items-center gap-3 mb-3">
                                 <div class="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600">
                                     <i class="fas fa-wallet text-sm"></i>
                                 </div>
                                 <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Wallet</span>
+                                <button onclick="event.stopPropagation(); refreshWallet()" class="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-[#8888A8] hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-all" title="Refresh balance">
+                                    <i id="wallet-refresh-icon" class="fas fa-sync-alt text-[10px]"></i>
+                                </button>
                             </div>
-                            <div id="wallet-balance" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">GHS 0</div>
-                            <button onclick="openTopUpModal()" class="mt-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-green-100 transition-all">Top Up</button>
+                            <div id="wallet-balance" class="text-2xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">GHS 0</div>
+                            <p class="text-[11px] text-green-600 font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-all">Top up <i class="fas fa-arrow-right text-[9px]"></i></p>
                         </div>
 
-                        <!-- Quick Join Card -->
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 flex flex-col justify-center">
-                            <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest mb-3">Join a class</p>
-                            <form id="join-form" class="flex gap-2">
-                                <input type="text" id="join-link" placeholder="Enter meeting code..." class="flex-1 px-4 py-2.5 bg-[#F5F6FA] dark:bg-slate-800 border border-[#DDE0F0] dark:border-slate-700 rounded-lg text-[13px] font-medium outline-none focus:border-[#1845D4] focus:ring-2 focus:ring-blue-600/10 transition-all" autocomplete="off">
-                                <button type="submit" class="px-5 py-2.5 bg-[#1845D4] text-white rounded-lg text-[13px] font-bold hover:bg-[#0F2FA8] transition-all shadow-md shadow-blue-600/10">Join</button>
-                            </form>
+                        <!-- Quick Stats Card -->
+                        <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 stat-glow-emerald">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
+                                    <i class="fas fa-clipboard-check text-sm"></i>
+                                </div>
+                                <span class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest">Sessions</span>
+                            </div>
+                            <div id="total-sessions-count" class="text-3xl font-bold text-[#0D0D1A] dark:text-white tracking-tight tabular-nums">0</div>
                         </div>
                     </div>
 
@@ -745,6 +762,7 @@
         </div>
     </div>
 
+    <script src="https://js.paystack.co/v2/inline.js"></script>
     <script src="./js/theme-toggle.js"></script>
 
     <script type="module">
@@ -763,6 +781,20 @@
         }
         window.openTopUpModal = () => { document.getElementById('modal-topup').classList.remove('hidden'); document.getElementById('topup-amount').value = ''; };
         window.setTopUpAmount = (pesewas) => { document.getElementById('topup-amount').value = pesewas / 100; };
+        window.refreshWallet = async () => {
+            const icon = document.getElementById('wallet-refresh-icon');
+            if (!currentUser || !icon) return;
+            icon.classList.add('animate-spin');
+            try {
+                const token = await currentUser.getIdToken();
+                const res = await fetch('/api/wallet/reconcile', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (data.newBalance !== undefined) {
+                    document.getElementById('wallet-balance').textContent = 'GHS ' + (data.newBalance / 100).toFixed(2);
+                }
+            } catch (e) { console.error('refresh wallet failed', e); }
+            icon.classList.remove('animate-spin');
+        };
         window.processTopUp = async () => {
             const amt = parseFloat(document.getElementById('topup-amount').value);
             if (!amt || amt < 1) return alert('Minimum top-up is GHS 1');
@@ -770,12 +802,39 @@
             btn.disabled = true; btn.textContent = 'Initializing...';
             try {
                 const token = await currentUser.getIdToken();
-                const res = await fetch('/api/wallet/topup', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ amount: Math.round(amt * 100) }) });
+                const res = await fetch('/api/wallet/topup/initialize', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ amount: Math.round(amt * 100) }) });
                 const data = await res.json();
-                if (data.authorizationUrl) window.location.href = data.authorizationUrl;
-                else alert(data.error || 'Failed');
-            } catch (e) { alert('Network error'); }
-            btn.disabled = false; btn.textContent = 'Pay Now';
+                if (!res.ok) throw new Error(data.error || 'Failed');
+
+                const handler = PaystackPop.setup({
+                    key: 'pk_live_dfaef9f68d88d002fdc2e89eb8156370c5fba1dd',
+                    email: currentUser.email || 'student@podiumclass.online',
+                    amount: Math.round(amt * 100),
+                    currency: 'GHS',
+                    ref: data.reference,
+                    channels: ['card', 'mobile_money'],
+                    onClose: () => { btn.disabled = false; btn.textContent = 'Pay Now'; },
+                    callback: async (response) => {
+                        btn.textContent = 'Verifying...';
+                        try {
+                            const vRes = await fetch('/api/paystack/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ reference: response.reference }) });
+                            const vData = await vRes.json();
+                            if (vData.success || vData.status) {
+                                document.getElementById('modal-topup').classList.add('hidden');
+                                showToast('Top-up successful!', 'success');
+                            } else {
+                                showToast('Payment received. Balance will update shortly.', 'success');
+                                document.getElementById('modal-topup').classList.add('hidden');
+                            }
+                        } catch (e) {
+                            showToast('Payment received. Balance will update shortly.', 'success');
+                            document.getElementById('modal-topup').classList.add('hidden');
+                        }
+                        btn.disabled = false; btn.textContent = 'Pay Now';
+                    }
+                });
+                handler.openIframe();
+            } catch (e) { alert(e.message || 'Network error'); btn.disabled = false; btn.textContent = 'Pay Now'; }
         };
     </script>
 
