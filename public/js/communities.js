@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=3';
+import { auth, db } from './firebase-config.js?v=4';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -9,9 +9,12 @@ import {
 const myCommunitiesList = document.getElementById('my-communities-list');
 const publicCommunitiesList = document.getElementById('public-communities-list');
 const workspaceView = document.getElementById('workspace-view');
-const workspaceTitle = document.getElementById('workspace-title');
-const workspaceCode = document.getElementById('workspace-code');
 const closeWorkspaceBtn = document.getElementById('close-workspace');
+const wsMobileMenuBtn = document.getElementById('ws-mobile-menu-btn');
+const wsCloseMobileMenuBtn = document.getElementById('ws-close-mobile-menu');
+const wsSidebarOverlay = document.getElementById('ws-sidebar-overlay');
+const wsMobileExitBtn = document.getElementById('ws-mobile-exit-btn');
+const wsSidebar = document.getElementById('ws-sidebar');
 
 const announcementComposer = document.getElementById('announcement-composer');
 const announcementsList = document.getElementById('announcements-list');
@@ -42,6 +45,29 @@ export function initCommunities(user, profile) {
     setupWorkspaceActions(user, profile);
 }
 
+// --- WORKSPACE MOBILE MENU ---
+function setWsSidebar(open) {
+    if (!wsSidebar) return;
+    if (open) {
+        wsSidebar.classList.remove('-translate-x-full');
+        wsSidebar.classList.add('flex');
+        wsSidebar.classList.remove('hidden');
+        if (wsSidebarOverlay) wsSidebarOverlay.classList.remove('hidden');
+    } else {
+        wsSidebar.classList.add('-translate-x-full');
+        if (window.innerWidth < 1024) {
+            wsSidebar.classList.add('hidden');
+            wsSidebar.classList.remove('flex');
+        }
+        if (wsSidebarOverlay) wsSidebarOverlay.classList.add('hidden');
+    }
+}
+
+function setWorkspaceHeading(name, code) {
+    document.querySelectorAll('.workspace-title').forEach(el => el.innerText = name);
+    document.querySelectorAll('.workspace-code').forEach(el => el.innerText = code);
+}
+
 // --- TAB SWITCHING ---
 window.switchWorkspaceTab = (tab) => {
     const tabs = ['bulletin', 'live', 'resources', 'members', 'requests'];
@@ -52,13 +78,15 @@ window.switchWorkspaceTab = (tab) => {
         
         const isActive = t === tab;
         if (isActive) {
-            btn.className = 'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all bg-[#E8EEFF] text-[#1845D4]';
+            btn.className = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all bg-[#E8EEFF] text-[#1845D4]';
             content.classList.remove('hidden');
         } else {
-            btn.className = 'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white';
+            btn.className = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white';
             content.classList.add('hidden');
         }
     });
+    // Close the mobile drawer after picking a tab
+    if (window.innerWidth < 1024) setWsSidebar(false);
 };
 
 // --- DATA LISTENERS ---
@@ -130,10 +158,10 @@ async function openWorkspace(group) {
     currentGroup = group;
     isOwner = group.ownerId === auth.currentUser.uid;
     
-    workspaceTitle.innerText = group.name;
-    workspaceCode.innerText = `CODE: ${group.joinCode || 'PRIVATE'}`;
+    setWorkspaceHeading(group.name, `CODE: ${group.joinCode || 'PRIVATE'}`);
     workspaceView.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    setWsSidebar(false);
     
     // Show/Hide Owner Tools
     const isVerifiedStudent = currentProfile?.role === 'student' && currentProfile?.isVerified === true;
@@ -409,6 +437,11 @@ function setupWorkspaceActions(user, profile) {
         document.body.style.overflow = 'auto';
         workspaceUnsubscribes.forEach(unsub => unsub());
     };
+
+    if (wsMobileExitBtn) wsMobileExitBtn.onclick = () => closeWorkspaceBtn.click();
+    if (wsMobileMenuBtn) wsMobileMenuBtn.onclick = () => setWsSidebar(true);
+    if (wsCloseMobileMenuBtn) wsCloseMobileMenuBtn.onclick = () => setWsSidebar(false);
+    if (wsSidebarOverlay) wsSidebarOverlay.onclick = () => setWsSidebar(false);
 
     const headerGrantBtn = document.getElementById('header-grant-lecturer-btn');
     if (headerGrantBtn) {

@@ -421,46 +421,71 @@
     </div>
 
     <!-- Workspace View -->
-    <div id="workspace-view" class="hidden fixed inset-0 z-[100] bg-[#F8F9FC] dark:bg-[#080810] overflow-y-auto">
-        <nav class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 h-16 flex items-center sticky top-0 z-10 transition-all">
-            <div class="max-w-6xl mx-auto px-6 w-full flex justify-between items-center">
-                <button id="close-workspace" class="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all px-3 py-2 rounded-lg text-xs font-semibold">
-                    <i class="fas fa-arrow-left text-xs"></i>
-                    <span>Exit</span>
-                </button>
-                <div class="text-center hidden sm:block">
-                    <h2 id="workspace-title" class="text-[16px] font-bold tracking-tight text-slate-900 dark:text-white">Community Name</h2>
-                    <p id="workspace-code" class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">CODE: XXXXXX</p>
-                </div>
-                <div class="flex items-center gap-3">
-                    <button id="header-grant-lecturer-btn" class="hidden px-4 py-2 bg-[#1845D4] hover:bg-[#0F2FA8] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5">
-                        <i class="fas fa-user-plus text-xs"></i> Grant Lecturer
-                    </button>
-                </div>
+    <div id="workspace-view" class="hidden fixed inset-0 z-[100] bg-[#F8F9FC] dark:bg-[#080810]">
+        <!-- Mobile Top Bar -->
+        <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-950 border-b border-[#DDE0F0] dark:border-slate-800 flex items-center justify-between px-4 z-40">
+            <button id="ws-mobile-menu-btn" class="p-2 text-[#0D0D1A] dark:text-white bg-[#F5F6FA] dark:bg-slate-800 rounded-lg" aria-label="Menu">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="text-center min-w-0 px-2">
+                <h2 class="workspace-title text-[15px] font-bold text-[#0D0D1A] dark:text-white truncate">Community Name</h2>
+                <p class="workspace-code text-[9px] font-bold text-[#8888A8] uppercase tracking-widest">CODE: XXXXXX</p>
             </div>
-        </nav>
-        <div class="max-w-6xl mx-auto px-6 py-10">
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <aside class="space-y-1">
-                    <button onclick="window.switchWorkspaceTab('bulletin')" id="w-tab-bulletin" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
-                        <i class="fas fa-bullhorn w-4"></i> Bulletin
-                    </button>
-                    <button onclick="window.switchWorkspaceTab('live')" id="w-tab-live" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
-                        <i class="fas fa-video w-4"></i> <span class="flex-1 text-left">Live Classes</span>
-                        <span id="live-indicator" class="hidden w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
-                    </button>
-                    <button onclick="window.switchWorkspaceTab('resources')" id="w-tab-resources" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
-                        <i class="fas fa-folder-open w-4"></i> Resources
-                    </button>
-                    <button onclick="window.switchWorkspaceTab('members')" id="w-tab-members" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
-                        <i class="fas fa-users w-4"></i> Members
-                    </button>
-                    <button onclick="window.switchWorkspaceTab('requests')" id="w-tab-requests" class="hidden w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
-                        <i class="fas fa-user-plus w-4"></i> <span class="flex-1 text-left">Requests</span>
-                        <span id="requests-count" class="bg-[#1845D4] text-white px-2 py-0.5 rounded-full text-[9px] font-bold">0</span>
-                    </button>
-                </aside>
-                <div class="lg:col-span-3 space-y-10">
+            <button id="ws-mobile-exit-btn" class="p-2 text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white rounded-lg" aria-label="Exit">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+        </div>
+
+        <!-- Sidebar Overlay (mobile) -->
+        <div id="ws-sidebar-overlay" class="fixed inset-0 bg-[#0D0D1A]/40 z-40 hidden lg:hidden"></div>
+
+        <!-- Sidebar -->
+        <aside id="ws-sidebar" class="hidden lg:flex w-64 flex-col fixed inset-y-0 bg-white dark:bg-slate-950 border-r border-[#DDE0F0] dark:border-slate-800 z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
+            <div class="h-16 px-4 flex items-center gap-2.5 border-b border-[#DDE0F0] dark:border-slate-800">
+                <div class="w-9 h-9 bg-[#1845D4] rounded-lg flex items-center justify-center shrink-0">
+                    <i class="fas fa-users text-white text-xs"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h2 class="workspace-title text-[14px] font-bold text-[#0D0D1A] dark:text-white truncate">Community Name</h2>
+                    <p class="workspace-code text-[9px] font-bold text-[#8888A8] uppercase tracking-widest truncate">CODE: XXXXXX</p>
+                </div>
+                <button id="ws-close-mobile-menu" class="lg:hidden p-1.5 text-[#8888A8] hover:text-[#0D0D1A] dark:hover:text-white" aria-label="Close menu">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <nav class="flex-1 px-3 py-5 space-y-1">
+                <button onclick="window.switchWorkspaceTab('bulletin')" id="w-tab-bulletin" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
+                    <i class="fas fa-bullhorn w-4 text-center"></i> Bulletin
+                </button>
+                <button onclick="window.switchWorkspaceTab('live')" id="w-tab-live" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
+                    <i class="fas fa-video w-4 text-center"></i> <span class="flex-1 text-left">Live Classes</span>
+                    <span id="live-indicator" class="hidden w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                </button>
+                <button onclick="window.switchWorkspaceTab('resources')" id="w-tab-resources" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
+                    <i class="fas fa-folder-open w-4 text-center"></i> Resources
+                </button>
+                <button onclick="window.switchWorkspaceTab('members')" id="w-tab-members" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
+                    <i class="fas fa-users w-4 text-center"></i> Members
+                </button>
+                <button onclick="window.switchWorkspaceTab('requests')" id="w-tab-requests" class="hidden w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all">
+                    <i class="fas fa-user-plus w-4 text-center"></i> <span class="flex-1 text-left">Requests</span>
+                    <span id="requests-count" class="bg-[#1845D4] text-white px-2 py-0.5 rounded-full text-[9px] font-bold">0</span>
+                </button>
+            </nav>
+            <div class="p-4 border-t border-[#DDE0F0] dark:border-slate-800 space-y-2">
+                <button id="header-grant-lecturer-btn" class="hidden w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#1845D4] hover:bg-[#0F2FA8] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all">
+                    <i class="fas fa-user-plus text-xs"></i> Grant Lecturer
+                </button>
+                <button id="close-workspace" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-semibold text-[#8888A8] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                    <i class="fas fa-sign-out-alt w-4"></i>
+                    <span>Exit Workspace</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="h-full overflow-y-auto lg:pl-64 pt-16 lg:pt-0">
+            <div class="max-w-5xl mx-auto px-5 py-6 lg:px-8 lg:py-8 space-y-8">
                     <div id="w-content-bulletin" class="space-y-8">
                         <div id="announcement-composer" class="hidden bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 space-y-4">
                             <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">New Announcement</h4>
@@ -479,8 +504,8 @@
 
                     <div id="w-content-resources" class="hidden space-y-8">
                         <div class="flex items-center gap-4 pb-4 border-b border-[#DDE0F0] dark:border-slate-800">
-                            <h3 class="text-xl font-serif font-bold text-[#1845D4] dark:text-white tracking-tight">The Library</h3>
-                            <p class="text-[12px] text-[#8888A8] font-medium">Study materials and references</p>
+                            <h3 class="text-lg font-bold text-[#0D0D1A] dark:text-white tracking-tight">The Library</h3>
+                            <p class="text-[12px] text-[#8888A8]">Study materials and references</p>
                         </div>
                         <div id="resource-composer" class="hidden grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-[#DDE0F0] dark:border-slate-800 space-y-4">
@@ -530,9 +555,8 @@
                     </div>
 
                     <div id="w-content-requests" class="hidden space-y-4"></div>
-                </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <!-- Create Class Modal -->
@@ -711,9 +735,9 @@
             if (el) el.textContent = greeting;
         })();
     </script>
-    <script type="module" src="./js/sidebar.js?v=3"></script>
-    <script type="module" src="./js/dashboard.js?v=3"></script>
-    <script type="module" src="./js/attendance.js?v=3"></script>
+    <script type="module" src="./js/sidebar.js?v=4"></script>
+    <script type="module" src="./js/dashboard.js?v=4"></script>
+    <script type="module" src="./js/attendance.js?v=4"></script>
     
     <!-- Top-Up Modal -->
     <div id="modal-topup" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
@@ -746,7 +770,7 @@
     <script src="./js/theme-toggle.js"></script>
 
     <script type="module">
-        import { auth, db } from './js/firebase-config.js?v=3';
+        import { auth, db } from './js/firebase-config.js?v=4';
         import { doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         let currentUser = null;
         auth.onAuthStateChanged((user) => { if (user) { currentUser = user; loadWalletBalance(); } });
