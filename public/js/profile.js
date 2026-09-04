@@ -1,5 +1,5 @@
 // public/js/profile.js
-import { auth, db } from './firebase-config.js?v=5';
+import { auth, db } from './firebase-config.js?v=6';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     doc, getDoc, updateDoc, setDoc, serverTimestamp, collection, query, where, getDocs, Timestamp 
@@ -195,22 +195,47 @@ profileForm.onsubmit = async (e) => {
 };
 
 // Photo Upload
+async function compressImage(file, maxDim = 512, quality = 0.85) {
+    const img = await new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const im = new Image();
+        im.onload = () => { URL.revokeObjectURL(url); resolve(im); };
+        im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Not a valid image.')); };
+        im.src = url;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) throw new Error('Could not process image.');
+    return blob;
+}
+
 photoUpload.onchange = async (e) => {
     const file = e.target.files[0];
+    e.target.value = ''; // allow re-selecting the same file
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        showToast('Please choose an image file.', 'error');
+        return;
+    }
     
     setLoading(true);
     try {
+        // Downscale/compress so any phone photo fits the 5MB limit
+        const blob = await compressImage(file);
         const token = await auth.currentUser.getIdToken();
         const res = await fetch('/api/storage/presign', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ kind: 'profile', size: file.size })
+            body: JSON.stringify({ kind: 'profile', size: blob.size })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create upload');
 
-        const putRes = await fetch(data.uploadUrl, { method: 'PUT', body: file });
+        const putRes = await fetch(data.uploadUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
         if (!putRes.ok) throw new Error(`Upload failed (${putRes.status})`);
 
         await updateDoc(doc(db, 'profiles', currentUserId), { 
@@ -222,7 +247,8 @@ photoUpload.onchange = async (e) => {
         renderProfile();
         showToast('Photo updated.');
     } catch (err) {
-        showToast('Upload failed.', 'error');
+        console.error('Photo upload failed:', err);
+        showToast(err.message || 'Upload failed.', 'error');
     } finally {
         setLoading(false);
     }

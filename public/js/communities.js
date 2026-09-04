@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=5';
+import { auth, db } from './firebase-config.js?v=6';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -34,6 +34,33 @@ let isOwner = false;
 let workspaceUnsubscribes = [];
 let currentProfile = null;
 let currentUser = null;
+
+function canManageResources() {
+    if (isOwner) return true;
+    if (currentProfile?.role === 'admin') return true;
+    if (currentProfile?.role === 'student' && currentProfile?.isVerified === true) return true;
+    return false;
+}
+
+window.deleteResource = async (resourceId) => {
+    if (!currentGroup) return;
+    showConfirm('Remove this item from the Library?', async () => {
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/storage/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ kind: 'resource', groupId: currentGroup.id, resourceId })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Delete failed');
+            showToast('Removed from Library.');
+        } catch (err) {
+            console.error('Delete resource failed:', err);
+            showToast(err.message || 'Delete failed.', 'error');
+        }
+    });
+};
 
 export function initCommunities(user, profile) {
     currentUser = user;
@@ -249,6 +276,7 @@ function setupWorkspaceListeners(groupId) {
     const qRes = query(collection(db, 'groups', groupId, 'resources'), orderBy('createdAt', 'desc'));
     workspaceUnsubscribes.push(onSnapshot(qRes, (snap) => {
         resourcesList.innerHTML = '';
+        const canDelete = canManageResources();
         snap.forEach(doc => {
             const res = doc.data();
             const card = document.createElement('div');
@@ -258,8 +286,8 @@ function setupWorkspaceListeners(groupId) {
             const isDead = res.storageStatus === 'unavailable' || (!res.url && !isLink);
             card.innerHTML = `
                 <div class="flex items-start justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg ${isDead ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : 'bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400'} flex items-center justify-center border ${isDead ? 'border-slate-200 dark:border-slate-700' : 'border-indigo-100 dark:border-slate-700'}">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-lg ${isDead ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : 'bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400'} flex items-center justify-center border ${isDead ? 'border-slate-200 dark:border-slate-700' : 'border-indigo-100 dark:border-slate-700'} shrink-0">
                             <i class="fas ${isDead ? 'fa-triangle-exclamation' : (isLink ? 'fa-bookmark' : 'fa-book')} text-xs"></i>
                         </div>
                         <div class="min-w-0">
@@ -267,7 +295,12 @@ function setupWorkspaceListeners(groupId) {
                             <span class="text-[9px] font-bold uppercase tracking-widest ${isDead ? 'text-red-400' : 'text-slate-400'}">${isDead ? 'File unavailable — re-upload' : `${isLink ? 'Ref' : 'Doc'} // ${year}`}</span>
                         </div>
                     </div>
-                    ${!isDead && isLink && res.url ? `<a href="${res.url}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
+                    <div class="flex items-center gap-2 shrink-0">
+                        ${!isDead && isLink && res.url ? `<a href="${res.url}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
+                        ${canDelete ? `<button data-del-resource="${doc.id}" title="Remove" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                            <i class="fas fa-trash text-[10px]"></i>
+                        </button>` : ''}
+                    </div>
                 </div>
                 ${!isDead ? `
                 <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -275,6 +308,9 @@ function setupWorkspaceListeners(groupId) {
                     ${!isLink && res.url ? `<a href="${res.url}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
                 </div>` : ''}
             `;
+            card.querySelectorAll('[data-del-resource]').forEach(btn => {
+                btn.addEventListener('click', () => window.deleteResource(btn.getAttribute('data-del-resource')));
+            });
             resourcesList.appendChild(card);
         });
     }));
