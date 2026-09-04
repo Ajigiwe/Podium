@@ -41,7 +41,8 @@ interface ObjectTarget {
 function resolveTarget(kind: string, uid: string, body: any): ObjectTarget {
     switch (kind) {
         case 'profile':
-            return { bucket: 'profile-pictures', key: `${uid}.jpg` };
+            // Unique key per upload so the photoURL changes and caches bust naturally
+            return { bucket: 'profile-pictures', key: `${uid}/${Date.now()}.jpg` };
         case 'material': {
             const sessionId = assertId(body?.sessionId, 'sessionId');
             const fileName = sanitizeFileName(body?.fileName);
