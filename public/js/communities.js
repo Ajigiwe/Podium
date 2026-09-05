@@ -223,7 +223,7 @@ async function openWorkspace(group) {
     
     // Start Real-time Workspace Listeners
     setupWorkspaceListeners(group.id);
-    setupCommunityClassCreation(user, profile);
+    setupCommunityClassCreation(currentUser, currentProfile);
 }
 
 function setupWorkspaceListeners(groupId) {
@@ -468,6 +468,10 @@ function setupCommunityClassCreation(user, profile) {
         form.reset();
         modal.classList.remove('hidden');
     };
+
+    // Attach the submit handler only once even if the workspace is reopened
+    if (form.dataset.ccWired === '1') return;
+    form.dataset.ccWired = '1';
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
