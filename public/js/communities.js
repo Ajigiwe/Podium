@@ -197,6 +197,12 @@ async function openWorkspace(group) {
     resourceComposer.classList.toggle('hidden', !isOwner);
     requestsTabBtn.classList.toggle('hidden', !isOwner);
     
+    // Community class creation: owner or lecturer only
+    const createClassBtn = document.getElementById('community-create-class-btn');
+    if (createClassBtn) {
+        createClassBtn.classList.toggle('hidden', !canTeachInCommunity());
+    }
+    
     // Show/Hide Header Grant Lecturer Button
     const headerGrantBtn = document.getElementById('header-grant-lecturer-btn');
     if (headerGrantBtn) {
@@ -217,6 +223,7 @@ async function openWorkspace(group) {
     
     // Start Real-time Workspace Listeners
     setupWorkspaceListeners(group.id);
+    setupCommunityClassCreation(user, profile);
 }
 
 function setupWorkspaceListeners(groupId) {
@@ -236,6 +243,7 @@ function setupWorkspaceListeners(groupId) {
         
         liveIndicator.classList.toggle('hidden', activeSessions.length === 0);
         const displaySessions = isOwner ? sessions : activeSessions;
+        updateLiveBanner(sessions);
         
         if (displaySessions.length === 0) {
             liveList.innerHTML = `<div class="col-span-full py-12 text-center opacity-50"><p class="text-[10px] font-bold uppercase tracking-widest">No sessions found.</p></div>`;
@@ -433,6 +441,88 @@ function createWorkspaceSessionCard(s) {
         </button>
     `;
     return div;
+}
+
+// --- COMMUNITY CLASS CREATION ---
+function canTeachInCommunity() {
+    if (!currentGroup || !currentProfile) return false;
+    if (isOwner) return true; // owner (verified rep who created it)
+    if (currentProfile.role === 'admin') return true;
+    if (currentProfile.role === 'lecturer') return true; // granted via group_memberships role=lecturer (verified server-side)
+    return false;
+}
+
+function setupCommunityClassCreation(user, profile) {
+    const openBtn = document.getElementById('community-create-class-btn');
+    const modal = document.getElementById('modal-community-create-class');
+    const form = document.getElementById('community-create-class-form');
+    if (!openBtn || !modal || !form) return;
+
+    const closeFn = () => modal.classList.add('hidden');
+    modal.querySelectorAll('.close-cc-modal').forEach(b => b.onclick = closeFn);
+
+    openBtn.onclick = () => {
+        if (!currentGroup) return;
+        const nameEl = document.getElementById('cc-class-community-name');
+        if (nameEl) nameEl.innerText = currentGroup.name;
+        form.reset();
+        modal.classList.remove('hidden');
+    };
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentGroup) return;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const title = document.getElementById('cc-class-title').value.trim();
+        const course = document.getElementById('cc-class-course').value.trim();
+        const program = document.getElementById('cc-class-program').value.trim();
+        const durationMinutes = Number(document.getElementById('cc-class-duration').value) || 60;
+        const verificationCount = Number(document.getElementById('cc-class-checks').value) || 3;
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Creating...';
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    title,
+                    course,
+                    program,
+                    durationMinutes,
+                    verificationCount,
+                    groupId: currentGroup.id,
+                }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to create class');
+            closeFn();
+            showToast(`Class "${title}" created for ${currentGroup.name}.`);
+        } catch (err) {
+            console.error('Community class create failed:', err);
+            showToast(err.message || 'Failed to create class.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Create Class';
+        }
+    });
+}
+
+// --- LIVE BANNER ---
+function updateLiveBanner(sessions) {
+    const banner = document.getElementById('community-live-banner');
+    if (!banner) return;
+    const live = sessions.find(s => s.isActive && !s.isDeleted);
+    if (!live) {
+        banner.classList.add('hidden');
+        return;
+    }
+    banner.classList.remove('hidden');
+    const titleEl = document.getElementById('community-live-banner-title');
+    if (titleEl) titleEl.innerText = `${live.title} — ${live.lecturerName || 'Lecturer'} is teaching now`;
+    const joinBtn = document.getElementById('community-live-banner-join');
+    if (joinBtn) joinBtn.onclick = () => { window.location.href = `/classroom/${live.id}`; };
 }
 
 // --- ACTIONS ---

@@ -1,0 +1,6 @@
+[Unit]
+Description=Podium nightly encrypted backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/podium-backup.sh

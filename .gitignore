@@ -45,3 +45,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+scripts/vps/firebase-svc.json
+
+# local-only VPS ops (contains credentials)
+scripts/vps/run-bootstrap.py

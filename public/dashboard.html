@@ -498,7 +498,20 @@
                     </div>
 
                     <div id="w-content-live" class="hidden space-y-4">
-                        <h3 class="text-[12px] font-bold text-[#8888A8] uppercase tracking-widest">Live Classes</h3>
+                        <div class="flex items-center justify-between gap-4">
+                            <h3 class="text-[12px] font-bold text-[#8888A8] uppercase tracking-widest">Live Classes</h3>
+                            <button id="community-create-class-btn" class="hidden px-4 py-2 bg-[#1845D4] hover:bg-[#0F2FA8] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2">
+                                <i class="fas fa-plus text-[10px]"></i> Create Class
+                            </button>
+                        </div>
+                        <div id="community-live-banner" class="hidden rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 px-5 py-4 flex items-center gap-3">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[13px] font-bold text-red-700 dark:text-red-300 truncate" id="community-live-banner-title">A class is live</p>
+                                <p class="text-[11px] text-red-600/80 dark:text-red-400/70">Your lecturer has started a class — members were alerted by email.</p>
+                            </div>
+                            <button id="community-live-banner-join" class="shrink-0 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all">Join Now</button>
+                        </div>
                         <div id="workspace-live-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                     </div>
 
@@ -623,13 +636,6 @@
                         </div>
                     </div>
 
-                    <div class="space-y-1.5" id="group-link-container" style="display: none;">
-                        <label class="text-[12px] font-bold text-[#0D0D1A] dark:text-slate-200">Community (Optional)</label>
-                        <select id="class-group-id" class="w-full px-4 py-3 bg-[#F5F6FA] dark:bg-slate-800 border border-transparent focus:border-[#1845D4] rounded-xl outline-none text-[14px] transition-all appearance-none cursor-pointer">
-                            <option value="">Independent Session</option>
-                        </select>
-                    </div>
-
                     <div class="flex gap-3 justify-end pt-4">
                         <button type="button" class="close-modal px-6 py-3 text-[#8888A8] dark:text-slate-400 rounded-xl text-[13px] font-bold hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-all">Cancel</button>
                         <button type="submit" class="px-6 py-3 bg-[#1845D4] text-white rounded-xl text-[13px] font-bold hover:bg-[#0F2FA8] transition-all shadow-lg shadow-blue-600/20 active:scale-95">Create Class</button>
@@ -656,6 +662,55 @@
     </div>
 
     <!-- Community Modals -->
+    <div id="modal-community-create-class" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-6">
+        <div class="absolute inset-0 bg-[#0D0D1A]/60 backdrop-blur-sm" onclick="document.getElementById('modal-community-create-class').classList.add('hidden')"></div>
+        <div class="relative bg-white dark:bg-slate-950 w-full max-w-lg rounded-3xl shadow-2xl border border-[#DDE0F0] dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-6 border-b border-[#DDE0F0] dark:border-slate-800">
+                <div>
+                    <h2 class="text-xl font-bold text-[#0D0D1A] dark:text-white tracking-tight">Create Class</h2>
+                    <p class="text-[12px] text-[#8888A8] font-medium mt-0.5">For <span id="cc-class-community-name" class="text-[#1845D4] font-bold">this community</span> — members are alerted when it starts.</p>
+                </div>
+                <button class="close-cc-modal w-10 h-10 flex items-center justify-center rounded-xl border border-[#DDE0F0] dark:border-slate-700 text-[#444460] dark:text-slate-400 hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-colors">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            <form id="community-create-class-form" class="space-y-5 p-6">
+                <div class="space-y-1.5">
+                    <label class="text-[12px] font-bold text-[#0D0D1A] dark:text-slate-200">Class Title <span class="text-red-500">*</span></label>
+                    <input type="text" id="cc-class-title" required placeholder="e.g. Data Structures — Week 4" class="w-full px-4 py-3 bg-[#F5F6FA] dark:bg-slate-800 border border-transparent focus:border-[#1845D4] focus:bg-white dark:focus:bg-slate-900 rounded-xl outline-none text-[14px] transition-all">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[12px] font-bold text-[#0D0D1A] dark:text-slate-200">Course Code</label>
+                        <input type="text" id="cc-class-course" placeholder="CS 301" class="w-full px-4 py-3 bg-[#F5F6FA] dark:bg-slate-800 border border-transparent focus:border-[#1845D4] rounded-xl outline-none text-[14px] transition-all">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[12px] font-bold text-[#0D0D1A] dark:text-slate-200">Program</label>
+                        <input type="text" id="cc-class-program" placeholder="BSc Computer Science" class="w-full px-4 py-3 bg-[#F5F6FA] dark:bg-slate-800 border border-transparent focus:border-[#1845D4] rounded-xl outline-none text-[14px] transition-all">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[12px] font-bold text-[#0D0D1A] dark:text-slate-200">Duration (minutes)</label>
+                        <input type="number" id="cc-class-duration" required value="60" min="15" max="480" class="w-full px-4 py-3 bg-[#F5F6FA] dark:bg-slate-800 border border-transparent focus:border-[#1845D4] rounded-xl outline-none text-[14px] transition-all">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[12px] font-bold text-[#0D0D1A] dark:text-slate-200">Attendance Checks</label>
+                        <input type="number" id="cc-class-checks" required value="3" min="1" max="10" class="w-full px-4 py-3 bg-[#F5F6FA] dark:bg-slate-800 border border-transparent focus:border-[#1845D4] rounded-xl outline-none text-[14px] transition-all">
+                    </div>
+                </div>
+                <div class="bg-[#F8F9FF] dark:bg-slate-800/50 rounded-2xl p-4 border border-[#E8EEFF] dark:border-slate-700 flex items-center gap-3">
+                    <i class="fas fa-info-circle text-[#1845D4]"></i>
+                    <p class="text-[11px] text-[#444460] dark:text-slate-400 font-medium">Only members of this community can join this class. When you go live, every member gets an email alert instantly.</p>
+                </div>
+                <div class="flex gap-3 justify-end pt-2">
+                    <button type="button" class="close-cc-modal px-6 py-3 text-[#8888A8] dark:text-slate-400 rounded-xl text-[13px] font-bold hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-all">Cancel</button>
+                    <button type="submit" class="px-6 py-3 bg-[#1845D4] text-white rounded-xl text-[13px] font-bold hover:bg-[#0F2FA8] transition-all shadow-lg shadow-blue-600/20 active:scale-95">Create Class</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="modal-create-community" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
         <div class="absolute inset-0 bg-[#0D0D1A]/40 backdrop-blur-sm modal-overlay"></div>
         <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-8 lg:p-10 relative shadow-2xl animate-in zoom-in-95 duration-200">

@@ -490,23 +490,21 @@ window.toggleLive = async (id, current, e) => {
     try {
         const nextState = !current;
         const updates={isActive: nextState};
-        if(nextState){ updates.startedAt=serverTimestamp(); updates.endedAt=null; updates.refundProcessed=false; }
-        else { updates.endedAt=serverTimestamp(); updates.status='ended'; }
+        if(nextState){ updates.startedAt=serverTimestamp(); updates.endedAt=null; updates.refundProcessed=false; updates.notifiedAt=null; }
+        else { updates.endedAt=serverTimestamp(); updates.status='ended'; updates.notifiedAt=null; }
         await updateDoc(doc(db, 'sessions', id), updates);
+        if(nextState){
+            // Community email alert (fire and forget; API dedups via notifiedAt)
+            try {
+                const token = await auth.currentUser.getIdToken();
+                fetch('/api/notifications/class-start',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({sessionId:id})}).catch(()=>{});
+            } catch(err) { console.error('Failed to call notify API', err); }
+        }
         if(!nextState){
             try {
                 const token = await auth.currentUser.getIdToken();
                 fetch('/api/wallet/refund',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({sessionId:id})}).catch(()=>{});
             } catch(err) { console.error('Failed to call refund API', err); }
-        }
-        
-        // Notification Logic (Optional Parity)
-        if (nextState) {
-            const snap = await getDoc(doc(db, 'sessions', id));
-            const session = snap.data();
-            if (session.groupId) {
-                // Fetch emails and notify...
-            }
         }
     } catch (err) {
         showToast('Failed to toggle live state.', 'error');
@@ -524,8 +522,6 @@ window.deleteSession = async (id, e) => {
 // Create Modal Logic
 const createModal = document.getElementById('modal-create-class');
 const createForm = document.getElementById('create-class-form');
-const groupSelect = document.getElementById('class-group-id');
-const groupContainer = document.getElementById('group-link-container');
 
 // Modal Helpers
 window.openModal = (id) => {
@@ -550,37 +546,13 @@ document.querySelectorAll('.close-modal').forEach(btn => {
     });
 });
 
-async function setupGroupOptions() {
-    let groups = [];
-    
-    if (userProfile.role === 'admin' || (userProfile.role === 'student' && userProfile.isVerified)) {
-        const q = query(collection(db, 'groups'), where('ownerId', '==', currentUserId));
-        const snap = await getDocs(q);
-        snap.forEach(d => groups.push({ id: d.id, name: d.data().name }));
-    } else if (userProfile.role === 'lecturer') {
-        const q = query(collection(db, 'group_memberships'), where('userId', '==', currentUserId), where('role', '==', 'lecturer'));
-        const snap = await getDocs(q);
-        for (const docSnap of snap.docs) {
-            const groupId = docSnap.data().groupId;
-            const groupSnap = await getDoc(doc(db, 'groups', groupId));
-            if (groupSnap.exists()) {
-                groups.push({ id: groupSnap.id, name: groupSnap.data().name });
-            }
-        }
-    }
-    
-    groupSelect.innerHTML = '<option value="">Independent Session</option>';
-    if (groups.length > 0) {
-        groupContainer.style.display = 'block';
-        groups.forEach(g => {
-            const opt = document.createElement('option');
-            opt.value = g.id;
-            opt.innerText = g.name;
-            groupSelect.appendChild(opt);
-        });
-    } else {
-        groupContainer.style.display = 'none';
-    }
+// Community-linked classes are now created from inside the community workspace,
+// so the dashboard create-class form always creates an independent session.
+function setupGroupOptions() {
+    const groupSelect = document.getElementById('class-group-id');
+    const groupContainer = document.getElementById('group-link-container');
+    if (groupSelect) groupSelect.value = '';
+    if (groupContainer) groupContainer.style.display = 'none';
 }
 
 if (createForm) {
@@ -591,7 +563,7 @@ if (createForm) {
         const program = document.getElementById('class-program').value;
         const durationMinutes = parseInt(document.getElementById('class-duration').value) || 60;
         const verificationCount = parseInt(document.getElementById('class-checks').value) || 3;
-        const groupId = groupSelect.value;
+        const groupId = null;
         const scheduleDate = document.getElementById('class-schedule-date')?.value;
         const scheduleTime = document.getElementById('class-schedule-time')?.value;
         let priceGhs = document.getElementById('class-price')?.value;
