@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=12';
+import { auth, db } from './firebase-config.js?v=13';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -34,6 +34,36 @@ let isOwner = false;
 let workspaceUnsubscribes = [];
 let currentProfile = null;
 let currentUser = null;
+
+// Live-class tracking for community cards on the Communities page
+const liveGroupState = {};   // groupId -> true when a class is running right now
+const liveGroupSubs = {};    // groupId -> unsubscribe fn
+
+function applyLiveState(cardEl, live) {
+    const badge = cardEl.querySelector('[data-live-badge]');
+    if (badge) badge.style.display = live ? 'inline-flex' : 'none';
+    cardEl.classList.toggle('border-red-300', !!live);
+    cardEl.classList.toggle('dark:border-red-500/40', !!live);
+}
+
+function refreshCardLiveBadges() {
+    document.querySelectorAll('[data-community-card]').forEach(el => {
+        applyLiveState(el, liveGroupState[el.dataset.communityId] === true);
+    });
+}
+
+// One listener per community (idempotent) so members see a LIVE chip the moment a class starts
+function ensureLiveMonitor(groupId) {
+    if (!groupId || liveGroupSubs[groupId]) return;
+    const q = query(collection(db, 'sessions'), where('groupId', '==', groupId));
+    liveGroupSubs[groupId] = onSnapshot(q, (snap) => {
+        liveGroupState[groupId] = snap.docs.some(d => {
+            const s = d.data();
+            return s.isActive === true && !s.isDeleted;
+        });
+        refreshCardLiveBadges();
+    }, (err) => console.error('[CardLiveMonitor]', err));
+}
 
 function canManageResources() {
     if (isOwner) return true;
@@ -158,12 +188,19 @@ function setupPublicCommunities(uid) {
 function createCommunityCard(group, isMember) {
     const div = document.createElement('div');
     div.className = 'group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between hover:border-[#1845D4] transition-all';
+    div.dataset.communityCard = '';
+    div.dataset.communityId = group.id;
     
     div.innerHTML = `
         <div class="space-y-3">
             <div class="flex items-center justify-between gap-2">
                 <h4 class="font-bold text-[15px] line-clamp-1 text-[#0D0D1A] dark:text-white">${group.name}</h4>
-                <span class="shrink-0 text-[10px] font-bold text-[#8888A8]">${group.memberCount || 0} members</span>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span data-live-badge style="display:none" class="items-center gap-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest">
+                        <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live
+                    </span>
+                    <span class="text-[10px] font-bold text-[#8888A8]">${group.memberCount || 0} members</span>
+                </div>
             </div>
             <p class="text-[12px] text-[#8888A8] line-clamp-2 leading-relaxed">${group.description}</p>
         </div>
@@ -171,6 +208,12 @@ function createCommunityCard(group, isMember) {
             ${isMember ? 'Enter' : 'Request to Join'}
         </button>
     `;
+    
+    // Members can see live-class status in real time; non-members can't read a community's sessions
+    if (isMember) {
+        ensureLiveMonitor(group.id);
+        applyLiveState(div, liveGroupState[group.id] === true);
+    }
     
     div.querySelector('button').onclick = () => {
         if (isMember) openWorkspace(group);
