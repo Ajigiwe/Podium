@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/config';
-import { doc, getDoc, addDoc, updateDoc, collection, Timestamp, query, where, getDocs, increment, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, collection, Timestamp, query, where, getDocs, increment, serverTimestamp, setDoc, onSnapshot } from 'firebase/firestore';
 import { Session } from '@/lib/firebase/types';
 import ClassroomContent from '@/components/ClassroomContent';
 import { useClassroom } from '@/contexts/ClassroomContext';
@@ -14,6 +14,47 @@ import CountdownTimer from '@/components/CountdownTimer';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAlert } from '@/contexts/AlertContext';
 import { useQuery } from '@tanstack/react-query';
+
+// --- Lobby helpers: ping + chime when the lecturer goes live ---
+let lobbyChimeCtx: AudioContext | null = null;
+function playClassStartChime() {
+    try {
+        const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!Ctx) return;
+        lobbyChimeCtx = lobbyChimeCtx || new Ctx();
+        if (lobbyChimeCtx.state === 'suspended') lobbyChimeCtx.resume();
+        const now = lobbyChimeCtx.currentTime;
+        [880, 1174.66].forEach((freq, i) => {
+            const osc = lobbyChimeCtx!.createOscillator();
+            const gain = lobbyChimeCtx!.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const t0 = now + i * 0.18;
+            gain.gain.setValueAtTime(0.0001, t0);
+            gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+            osc.connect(gain).connect(lobbyChimeCtx!.destination);
+            osc.start(t0);
+            osc.stop(t0 + 0.55);
+        });
+    } catch (e) { /* audio may be blocked until a user gesture — silent fail is fine */ }
+}
+
+function notifyClassStarted(title: string) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+            const n = new Notification(`🔴 ${title} has started`, {
+                body: 'Your lecturer is live — joining the classroom now.',
+                icon: '/icon-192x192.png',
+                badge: '/icon-192x192.png',
+                tag: `class-start-${typeof window !== 'undefined' ? window.location.pathname : ''}`,
+            });
+            n.onclick = () => window.focus();
+        } catch (e) { /* ignore */ }
+    }
+    playClassStartChime();
+    if (navigator.vibrate) { try { navigator.vibrate([120, 60, 120]); } catch (e) { /* ignore */ } }
+}
 
 export default function ClassroomPage() {
     const params = useParams();
@@ -206,6 +247,23 @@ export default function ClassroomPage() {
         };
         verifyAccess();
     }, [user, profile, session, authLoading, sessionLoading, sessionError]);
+
+    // While waiting in the lobby, watch for the lecturer going live: ping + auto-join
+    useEffect(() => {
+        if (!user || !session || (!waitingForLecturer && !isScheduledWait)) return;
+        let done = false;
+        const unsub = onSnapshot(doc(db, 'sessions', sessionId), (snap) => {
+            if (done) return;
+            const s = snap.data();
+            if (!s || s.isActive !== true) return;
+            done = true;
+            const isHost = s.hostId === user.uid || s.lecturerId === user.uid;
+            if (!isHost) notifyClassStarted(String(s.title || 'Your class'));
+            // Re-run the join flow now that the class is live (lets the chime land first)
+            setTimeout(() => window.location.reload(), 1400);
+        }, (err) => console.error('[ClassroomLobby] watch failed:', err));
+        return () => { done = true; unsub(); };
+    }, [user, session, waitingForLecturer, isScheduledWait, sessionId]);
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault(); 
