@@ -8,6 +8,19 @@ export const dynamic = 'force-dynamic';
 
 type LifecycleAction = 'start' | 'pause' | 'end' | 'archive';
 
+async function notifyClassStart(sessionId: string, authToken: string) {
+    try {
+        const base = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+        await fetch(`${base}/api/notifications/class-start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ sessionId }),
+        });
+    } catch (err) {
+        console.error('[Session Lifecycle] class-start notification failed:', err);
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const authHeader = request.headers.get('authorization');
@@ -47,7 +60,10 @@ export async function POST(request: NextRequest) {
                 endedAt: null,
                 pausedAt: null,
                 refundProcessed: false,
+                notifiedAt: null,
             });
+            // Fire community email alerts in the background (never blocks the class starting)
+            notifyClassStart(sessionId, authHeader.slice(7)).catch(() => {});
             return NextResponse.json({ success: true, action, startedAt: session.startedAt || now });
         }
 
@@ -68,6 +84,8 @@ export async function POST(request: NextRequest) {
         if (session.status !== 'ended') {
             await sessionRef.update({ isActive: false, status: 'ended', endedAt: now });
         }
+        // Session ended — allow future alerts if it is ever restarted
+        try { await sessionRef.update({ notifiedAt: null } as any); } catch {}
         const refunded = session.refundProcessed === true ? 0 : await refundSession(sessionId);
 
         // End the media room server-side so every participant is disconnected even

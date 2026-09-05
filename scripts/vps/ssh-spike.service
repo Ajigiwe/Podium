@@ -1,0 +1,6 @@
+[Unit]
+Description=Podium SSH failed-login spike check
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ssh-spike.sh
