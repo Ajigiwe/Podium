@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
         if (session.status !== 'ended') {
             await sessionRef.update({ isActive: false, status: 'ended', endedAt: now });
         }
-        // Session ended — allow future alerts if it is ever restarted
-        try { await sessionRef.update({ notifiedAt: null } as any); } catch {}
+        // Session ended — allow future alerts (live + scheduled) if it is ever restarted
+        try { await sessionRef.update({ notifiedAt: null, scheduledNotifiedAt: null } as any); } catch {}
         const refunded = session.refundProcessed === true ? 0 : await refundSession(sessionId);
 
         // End the media room server-side so every participant is disconnected even

@@ -3,6 +3,7 @@ import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { generateMeetingCode } from '@/lib/meetingCode';
 import { resolveSessionFee } from '@/lib/payments/fee';
+import { notifyCommunityClass } from '@/lib/notifications/class-alerts';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +78,14 @@ export async function POST(request: NextRequest) {
             ...(scheduledStartTime ? { scheduledStartTime: Timestamp.fromDate(scheduledStartTime) } : {}),
         };
         await sessionRef.create(session);
+
+        // Community members get a "class scheduled" email — fire-and-forget, never blocks creation.
+        // Re-alerts on restart are prevented by the scheduledNotifiedAt dedup field.
+        if (groupId) {
+            notifyCommunityClass({ sessionId: sessionRef.id, kind: 'scheduled' })
+                .catch((err) => console.error('[Sessions API] scheduled alert failed:', err));
+        }
+
         return NextResponse.json({ success: true, session });
     } catch (error: any) {
         console.error('[Sessions API] create failed:', error);
