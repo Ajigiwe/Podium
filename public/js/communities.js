@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=15';
+import { auth, db } from './firebase-config.js?v=16';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -132,28 +132,29 @@ function updateGlobalLiveUI() {
     if (dot) dot.classList.toggle('hidden', !anyLive);
 
     const banner = document.getElementById('home-live-banner');
-    const listEl = document.getElementById('home-live-list');
-    if (!banner || !listEl) return;
-    const liveGroups = Object.keys(liveGroupState).filter(g => liveGroupState[g]);
+    const line = document.getElementById('home-live-line');
+    const joinBtn = document.getElementById('home-live-join');
+    if (!banner || !line || !joinBtn) return;
+
+    const liveGroups = Object.keys(liveGroupState).filter(g => liveGroupState[g] && liveGroupInfo[g]);
     if (liveGroups.length === 0) {
         banner.classList.add('hidden');
-        listEl.innerHTML = '';
         return;
     }
+
+    joinBtn.onclick = null;
+    if (liveGroups.length === 1) {
+        const info = liveGroupInfo[liveGroups[0]];
+        line.innerHTML = `${escapeHtml(info.title)} <span class="font-semibold text-[#8888A8] dark:text-slate-400">· ${escapeHtml(liveGroupNames[liveGroups[0]] || '')} · ${escapeHtml(info.lecturerName)}</span>`;
+        joinBtn.textContent = 'Join';
+        joinBtn.href = `/classroom/${info.sessionId}`;
+    } else {
+        line.textContent = `${liveGroups.length} classes are live in your communities`;
+        joinBtn.textContent = 'View';
+        joinBtn.href = '#';
+        joinBtn.onclick = (e) => { e.preventDefault(); if (window.navTo) window.navTo('communities'); };
+    }
     banner.classList.remove('hidden');
-    listEl.innerHTML = liveGroups.map(gid => {
-        const info = liveGroupInfo[gid];
-        if (!info) return '';
-        return `
-        <div class="flex items-center gap-3 flex-wrap sm:flex-nowrap justify-between bg-white dark:bg-slate-900/60 border border-red-100 dark:border-red-500/20 rounded-lg px-3.5 py-2">
-            <div class="flex items-center gap-2.5 min-w-0">
-                <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse shrink-0"></span>
-                <p class="text-[12px] font-semibold text-[#0D0D1A] dark:text-white truncate">${escapeHtml(info.title)}</p>
-                <span class="text-[10px] text-[#8888A8] truncate hidden sm:inline">${escapeHtml(liveGroupNames[gid] || '')} · ${escapeHtml(info.lecturerName)}</span>
-            </div>
-            <a href="/classroom/${info.sessionId}" class="shrink-0 text-[11px] font-bold px-3.5 py-1.5 rounded-lg bg-[#1845D4] text-white hover:bg-[#0F2FA8] transition-all">Join now</a>
-        </div>`;
-    }).join('');
 }
 
 // One listener per community (idempotent) so members see a LIVE chip the moment a class starts
