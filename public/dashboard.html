@@ -236,12 +236,19 @@
                         </form>
                     </div>
 
-                    <!-- Live now (community classes in session, across the app) -->
-                    <div id="home-live-banner" class="hidden bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-500/10 dark:to-rose-500/5 border border-red-200 dark:border-red-500/30 rounded-xl p-4 space-y-2.5">
-                        <p class="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
-                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live now
-                        </p>
-                        <div id="home-live-list" class="space-y-2"></div>
+                    <!-- Live now (community classes in session) -->
+                    <div id="home-live-banner" class="hidden">
+                        <div class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/25 border-l-4 border-l-red-500 rounded-xl px-4 py-3 shadow-sm">
+                            <span class="relative flex w-2 h-2 shrink-0">
+                                <span class="absolute inline-flex w-full h-full rounded-full bg-red-400 opacity-60 animate-ping"></span>
+                                <span class="relative inline-flex w-2 h-2 rounded-full bg-red-500"></span>
+                            </span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-[0.2em]">Live now</p>
+                                <p id="home-live-line" class="text-[13px] font-bold text-[#0D0D1A] dark:text-white truncate leading-snug"></p>
+                            </div>
+                            <a id="home-live-join" href="#" class="shrink-0 px-4 py-2 rounded-lg bg-[#1845D4] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#0F2FA8] transition-all">Join</a>
+                        </div>
                     </div>
 
                     <!-- Stat Cards -->
@@ -799,9 +806,9 @@
             if (el) el.textContent = greeting;
         })();
     </script>
-    <script type="module" src="./js/sidebar.js?v=15"></script>
-    <script type="module" src="./js/dashboard.js?v=15"></script>
-    <script type="module" src="./js/attendance.js?v=15"></script>
+    <script type="module" src="./js/sidebar.js?v=16"></script>
+    <script type="module" src="./js/dashboard.js?v=16"></script>
+    <script type="module" src="./js/attendance.js?v=16"></script>
     
     <!-- Top-Up Modal -->
     <div id="modal-topup" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
@@ -834,7 +841,7 @@
     <script src="./js/theme-toggle.js"></script>
 
     <script type="module">
-        import { auth, db } from './js/firebase-config.js?v=15';
+        import { auth, db } from './js/firebase-config.js?v=16';
         import { doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         let currentUser = null;
         auth.onAuthStateChanged((user) => { if (user) { currentUser = user; loadWalletBalance(); } });
