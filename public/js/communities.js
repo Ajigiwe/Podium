@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=11';
+import { auth, db } from './firebase-config.js?v=12';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -242,7 +242,11 @@ function setupWorkspaceListeners(groupId) {
         const activeSessions = sessions.filter(s => s.isActive);
         
         liveIndicator.classList.toggle('hidden', activeSessions.length === 0);
-        const displaySessions = isOwner ? sessions : activeSessions;
+        // Everyone (owner, lecturers, members) sees scheduled + live classes; live ones float to the top
+        const displaySessions = [...sessions].sort((a, b) => {
+            if (!!a.isActive !== !!b.isActive) return a.isActive ? -1 : 1;
+            return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+        });
         updateLiveBanner(sessions);
         
         if (displaySessions.length === 0) {

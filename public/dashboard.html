@@ -790,9 +790,9 @@
             if (el) el.textContent = greeting;
         })();
     </script>
-    <script type="module" src="./js/sidebar.js?v=11"></script>
-    <script type="module" src="./js/dashboard.js?v=11"></script>
-    <script type="module" src="./js/attendance.js?v=11"></script>
+    <script type="module" src="./js/sidebar.js?v=12"></script>
+    <script type="module" src="./js/dashboard.js?v=12"></script>
+    <script type="module" src="./js/attendance.js?v=12"></script>
     
     <!-- Top-Up Modal -->
     <div id="modal-topup" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
@@ -825,7 +825,7 @@
     <script src="./js/theme-toggle.js"></script>
 
     <script type="module">
-        import { auth, db } from './js/firebase-config.js?v=11';
+        import { auth, db } from './js/firebase-config.js?v=12';
         import { doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         let currentUser = null;
         auth.onAuthStateChanged((user) => { if (user) { currentUser = user; loadWalletBalance(); } });

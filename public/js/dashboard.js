@@ -1,9 +1,9 @@
-import { auth, db, storage } from './firebase-config.js?v=11';
+import { auth, db, storage } from './firebase-config.js?v=12';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     collection, query, where, onSnapshot, doc, getDoc, updateDoc, getDocs, addDoc, Timestamp, serverTimestamp, setDoc 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { initCommunities } from './communities.js?v=11';
+import { initCommunities } from './communities.js?v=12';
 
 // DOM Elements
 const sidebarLinks = {
