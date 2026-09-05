@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=14';
+import { auth, db } from './firebase-config.js?v=15';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -40,6 +40,77 @@ const liveGroupState = {};   // groupId -> true when a class is running right no
 const liveGroupSubs = {};    // groupId -> unsubscribe fn
 const liveGroupInfo = {};    // groupId -> { sessionId, title, lecturerName } of the running class
 const liveGroupNames = {};   // groupId -> community display name
+const lastLiveId = {};       // groupId -> sessionId seen last snapshot (baseline = no alert on load)
+const notifiedLiveIds = new Set(); // sessionIds already alerted in this page session
+
+let chimeCtx = null;
+function playClassChime() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        chimeCtx = chimeCtx || new Ctx();
+        if (chimeCtx.state === 'suspended') chimeCtx.resume();
+        const now = chimeCtx.currentTime;
+        [880, 1174.66].forEach((freq, i) => {
+            const osc = chimeCtx.createOscillator();
+            const gain = chimeCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const t0 = now + i * 0.18;
+            gain.gain.setValueAtTime(0.0001, t0);
+            gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+            osc.connect(gain).connect(chimeCtx.destination);
+            osc.start(t0);
+            osc.stop(t0 + 0.55);
+        });
+    } catch (e) { /* audio blocked until first user gesture — silent fail is fine */ }
+}
+
+function fireClassNotification(session, groupName, sessionId) {
+    const title = `🔴 ${session.title || 'A class'} is live now`;
+    const body = `${groupName || 'Your community'} · ${session.lecturerName || 'Lecturer'}`;
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+            const n = new Notification(title, { body, icon: '/icon-192x192.png', badge: '/icon-192x192.png', tag: `class-live-${sessionId}` });
+            n.onclick = () => { window.focus(); window.location.href = `/classroom/${sessionId}`; };
+        } catch (e) { /* ignore */ }
+    }
+    playClassChime();
+    if (navigator.vibrate) { try { navigator.vibrate([120, 60, 120]); } catch (e) { /* ignore */ } }
+}
+
+function maybePromptEnableNotifications() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
+    if (localStorage.getItem('podium_notify_prompted')) return;
+    localStorage.setItem('podium_notify_prompted', '1');
+    const el = document.createElement('div');
+    el.className = 'fixed bottom-8 right-4 sm:right-6 z-[210] bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-700 rounded-2xl shadow-2xl p-4 w-72 animate-in slide-in-from-bottom duration-300';
+    el.innerHTML = `
+        <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 flex items-center justify-center text-sm shrink-0"><i class="fas fa-bell"></i></div>
+            <div class="flex-1 min-w-0">
+                <p class="text-[12px] font-bold text-[#0D0D1A] dark:text-white leading-snug">Get notified when a class goes live</p>
+                <p class="text-[11px] text-[#8888A8] mt-0.5 leading-snug">We'll ping you the moment a class in your communities starts.</p>
+                <div class="flex gap-2 mt-2.5">
+                    <button class="notif-yes px-3 py-1.5 rounded-lg bg-[#1845D4] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#0F2FA8] transition-all">Enable</button>
+                    <button class="notif-no px-3 py-1.5 rounded-lg bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] text-[10px] font-black uppercase tracking-widest hover:text-[#0D0D1A] dark:hover:text-white transition-all">Not now</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+    const remove = () => el.remove();
+    el.querySelector('.notif-no').onclick = remove;
+    el.querySelector('.notif-yes').onclick = async () => {
+        try {
+            const perm = await Notification.requestPermission();
+            if (perm === 'granted') window.showToast('Class alerts enabled 🔔');
+        } catch (e) { /* ignore */ }
+        remove();
+    };
+    setTimeout(remove, 20000); // auto-hide if ignored
+}
 
 function applyLiveState(cardEl, live) {
     const badge = cardEl.querySelector('[data-live-badge]');
@@ -95,11 +166,26 @@ function ensureLiveMonitor(groupId, groupName) {
             const s = d.data();
             return s.isActive === true && !s.isDeleted;
         });
+        const liveData = live ? live.data() : null;
+        const liveId = live ? live.id : null;
+
+        // Notify only on a real transition (not-live -> live), and never for the lecturer's own start
+        if (!(groupId in lastLiveId)) {
+            lastLiveId[groupId] = liveId; // first snapshot = baseline, don't alert for classes already live
+        } else if (liveId && liveId !== lastLiveId[groupId]) {
+            const me = auth.currentUser?.uid;
+            if (me && liveData && liveData.hostId !== me && liveData.lecturerId !== me && !notifiedLiveIds.has(liveId)) {
+                notifiedLiveIds.add(liveId);
+                fireClassNotification(liveData, liveGroupNames[groupId], liveId);
+            }
+            lastLiveId[groupId] = liveId;
+        }
+
         liveGroupState[groupId] = !!live;
         liveGroupInfo[groupId] = live ? {
             sessionId: live.id,
-            title: live.data().title || 'Class in session',
-            lecturerName: live.data().lecturerName || 'Lecturer',
+            title: liveData.title || 'Class in session',
+            lecturerName: liveData.lecturerName || 'Lecturer',
         } : null;
         refreshCardLiveBadges();
         updateGlobalLiveUI();
@@ -207,6 +293,7 @@ function setupMyCommunities(uid) {
                 myCommunitiesList.appendChild(card);
             }
         }
+        maybePromptEnableNotifications();
     }, (err) => console.error('[MyCommunities] Error:', err));
 }
 
