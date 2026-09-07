@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         const event = JSON.parse(body);
 
         if (event.event === 'charge.success') {
-            const { reference, amount, channel, metadata } = event.data;
+            const { reference, amount, channel, metadata, customer } = event.data;
 
             if (!reference || typeof reference !== 'string' || !reference.trim()) {
                 console.warn('Rejecting charge.success webhook: invalid reference', { event: event.event });
@@ -106,10 +106,26 @@ export async function POST(req: NextRequest) {
                 await adminDb.runTransaction(async (transaction) => {
                     const userDoc = await transaction.get(userRef);
                     const balanceAtStart = userDoc.data()?.walletBalance || 0;
-                    transaction.update(userRef, {
+                    const walletFields = {
                         walletBalance: balanceAtStart + topUpAmount,
+                        walletCurrency: 'GHS',
+                        walletUpdatedAt: Timestamp.now(),
                         updatedAt: Timestamp.now(),
-                    });
+                    };
+                    if (userDoc.exists) {
+                        transaction.update(userRef, walletFields);
+                    } else {
+                        // No profile doc (e.g. legacy static-site signups) — create
+                        // it so the credit actually lands instead of NOT_FOUND.
+                        transaction.set(userRef, {
+                            id: metadata.userId,
+                            email: customer?.email || null,
+                            fullName: (customer?.email || 'User').split('@')[0],
+                            role: 'student',
+                            ...walletFields,
+                            createdAt: Timestamp.now(),
+                        });
+                    }
                     transaction.set(existingTopupRef, {
                         userId: metadata.userId,
                         reference,
