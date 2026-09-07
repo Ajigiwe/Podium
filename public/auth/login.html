@@ -71,7 +71,16 @@
         document.getElementById('google-btn').onclick = async () => {
             errorContainer.classList.add('hidden');
             try {
-                await signInWithPopup(auth, googleProvider);
+                const result = await signInWithPopup(auth, googleProvider);
+                // Ensure the profiles/{uid} doc exists (Admin SDK route bypasses
+                // rules that block client-side wallet-field profile writes).
+                try {
+                    const token = await result.user.getIdToken();
+                    await fetch('/api/auth/ensure-profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    });
+                } catch (e) { console.error('ensure-profile failed', e); }
                 window.location.href = '../dashboard.html';
             } catch (err) {
                 if (err.code !== 'auth/popup-closed-by-user') showError(err.message);
