@@ -20,10 +20,17 @@ export async function POST(req: NextRequest){
       else if(!t.type && t.sessionId==='wallet_topup' && amt>0) correct+=amt;
     });
     if(correct<0) correct=0;
-    const prof=await adminDb.collection('profiles').doc(uid).get();
+    const profRef=adminDb.collection('profiles').doc(uid);
+    const prof=await profRef.get();
     const current=prof.data()?.walletBalance||0;
     if(current!==correct){
-      await adminDb.collection('profiles').doc(uid).update({walletBalance:correct, walletCurrency:'GHS', walletUpdatedAt: Timestamp.now(), updatedAt: Timestamp.now()});
+      const fields={walletBalance:correct, walletCurrency:'GHS', walletUpdatedAt: Timestamp.now(), updatedAt: Timestamp.now()};
+      if(prof.exists){
+        await profRef.update(fields);
+      }else{
+        // Account has no profile doc (e.g. legacy static-site signups); create it so balances can display
+        await profRef.set({id:uid, role:'student', ...fields, createdAt: Timestamp.now()});
+      }
     }
     return NextResponse.json({success:true, previous:current, newBalance:correct, count:snap.size});
   }catch(e:any){ console.error(e); return NextResponse.json({error:e.message},{status:500}); }

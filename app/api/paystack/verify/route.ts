@@ -29,7 +29,7 @@ async function handleVerify(reference: string) {
             );
         }
 
-        const { amount, metadata, channel } = response.data;
+        const { amount, metadata, channel, customer } = response.data;
         const existingSnap = await adminDb.collection('transactions')
             .where('paystackReference', '==', reference)
             .limit(1)
@@ -43,6 +43,7 @@ async function handleVerify(reference: string) {
                 reference,
                 amount: Number(amount),
                 paymentChannel: channel,
+                email: customer?.email,
                 verifiedVia: 'api_fallback',
             });
             return NextResponse.json({
