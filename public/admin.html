@@ -206,6 +206,7 @@
                                     <th class="px-5 py-3">User</th>
                                     <th class="px-5 py-3 hidden sm:table-cell">Role</th>
                                     <th class="px-5 py-3 hidden md:table-cell">Joined</th>
+                                    <th class="px-5 py-3 hidden lg:table-cell">Wallet</th>
                                     <th class="px-5 py-3 w-10"></th>
                                 </tr>
                             </thead>
@@ -308,6 +309,8 @@
     let allUsers = [];
     let userPage = 0;
     const PAGE_SIZE = 20;
+    const ghs = (n) => 'GHS ' + (n / 100).toFixed(2);
+    let walletExpected = {}; // uid -> balance recomputed from succeeded transactions (pesewas)
 
     // Auth guard
     onAuthStateChanged(auth, async (user) => {
@@ -444,9 +447,10 @@
     // ===== USERS =====
     async function loadUsers() {
         const tbody = document.getElementById('users-table-body');
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-12 text-sm text-[#8888A8]">Loading...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-12 text-sm text-[#8888A8]">Loading...</td></tr>';
         try {
             allUsers = [];
+            walletExpected = {};
             const snap = await getDocs(query(collection(db, 'profiles'), orderBy('createdAt', 'desc'), limit(2000)));
             snap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
             document.getElementById('users-total-count').textContent = allUsers.length;
@@ -469,7 +473,47 @@
         });
     }
 
-    function renderUserPage() {
+    // Expected wallet balance = recompute from succeeded transactions, mirroring
+    // app/api/wallet/reconcile/route.ts so the badge always agrees with a real reconcile.
+    async function computeExpectedBalances(users) {
+        const missing = users.filter(u => !(u.id in walletExpected)).map(u => u.id);
+        for (let i = 0; i < missing.length; i += 10) {
+            const chunk = missing.slice(i, i + 10);
+            try {
+                const snap = await getDocs(query(collection(db, 'transactions'), where('userId', 'in', chunk)));
+                const sums = {};
+                chunk.forEach(id => sums[id] = 0);
+                snap.forEach(d => {
+                    const t = d.data();
+                    if (t.status !== 'succeeded') return;
+                    if (!(t.userId in sums)) return;
+                    const amt = Number(t.amount) || 0;
+                    if (t.type === 'top_up' || t.type === 'wallet_topup' || t.type === 'refund') sums[t.userId] += amt;
+                    else if (t.type === 'session_payment') sums[t.userId] -= amt;
+                    else if (!t.type && t.sessionId === 'wallet_topup' && amt > 0) sums[t.userId] += amt;
+                });
+                Object.entries(sums).forEach(([id, v]) => { walletExpected[id] = Math.max(0, v); });
+            } catch (e) { console.error('expected balance load failed', e); }
+        }
+    }
+
+    function walletCell(u) {
+        const actual = u.walletBalance != null ? Number(u.walletBalance) : null;
+        const expected = (u.id in walletExpected) ? walletExpected[u.id] : null;
+        let html;
+        if (actual === null) {
+            html = '<span class="text-[10px] font-semibold text-[#8888A8]">—</span>';
+        } else {
+            html = `<span class="text-[10px] font-bold ${actual > 0 ? 'text-emerald-600' : 'text-slate-500'}">${ghs(actual)}</span>`;
+        }
+        const showBadge = expected !== null && actual !== expected && !(actual === null && expected === 0);
+        if (showBadge) {
+            html += `<span class="ml-1.5 text-[9px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full whitespace-nowrap">${ghs(expected)} expected</span>`;
+        }
+        return html;
+    }
+
+    async function renderUserPage() {
         const filtered = getFilteredUsers();
         const total = filtered.length;
         const pages = Math.ceil(total / PAGE_SIZE);
@@ -480,6 +524,7 @@
         document.getElementById('users-prev-btn').disabled = userPage === 0;
         document.getElementById('users-next-btn').disabled = userPage >= pages - 1;
 
+        await computeExpectedBalances(page);
         const tbody = document.getElementById('users-table-body');
         tbody.innerHTML = page.map(u => `
             <tr class="hover:bg-[#F5F6FA] dark:hover:bg-slate-800 transition-colors">
@@ -497,6 +542,7 @@
                     ${u.isVerified ? '<span class="ml-1 text-[9px] text-emerald-600 font-bold">Verified</span>' : ''}
                 </td>
                 <td class="px-5 py-3 hidden md:table-cell text-[10px] text-[#8888A8] font-medium">${u.createdAt?.toDate?.().toLocaleDateString?.() || '---'}</td>
+                <td class="px-5 py-3 hidden lg:table-cell">${walletCell(u)}</td>
                 <td class="px-5 py-3">
                     <div class="relative">
                         <button onclick="toggleUserMenu(event, '${u.id}')" class="p-1.5 rounded-lg hover:bg-[#F5F6FA] dark:hover:bg-slate-700 transition-colors"><i class="fas fa-ellipsis-v text-[#8888A8] text-xs"></i></button>
@@ -540,7 +586,8 @@
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || 'Failed');
-            const ghs = (n) => 'GHS ' + (n / 100).toFixed(2);
+            const idx = allUsers.findIndex(u => u.id === uid);
+            if (idx >= 0) { allUsers[idx].walletBalance = d.newBalance; walletExpected[uid] = d.newBalance; renderUserPage(); }
             if (d.changed) {
                 showToast(`Wallet reconciled: ${d.previous !== null ? ghs(d.previous) + ' → ' : ''}${ghs(d.newBalance)} (${d.movements} movement${d.movements === 1 ? '' : 's'})`);
             } else {
