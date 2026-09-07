@@ -13,10 +13,11 @@ export async function POST(req: NextRequest){
     let correct=0;
     snap.forEach(d=>{
       const t:any=d.data();
-      if(t.type==='top_up') correct+=t.amount;
-      else if(t.type==='refund') correct+=t.amount;
-      else if(t.type==='session_payment') correct-=t.amount;
-      else if(!t.type && t.sessionId==='wallet_topup' && t.amount>0) correct+=t.amount;
+      const amt=Number(t.amount)||0;
+      if(t.type==='top_up'||t.type==='wallet_topup') correct+=amt;
+      else if(t.type==='refund') correct+=amt;
+      else if(t.type==='session_payment') correct-=amt;
+      else if(!t.type && t.sessionId==='wallet_topup' && amt>0) correct+=amt;
     });
     if(correct<0) correct=0;
     const prof=await adminDb.collection('profiles').doc(uid).get();

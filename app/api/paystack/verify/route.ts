@@ -2,20 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyTransaction } from '@/lib/paystack/initialize';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { creditWalletTopUp } from '@/lib/payments/creditWalletTopUp';
 
 export const dynamic = 'force-dynamic';
 
+function isWalletTopUp(metadata: any, transaction?: any) {
+    return metadata?.type === 'top_up' ||
+        metadata?.type === 'wallet_topup' ||
+        metadata?.sessionId === 'wallet_topup' ||
+        transaction?.type === 'top_up' ||
+        transaction?.type === 'wallet_topup' ||
+        transaction?.sessionId === 'wallet_topup';
+}
+
 async function handleVerify(reference: string) {
     if (!reference) {
-        return NextResponse.json(
-            { error: 'Transaction reference is required' },
-            { status: 400 }
-        );
+        return NextResponse.json({ error: 'Transaction reference is required' }, { status: 400 });
     }
 
     try {
         const response = await verifyTransaction(reference);
-
         if (!response.status || response.data.status !== 'success') {
             return NextResponse.json(
                 { error: 'Transaction verification failed or payment not successful' },
@@ -24,118 +30,68 @@ async function handleVerify(reference: string) {
         }
 
         const { amount, metadata, channel } = response.data;
-
-        const existingTxDocs = await adminDb
-            .collection('transactions')
+        const existingSnap = await adminDb.collection('transactions')
             .where('paystackReference', '==', reference)
+            .limit(1)
             .get();
+        const existing = existingSnap.empty ? null : existingSnap.docs[0].data() as any;
 
-        if (!existingTxDocs.empty) {
-            const existing = existingTxDocs.docs[0].data() as any;
-            const isTopUpExisting = existing.type === 'top_up' || response.data.metadata?.type === 'top_up';
-            if (isTopUpExisting) {
-                const uid = existing.userId || response.data.metadata?.userId;
-                if (uid) {
-                    try {
-                        if (!existing.type) {
-                            await existingTxDocs.docs[0].ref.update({ type: 'top_up' });
-                            existing.type = 'top_up';
-                        }
-                        const ledgerSnap = await adminDb.collection('transactions').where('userId','==',uid).where('status','==','succeeded').get();
-                        let correct = 0;
-                        ledgerSnap.forEach(d=>{
-                            const t:any=d.data();
-                            if(t.type==='top_up') correct+=t.amount;
-                            else if(t.type==='refund') correct+=t.amount;
-                            else if(t.type==='session_payment') correct-=t.amount;
-                            else if(!t.type && t.sessionId==='wallet_topup' && t.amount>0) correct+=t.amount;
-                        });
-                        if (correct < 0) correct = 0;
-                        const profSnap = await adminDb.collection('profiles').doc(uid).get();
-                        const currentBal = profSnap.data()?.walletBalance || 0;
-                        if (currentBal !== correct) {
-                            await adminDb.collection('profiles').doc(uid).update({
-                                walletBalance: correct,
-                                walletCurrency:'GHS',
-                                walletUpdatedAt: Timestamp.now(),
-                                updatedAt: Timestamp.now()
-                            });
-                            return NextResponse.json({
-                                success: true,
-                                message: 'Transaction already recorded - wallet reconciled',
-                                data: existing,
-                                newBalance: correct,
-                                reconciled: true
-                            });
-                        }
-                    } catch (e) { console.error('reconcile existing failed', e); }
-                }
-            }
+        if (isWalletTopUp(metadata, existing)) {
+            const userId = existing?.userId || metadata?.userId;
+            const result = await creditWalletTopUp({
+                userId,
+                reference,
+                amount: Number(amount),
+                paymentChannel: channel,
+                verifiedVia: 'api_fallback',
+            });
+            return NextResponse.json({
+                success: true,
+                message: result.credited
+                    ? 'Top-up verified and wallet credited'
+                    : 'Transaction already recorded',
+                data: existing || {
+                    userId,
+                    sessionId: 'wallet_topup',
+                    paystackReference: reference,
+                    amount,
+                    currency: 'GHS',
+                    paymentChannel: channel,
+                    status: 'succeeded',
+                    type: 'top_up',
+                },
+                newBalance: result.balance,
+            });
+        }
+
+        if (existing) {
             return NextResponse.json({
                 success: true,
                 message: 'Transaction already recorded',
-                data: existingTxDocs.docs[0].data()
+                data: existing,
             });
         }
 
-        const isTopUp = metadata?.type === 'top_up';
-        const transactionData: any = {
-            userId: metadata.userId || 'unknown',
-            sessionId: metadata.sessionId || 'unknown',
+        const transactionData = {
+            userId: metadata?.userId || 'unknown',
+            sessionId: metadata?.sessionId || 'unknown',
             paystackReference: reference,
-            amount: amount,
+            amount,
             currency: 'GHS',
             paymentChannel: channel,
             status: 'succeeded',
-            type: isTopUp ? 'top_up' : (metadata?.type || 'session_payment'),
+            type: metadata?.type || 'session_payment',
             createdAt: Timestamp.now(),
             paidAt: Timestamp.now(),
-            verifiedVia: 'api_fallback'
+            verifiedVia: 'api_fallback',
         };
-
-        if (isTopUp) {
-            const userId = metadata.userId;
-            if (!userId || userId === 'unknown') {
-                return NextResponse.json({ error: 'Missing userId in metadata' }, { status: 400 });
-            }
-            const already = await adminDb.collection('transactions').where('paystackReference', '==', reference).get();
-            if (!already.empty) {
-                return NextResponse.json({
-                    success: true,
-                    message: 'Transaction already recorded',
-                    data: already.docs[0].data()
-                });
-            }
-            const profileRef = adminDb.collection('profiles').doc(userId);
-            await adminDb.runTransaction(async (tx) => {
-                const profileSnap = await tx.get(profileRef);
-                if (!profileSnap.exists) throw new Error('Profile not found');
-                const current = profileSnap.data()?.walletBalance || 0;
-                tx.update(profileRef, {
-                    walletBalance: current + amount,
-                    walletCurrency: 'GHS',
-                    walletUpdatedAt: Timestamp.now(),
-                    updatedAt: Timestamp.now()
-                });
-            });
-            await adminDb.collection('transactions').add(transactionData);
-            const updated = await adminDb.collection('profiles').doc(userId).get();
-            return NextResponse.json({
-                success: true,
-                message: 'Top-up verified and wallet credited',
-                data: transactionData,
-                newBalance: updated.data()?.walletBalance || 0
-            });
-        } else {
-            await adminDb.collection('transactions').add(transactionData);
-        }
+        await adminDb.collection('transactions').add(transactionData);
 
         return NextResponse.json({
             success: true,
             message: 'Transaction verified and recorded',
-            data: transactionData
+            data: transactionData,
         });
-
     } catch (error: any) {
         console.error('Payment verification error:', error);
         return NextResponse.json(
