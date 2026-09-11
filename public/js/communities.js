@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=2';
+import { auth, db } from './firebase-config.js?v=16';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -9,9 +9,12 @@ import {
 const myCommunitiesList = document.getElementById('my-communities-list');
 const publicCommunitiesList = document.getElementById('public-communities-list');
 const workspaceView = document.getElementById('workspace-view');
-const workspaceTitle = document.getElementById('workspace-title');
-const workspaceCode = document.getElementById('workspace-code');
 const closeWorkspaceBtn = document.getElementById('close-workspace');
+const wsMobileMenuBtn = document.getElementById('ws-mobile-menu-btn');
+const wsCloseMobileMenuBtn = document.getElementById('ws-close-mobile-menu');
+const wsSidebarOverlay = document.getElementById('ws-sidebar-overlay');
+const wsMobileExitBtn = document.getElementById('ws-mobile-exit-btn');
+const wsSidebar = document.getElementById('ws-sidebar');
 
 const announcementComposer = document.getElementById('announcement-composer');
 const announcementsList = document.getElementById('announcements-list');
@@ -32,6 +35,191 @@ let workspaceUnsubscribes = [];
 let currentProfile = null;
 let currentUser = null;
 
+// Live-class tracking across the dashboard (side bar dot, home banner, community cards)
+const liveGroupState = {};   // groupId -> true when a class is running right now
+const liveGroupSubs = {};    // groupId -> unsubscribe fn
+const liveGroupInfo = {};    // groupId -> { sessionId, title, lecturerName } of the running class
+const liveGroupNames = {};   // groupId -> community display name
+const lastLiveId = {};       // groupId -> sessionId seen last snapshot (baseline = no alert on load)
+const notifiedLiveIds = new Set(); // sessionIds already alerted in this page session
+
+let chimeCtx = null;
+function playClassChime() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        chimeCtx = chimeCtx || new Ctx();
+        if (chimeCtx.state === 'suspended') chimeCtx.resume();
+        const now = chimeCtx.currentTime;
+        [880, 1174.66].forEach((freq, i) => {
+            const osc = chimeCtx.createOscillator();
+            const gain = chimeCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const t0 = now + i * 0.18;
+            gain.gain.setValueAtTime(0.0001, t0);
+            gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+            osc.connect(gain).connect(chimeCtx.destination);
+            osc.start(t0);
+            osc.stop(t0 + 0.55);
+        });
+    } catch (e) { /* audio blocked until first user gesture — silent fail is fine */ }
+}
+
+function fireClassNotification(session, groupName, sessionId) {
+    const title = `🔴 ${session.title || 'A class'} is live now`;
+    const body = `${groupName || 'Your community'} · ${session.lecturerName || 'Lecturer'}`;
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+            const n = new Notification(title, { body, icon: '/icon-192x192.png', badge: '/icon-192x192.png', tag: `class-live-${sessionId}` });
+            n.onclick = () => { window.focus(); window.location.href = `/classroom/${sessionId}`; };
+        } catch (e) { /* ignore */ }
+    }
+    playClassChime();
+    if (navigator.vibrate) { try { navigator.vibrate([120, 60, 120]); } catch (e) { /* ignore */ } }
+}
+
+function maybePromptEnableNotifications() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
+    if (localStorage.getItem('podium_notify_prompted')) return;
+    localStorage.setItem('podium_notify_prompted', '1');
+    const el = document.createElement('div');
+    el.className = 'fixed bottom-8 right-4 sm:right-6 z-[210] bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-700 rounded-2xl shadow-2xl p-4 w-72 animate-in slide-in-from-bottom duration-300';
+    el.innerHTML = `
+        <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 flex items-center justify-center text-sm shrink-0"><i class="fas fa-bell"></i></div>
+            <div class="flex-1 min-w-0">
+                <p class="text-[12px] font-bold text-[#0D0D1A] dark:text-white leading-snug">Get notified when a class goes live</p>
+                <p class="text-[11px] text-[#8888A8] mt-0.5 leading-snug">We'll ping you the moment a class in your communities starts.</p>
+                <div class="flex gap-2 mt-2.5">
+                    <button class="notif-yes px-3 py-1.5 rounded-lg bg-[#1845D4] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#0F2FA8] transition-all">Enable</button>
+                    <button class="notif-no px-3 py-1.5 rounded-lg bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] text-[10px] font-black uppercase tracking-widest hover:text-[#0D0D1A] dark:hover:text-white transition-all">Not now</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+    const remove = () => el.remove();
+    el.querySelector('.notif-no').onclick = remove;
+    el.querySelector('.notif-yes').onclick = async () => {
+        try {
+            const perm = await Notification.requestPermission();
+            if (perm === 'granted') window.showToast('Class alerts enabled 🔔');
+        } catch (e) { /* ignore */ }
+        remove();
+    };
+    setTimeout(remove, 20000); // auto-hide if ignored
+}
+
+function applyLiveState(cardEl, live) {
+    const badge = cardEl.querySelector('[data-live-badge]');
+    if (badge) badge.style.display = live ? 'inline-flex' : 'none';
+    cardEl.classList.toggle('border-red-300', !!live);
+    cardEl.classList.toggle('dark:border-red-500/40', !!live);
+}
+
+function refreshCardLiveBadges() {
+    document.querySelectorAll('[data-community-card]').forEach(el => {
+        applyLiveState(el, liveGroupState[el.dataset.communityId] === true);
+    });
+}
+
+// Sidebar dot + home "Live now" banner
+function updateGlobalLiveUI() {
+    const anyLive = Object.keys(liveGroupState).some(g => liveGroupState[g]);
+    const dot = document.getElementById('communities-live-dot');
+    if (dot) dot.classList.toggle('hidden', !anyLive);
+
+    const banner = document.getElementById('home-live-banner');
+    const line = document.getElementById('home-live-line');
+    const joinBtn = document.getElementById('home-live-join');
+    if (!banner || !line || !joinBtn) return;
+
+    const liveGroups = Object.keys(liveGroupState).filter(g => liveGroupState[g] && liveGroupInfo[g]);
+    if (liveGroups.length === 0) {
+        banner.classList.add('hidden');
+        return;
+    }
+
+    joinBtn.onclick = null;
+    if (liveGroups.length === 1) {
+        const info = liveGroupInfo[liveGroups[0]];
+        line.innerHTML = `${escapeHtml(info.title)} <span class="font-semibold text-[#8888A8] dark:text-slate-400">· ${escapeHtml(liveGroupNames[liveGroups[0]] || '')} · ${escapeHtml(info.lecturerName)}</span>`;
+        joinBtn.textContent = 'Join';
+        joinBtn.href = `/classroom/${info.sessionId}`;
+    } else {
+        line.textContent = `${liveGroups.length} classes are live in your communities`;
+        joinBtn.textContent = 'View';
+        joinBtn.href = '#';
+        joinBtn.onclick = (e) => { e.preventDefault(); if (window.navTo) window.navTo('communities'); };
+    }
+    banner.classList.remove('hidden');
+}
+
+// One listener per community (idempotent) so members see a LIVE chip the moment a class starts
+function ensureLiveMonitor(groupId, groupName) {
+    if (!groupId || liveGroupSubs[groupId]) return;
+    if (groupName) liveGroupNames[groupId] = groupName;
+    const q = query(collection(db, 'sessions'), where('groupId', '==', groupId));
+    liveGroupSubs[groupId] = onSnapshot(q, (snap) => {
+        const live = snap.docs.find(d => {
+            const s = d.data();
+            return s.isActive === true && !s.isDeleted;
+        });
+        const liveData = live ? live.data() : null;
+        const liveId = live ? live.id : null;
+
+        // Notify only on a real transition (not-live -> live), and never for the lecturer's own start
+        if (!(groupId in lastLiveId)) {
+            lastLiveId[groupId] = liveId; // first snapshot = baseline, don't alert for classes already live
+        } else if (liveId && liveId !== lastLiveId[groupId]) {
+            const me = auth.currentUser?.uid;
+            if (me && liveData && liveData.hostId !== me && liveData.lecturerId !== me && !notifiedLiveIds.has(liveId)) {
+                notifiedLiveIds.add(liveId);
+                fireClassNotification(liveData, liveGroupNames[groupId], liveId);
+            }
+            lastLiveId[groupId] = liveId;
+        }
+
+        liveGroupState[groupId] = !!live;
+        liveGroupInfo[groupId] = live ? {
+            sessionId: live.id,
+            title: liveData.title || 'Class in session',
+            lecturerName: liveData.lecturerName || 'Lecturer',
+        } : null;
+        refreshCardLiveBadges();
+        updateGlobalLiveUI();
+    }, (err) => console.error('[CardLiveMonitor]', err));
+}
+
+function canManageResources() {
+    if (isOwner) return true;
+    if (currentProfile?.role === 'admin') return true;
+    if (currentProfile?.role === 'student' && currentProfile?.isVerified === true) return true;
+    return false;
+}
+
+window.deleteResource = async (resourceId) => {
+    if (!currentGroup) return;
+    showConfirm('Remove this item from the Library?', async () => {
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/storage/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ kind: 'resource', groupId: currentGroup.id, resourceId })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Delete failed');
+            showToast('Removed from Library.');
+        } catch (err) {
+            console.error('Delete resource failed:', err);
+            showToast(err.message || 'Delete failed.', 'error');
+        }
+    });
+};
+
 export function initCommunities(user, profile) {
     currentUser = user;
     currentProfile = profile;
@@ -40,6 +228,29 @@ export function initCommunities(user, profile) {
     setupModals();
     setupCommunityForms(user, profile);
     setupWorkspaceActions(user, profile);
+}
+
+// --- WORKSPACE MOBILE MENU ---
+function setWsSidebar(open) {
+    if (!wsSidebar) return;
+    if (open) {
+        wsSidebar.classList.remove('-translate-x-full');
+        wsSidebar.classList.add('flex');
+        wsSidebar.classList.remove('hidden');
+        if (wsSidebarOverlay) wsSidebarOverlay.classList.remove('hidden');
+    } else {
+        wsSidebar.classList.add('-translate-x-full');
+        if (window.innerWidth < 1024) {
+            wsSidebar.classList.add('hidden');
+            wsSidebar.classList.remove('flex');
+        }
+        if (wsSidebarOverlay) wsSidebarOverlay.classList.add('hidden');
+    }
+}
+
+function setWorkspaceHeading(name, code) {
+    document.querySelectorAll('.workspace-title').forEach(el => el.innerText = name);
+    document.querySelectorAll('.workspace-code').forEach(el => el.innerText = code);
 }
 
 // --- TAB SWITCHING ---
@@ -52,13 +263,15 @@ window.switchWorkspaceTab = (tab) => {
         
         const isActive = t === tab;
         if (isActive) {
-            btn.className = 'w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-600 dark:border-indigo-400 shadow-sm shadow-indigo-500/5';
+            btn.className = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all bg-[#E8EEFF] text-[#1845D4]';
             content.classList.remove('hidden');
         } else {
-            btn.className = 'w-full flex items-center justify-between lg:justify-start gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-white';
+            btn.className = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white';
             content.classList.add('hidden');
         }
     });
+    // Close the mobile drawer after picking a tab
+    if (window.innerWidth < 1024) setWsSidebar(false);
 };
 
 // --- DATA LISTENERS ---
@@ -81,6 +294,7 @@ function setupMyCommunities(uid) {
                 myCommunitiesList.appendChild(card);
             }
         }
+        maybePromptEnableNotifications();
     }, (err) => console.error('[MyCommunities] Error:', err));
 }
 
@@ -102,27 +316,33 @@ function setupPublicCommunities(uid) {
 
 function createCommunityCard(group, isMember) {
     const div = document.createElement('div');
-    div.className = 'group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-8 relative overflow-hidden flex flex-col justify-between shadow-sm hover:border-[#1845D4] hover:shadow-lg transition-all';
+    div.className = 'group bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between hover:border-[#1845D4] transition-all';
+    div.dataset.communityCard = '';
+    div.dataset.communityId = group.id;
     
     div.innerHTML = `
-        <div class="space-y-6">
-            <div class="flex justify-between items-start">
-                <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 flex items-center justify-center">
-                    <i class="fas fa-users text-[#1845D4] dark:text-blue-400 text-xl"></i>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between gap-2">
+                <h4 class="font-bold text-[15px] line-clamp-1 text-[#0D0D1A] dark:text-white">${group.name}</h4>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span data-live-badge style="display:none" class="items-center gap-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest">
+                        <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live
+                    </span>
+                    <span class="text-[10px] font-bold text-[#8888A8]">${group.memberCount || 0} members</span>
                 </div>
-                <span class="px-3 py-1 bg-[#F5F6FA] dark:bg-slate-950 border border-[#DDE0F0] dark:border-slate-800 rounded-full text-[9px] font-bold uppercase tracking-widest text-[#8888A8]">
-                    ${group.memberCount || 0} Members
-                </span>
             </div>
-            <div>
-                <h4 class="font-serif font-black text-xl line-clamp-1 tracking-tight text-[#0D0D1A] dark:text-white">${group.name}</h4>
-                <p class="text-[13px] text-[#444460] dark:text-slate-400 line-clamp-2 mt-2 font-medium leading-relaxed">${group.description}</p>
-            </div>
-            <button class="w-full py-3.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${isMember ? 'bg-[#F5F6FA] dark:bg-slate-800 text-[#0D0D1A] dark:text-white border border-[#DDE0F0] dark:border-slate-700 hover:bg-[#1845D4] hover:text-white' : 'bg-[#0D0D1A] dark:bg-slate-100 text-white dark:text-[#0D0D1A] hover:bg-black'}">
-                ${isMember ? 'Enter Workspace' : 'Request to Join'}
-            </button>
+            <p class="text-[12px] text-[#8888A8] line-clamp-2 leading-relaxed">${group.description}</p>
         </div>
+        <button class="w-full mt-4 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${isMember ? 'bg-[#E8EEFF] text-[#1845D4] hover:bg-[#1845D4] hover:text-white' : 'bg-[#1845D4] text-white hover:bg-[#0F2FA8]'}">
+            ${isMember ? 'Enter' : 'Request to Join'}
+        </button>
     `;
+    
+    // Members can see live-class status in real time; non-members can't read a community's sessions
+    if (isMember) {
+        ensureLiveMonitor(group.id, group.name);
+        applyLiveState(div, liveGroupState[group.id] === true);
+    }
     
     div.querySelector('button').onclick = () => {
         if (isMember) openWorkspace(group);
@@ -137,10 +357,10 @@ async function openWorkspace(group) {
     currentGroup = group;
     isOwner = group.ownerId === auth.currentUser.uid;
     
-    workspaceTitle.innerText = group.name;
-    workspaceCode.innerText = `CODE: ${group.joinCode || 'PRIVATE'}`;
+    setWorkspaceHeading(group.name, `CODE: ${group.joinCode || 'PRIVATE'}`);
     workspaceView.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    setWsSidebar(false);
     
     // Show/Hide Owner Tools
     const isVerifiedStudent = currentProfile?.role === 'student' && currentProfile?.isVerified === true;
@@ -148,6 +368,12 @@ async function openWorkspace(group) {
     announcementComposer.classList.toggle('hidden', !isOwner);
     resourceComposer.classList.toggle('hidden', !isOwner);
     requestsTabBtn.classList.toggle('hidden', !isOwner);
+    
+    // Community class creation: owner or lecturer only
+    const createClassBtn = document.getElementById('community-create-class-btn');
+    if (createClassBtn) {
+        createClassBtn.classList.toggle('hidden', !canTeachInCommunity());
+    }
     
     // Show/Hide Header Grant Lecturer Button
     const headerGrantBtn = document.getElementById('header-grant-lecturer-btn');
@@ -169,6 +395,7 @@ async function openWorkspace(group) {
     
     // Start Real-time Workspace Listeners
     setupWorkspaceListeners(group.id);
+    setupCommunityClassCreation(currentUser, currentProfile);
 }
 
 function setupWorkspaceListeners(groupId) {
@@ -187,7 +414,12 @@ function setupWorkspaceListeners(groupId) {
         const activeSessions = sessions.filter(s => s.isActive);
         
         liveIndicator.classList.toggle('hidden', activeSessions.length === 0);
-        const displaySessions = isOwner ? sessions : activeSessions;
+        // Everyone (owner, lecturers, members) sees scheduled + live classes; live ones float to the top
+        const displaySessions = [...sessions].sort((a, b) => {
+            if (!!a.isActive !== !!b.isActive) return a.isActive ? -1 : 1;
+            return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+        });
+        updateLiveBanner(sessions);
         
         if (displaySessions.length === 0) {
             liveList.innerHTML = `<div class="col-span-full py-12 text-center opacity-50"><p class="text-[10px] font-bold uppercase tracking-widest">No sessions found.</p></div>`;
@@ -204,22 +436,53 @@ function setupWorkspaceListeners(groupId) {
     const qAnn = query(collection(db, 'groups', groupId, 'announcements'), orderBy('createdAt', 'desc'));
     workspaceUnsubscribes.push(onSnapshot(qAnn, (snap) => {
         announcementsList.innerHTML = '';
+        if (snap.empty) {
+            announcementsList.innerHTML = `
+                <div class="py-16 text-center">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <p class="text-[13px] font-semibold text-slate-500">No announcements yet</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Updates from your community lead will appear here.</p>
+                </div>
+            `;
+            return;
+        }
         snap.forEach(doc => {
             const ann = doc.data();
             const div = document.createElement('div');
-            div.className = 'bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all group';
+            div.className = 'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden hover:shadow-sm transition-all';
+            const initial = (ann.authorName || '?').charAt(0).toUpperCase();
+            const author = escapeHtml(ann.authorName || 'Unknown');
+            const content = escapeHtml(ann.content || '');
+            const when = timeAgo(ann.createdAt?.toDate());
+            const exact = ann.createdAt?.toDate()?.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) || '';
             div.innerHTML = `
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-500/10">
-                        ${ann.authorName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                        <p class="text-[13px] font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">${ann.authorName}</p>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mt-0.5">${ann.createdAt?.toDate().toLocaleDateString('en-GB')}</p>
+                <div class="flex items-start gap-3 p-4 sm:p-5">
+                    <div class="w-10 h-10 rounded-full bg-[#1845D4] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">${initial}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-[13px] font-bold text-slate-900 dark:text-white truncate">${author}</p>
+                                    <span class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-[#E8EEFF] dark:bg-blue-900/30 text-[#1845D4] dark:text-blue-400">
+                                        <i class="fas fa-bullhorn text-[7px]"></i> Announcement
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-0.5" title="${exact}">${when}</p>
+                            </div>
+                            ${isOwner ? `
+                            <button data-del-ann="${doc.id}" title="Delete" class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                                <i class="fas fa-trash text-[10px]"></i>
+                            </button>` : ''}
+                        </div>
+                        <p class="text-[14px] text-slate-700 dark:text-slate-300 leading-relaxed mt-2.5 whitespace-pre-wrap break-words">${content}</p>
                     </div>
                 </div>
-                <p class="text-[13px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed pl-14">${ann.content}</p>
             `;
+            div.querySelectorAll('[data-del-ann]').forEach(btn => {
+                btn.addEventListener('click', () => window.deleteAnnouncement(btn.getAttribute('data-del-ann')));
+            });
             announcementsList.appendChild(div);
         });
     }));
@@ -228,32 +491,42 @@ function setupWorkspaceListeners(groupId) {
     const qRes = query(collection(db, 'groups', groupId, 'resources'), orderBy('createdAt', 'desc'));
     workspaceUnsubscribes.push(onSnapshot(qRes, (snap) => {
         resourcesList.innerHTML = '';
+        const canDelete = canManageResources();
         snap.forEach(doc => {
             const res = doc.data();
-            const div = document.createElement('div');
-            div.className = 'bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between group relative';
-            div.innerHTML = `
-                <div class="absolute top-4 right-4 text-[9px] font-serif font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                    ${res.type === 'link' ? 'Ref' : 'Doc'} // ${new Date(res.createdAt?.toDate() || Date.now()).getFullYear()}
-                </div>
-                <div class="flex items-start gap-4 mb-4 pt-2">
-                    <div class="mt-1 w-8 h-8 rounded-full bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-slate-200/50 dark:border-slate-700">
-                        <i class="fas ${res.type === 'link' ? 'fa-bookmark' : 'fa-book'} text-xs"></i>
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/70 dark:border-slate-700/70 p-5 hover:shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-all';
+            const year = new Date(res.createdAt?.toDate() || Date.now()).getFullYear();
+            const isLink = res.type === 'link';
+            const isDead = res.storageStatus === 'unavailable' || (!res.url && !isLink);
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-lg ${isDead ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : 'bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400'} flex items-center justify-center border ${isDead ? 'border-slate-200 dark:border-slate-700' : 'border-indigo-100 dark:border-slate-700'} shrink-0">
+                            <i class="fas ${isDead ? 'fa-triangle-exclamation' : (isLink ? 'fa-bookmark' : 'fa-book')} text-xs"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h5 class="text-[14px] font-semibold ${isDead ? 'text-slate-400 line-clamp-2' : 'text-slate-900 dark:text-white leading-snug line-clamp-2'}">${res.title}</h5>
+                            <span class="text-[9px] font-bold uppercase tracking-widest ${isDead ? 'text-red-400' : 'text-slate-400'}">${isDead ? 'File unavailable — re-upload' : `${isLink ? 'Ref' : 'Doc'} // ${year}`}</span>
+                        </div>
                     </div>
-                    <div class="flex-1 pr-4">
-                        <h5 class="text-[15px] font-serif font-bold leading-snug text-slate-900 dark:text-white line-clamp-2">${res.title}</h5>
+                    <div class="flex items-center gap-2 shrink-0">
+                        ${!isDead && isLink && res.url ? `<a href="${res.url}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
+                        ${canDelete ? `<button data-del-resource="${doc.id}" title="Remove" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                            <i class="fas fa-trash text-[10px]"></i>
+                        </button>` : ''}
                     </div>
                 </div>
-                <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
-                    <div class="text-[10px] font-serif font-bold text-slate-400 uppercase tracking-[0.1em]">
-                        ${res.type === 'link' ? 'External Reference' : 'Archived Material'}
-                    </div>
-                    <a href="${res.url}" target="_blank" class="px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all border border-indigo-100 dark:border-slate-700">
-                        Access
-                    </a>
-                </div>
+                ${!isDead ? `
+                <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${isLink ? 'External Reference' : 'Archived Material'}</span>
+                    ${!isLink && res.url ? `<a href="${res.url}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Access →</a>` : ''}
+                </div>` : ''}
             `;
-            resourcesList.appendChild(div);
+            card.querySelectorAll('[data-del-resource]').forEach(btn => {
+                btn.addEventListener('click', () => window.deleteResource(btn.getAttribute('data-del-resource')));
+            });
+            resourcesList.appendChild(card);
         });
     }));
 
@@ -265,19 +538,19 @@ function setupWorkspaceListeners(groupId) {
             const mem = doc.data();
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="px-6 py-4">
+                <td class="px-5 py-3.5">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center font-bold text-[#8888A8] dark:text-slate-400 uppercase text-[10px]">
                             ${mem.userName.charAt(0)}
                         </div>
                         <div>
                             <p class="text-[13px] font-bold text-[#0D0D1A] dark:text-white">${mem.userName}</p>
-                            <p class="text-[9px] text-[#8888A8] uppercase tracking-widest font-bold">${mem.userEmail || ''}</p>
+                            <p class="text-[10px] text-[#8888A8]">${mem.userEmail || ''}</p>
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4">
-                    <span class="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${mem.role === 'owner' ? 'bg-blue-50 text-[#1845D4]' : 'bg-[#F5F6FA] text-[#8888A8]'}">
+                <td class="px-5 py-3.5">
+                    <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${mem.role === 'owner' ? 'bg-[#E8EEFF] text-[#1845D4]' : 'bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8]'}">
                         ${mem.role}
                     </span>
                 </td>
@@ -305,20 +578,20 @@ function setupWorkspaceListeners(groupId) {
             snap.forEach(docSnap => {
                 const req = docSnap.data();
                 const div = document.createElement('div');
-                div.className = 'bg-white p-6 rounded-xl border border-[#DDE0F0] shadow-sm flex items-center justify-between';
+                div.className = 'bg-white dark:bg-slate-900 p-4 rounded-xl border border-[#DDE0F0] dark:border-slate-800 flex items-center justify-between gap-3';
                 div.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-[#F5F6FA] flex items-center justify-center text-[#8888A8] font-bold text-xs uppercase">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-full bg-[#F5F6FA] dark:bg-slate-800 flex items-center justify-center text-[#8888A8] font-bold text-xs uppercase shrink-0">
                             ${req.userName.charAt(0)}
                         </div>
-                        <div>
-                            <p class="text-sm font-bold text-[#0D0D1A]">${req.userName}</p>
-                            <p class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest">${req.userEmail}</p>
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-[#0D0D1A] dark:text-white truncate">${req.userName}</p>
+                            <p class="text-[11px] text-[#8888A8] truncate">${req.userEmail}</p>
                         </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="window.processRequest('${docSnap.id}', 'approved')" class="px-4 py-2 bg-[#1845D4] text-white rounded-lg text-[10px] font-bold uppercase tracking-widest">Approve</button>
-                        <button onclick="window.processRequest('${docSnap.id}', 'rejected')" class="px-4 py-2 bg-[#F5F6FA] text-[#444460] rounded-lg text-[10px] font-bold uppercase tracking-widest">Reject</button>
+                    <div class="flex gap-2 shrink-0">
+                        <button onclick="window.processRequest('${docSnap.id}', 'approved')" class="px-4 py-2 bg-[#1845D4] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider">Approve</button>
+                        <button onclick="window.processRequest('${docSnap.id}', 'rejected')" class="px-4 py-2 bg-[#F5F6FA] dark:bg-slate-800 text-[#444460] dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-wider">Reject</button>
                     </div>
                 `;
                 requestsContent.appendChild(div);
@@ -329,45 +602,137 @@ function setupWorkspaceListeners(groupId) {
 
 function createWorkspaceSessionCard(s) {
     const div = document.createElement('div');
-    div.className = `bg-white border-2 rounded-xl p-8 transition-all group relative overflow-hidden ${s.isActive ? 'border-[#1845D4]/20 shadow-lg shadow-[#1845D4]/5' : 'border-[#DDE0F0] opacity-80'}`;
+    div.className = `bg-white dark:bg-slate-900 border rounded-xl p-6 transition-all ${s.isActive ? 'border-[#1845D4]/40' : 'border-[#DDE0F0] dark:border-slate-800 opacity-75'}`;
     
     div.innerHTML = `
-        <div class="absolute top-0 right-0 p-6">
-            ${s.isActive ? `
-                <div class="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest flex items-center gap-2 animate-pulse">
-                    <span class="w-1.5 h-1.5 bg-red-600 rounded-full"></span> Live
-                </div>
-            ` : `
-                <div class="bg-[#F5F6FA] text-[#8888A8] px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest flex items-center gap-2 border border-[#DDE0F0]">
-                    <span class="w-1.5 h-1.5 bg-[#8888A8]/30 rounded-full"></span> Active
-                </div>
-            `}
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <h4 class="text-[15px] font-bold tracking-tight leading-tight text-[#0D0D1A] dark:text-white">${s.title}</h4>
+            ${s.isActive ? `<span class="shrink-0 flex items-center gap-1.5 text-red-600 text-[10px] font-bold uppercase tracking-widest">
+                <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live
+            </span>` : ''}
         </div>
-        <div class="space-y-6">
-            <div>
-                <h4 class="text-xl font-serif font-black tracking-tight leading-tight text-[#0D0D1A]">${s.title}</h4>
-                <p class="text-[10px] font-bold text-[#8888A8] uppercase tracking-widest mt-2">${s.lecturerName}</p>
-            </div>
-            <button onclick="window.location.href='/classroom/${s.id}'" class="w-full py-3.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${s.isActive ? 'bg-[#1845D4] text-white shadow-xl shadow-[#1845D4]/20' : 'bg-[#F5F6FA] text-[#8888A8] cursor-not-allowed border border-[#DDE0F0]'}" ${!s.isActive ? 'disabled' : ''}>
-                ${s.isActive ? 'Join Classroom' : 'Waiting to start...'}
-            </button>
-        </div>
+        <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest mb-4">${s.lecturerName}</p>
+        <button onclick="window.location.href='/classroom/${s.id}'" class="w-full py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${s.isActive ? 'bg-[#1845D4] text-white hover:bg-[#0F2FA8]' : 'bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] cursor-not-allowed'}" ${!s.isActive ? 'disabled' : ''}>
+            ${s.isActive ? 'Join Classroom' : 'Waiting to start...'}
+        </button>
     `;
     return div;
 }
 
+// --- COMMUNITY CLASS CREATION ---
+function canTeachInCommunity() {
+    if (!currentGroup || !currentProfile) return false;
+    if (isOwner) return true; // owner (verified rep who created it)
+    if (currentProfile.role === 'admin') return true;
+    if (currentProfile.role === 'lecturer') return true; // granted via group_memberships role=lecturer (verified server-side)
+    return false;
+}
+
+function setupCommunityClassCreation(user, profile) {
+    const openBtn = document.getElementById('community-create-class-btn');
+    const modal = document.getElementById('modal-community-create-class');
+    const form = document.getElementById('community-create-class-form');
+    if (!openBtn || !modal || !form) return;
+
+    const closeFn = () => modal.classList.add('hidden');
+    modal.querySelectorAll('.close-cc-modal').forEach(b => b.onclick = closeFn);
+
+    openBtn.onclick = () => {
+        if (!currentGroup) return;
+        const nameEl = document.getElementById('cc-class-community-name');
+        if (nameEl) nameEl.innerText = currentGroup.name;
+        form.reset();
+        modal.classList.remove('hidden');
+    };
+
+    // Attach the submit handler only once even if the workspace is reopened
+    if (form.dataset.ccWired === '1') return;
+    form.dataset.ccWired = '1';
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentGroup) return;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const title = document.getElementById('cc-class-title').value.trim();
+        const course = document.getElementById('cc-class-course').value.trim();
+        const program = document.getElementById('cc-class-program').value.trim();
+        const durationMinutes = Number(document.getElementById('cc-class-duration').value) || 60;
+        const verificationCount = Number(document.getElementById('cc-class-checks').value) || 3;
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Creating...';
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    title,
+                    course,
+                    program,
+                    durationMinutes,
+                    verificationCount,
+                    groupId: currentGroup.id,
+                }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to create class');
+            closeFn();
+            showToast(`Class "${title}" created for ${currentGroup.name}.`);
+        } catch (err) {
+            console.error('Community class create failed:', err);
+            showToast(err.message || 'Failed to create class.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Create Class';
+        }
+    });
+}
+
+// --- LIVE BANNER ---
+function updateLiveBanner(sessions) {
+    const banner = document.getElementById('community-live-banner');
+    if (!banner) return;
+    const live = sessions.find(s => s.isActive && !s.isDeleted);
+    if (!live) {
+        banner.classList.add('hidden');
+        return;
+    }
+    banner.classList.remove('hidden');
+    const titleEl = document.getElementById('community-live-banner-title');
+    if (titleEl) titleEl.innerText = `${live.title} — ${live.lecturerName || 'Lecturer'} is teaching now`;
+    const joinBtn = document.getElementById('community-live-banner-join');
+    if (joinBtn) joinBtn.onclick = () => { window.location.href = `/classroom/${live.id}`; };
+}
+
 // --- ACTIONS ---
 function setupWorkspaceActions(user, profile) {
-    document.getElementById('post-announcement').onclick = async () => {
-        const text = document.getElementById('announcement-text').value;
-        if (!text.trim()) return;
-        await addDoc(collection(db, 'groups', currentGroup.id, 'announcements'), {
-            content: text,
-            authorId: user.uid,
-            authorName: profile.fullName || user.email,
-            createdAt: serverTimestamp()
-        });
-        document.getElementById('announcement-text').value = '';
+    const annText = document.getElementById('announcement-text');
+    const postBtn = document.getElementById('post-announcement');
+    if (annText && postBtn) {
+        annText.addEventListener('input', () => { postBtn.disabled = !annText.value.trim(); });
+    }
+    postBtn.onclick = async () => {
+        const text = annText.value.trim();
+        if (!text) return;
+        postBtn.disabled = true;
+        postBtn.textContent = 'Posting…';
+        try {
+            await addDoc(collection(db, 'groups', currentGroup.id, 'announcements'), {
+                content: text,
+                authorId: user.uid,
+                authorName: profile.fullName || user.email,
+                createdAt: serverTimestamp()
+            });
+            annText.value = '';
+            showToast('Announcement posted.');
+        } catch (err) {
+            console.error('Post announcement failed:', err);
+            showToast('Could not post announcement.', 'error');
+        } finally {
+            postBtn.textContent = 'Post';
+            postBtn.disabled = !annText.value.trim();
+        }
     };
 
     document.getElementById('share-link').onclick = async () => {
@@ -427,6 +792,11 @@ function setupWorkspaceActions(user, profile) {
         document.body.style.overflow = 'auto';
         workspaceUnsubscribes.forEach(unsub => unsub());
     };
+
+    if (wsMobileExitBtn) wsMobileExitBtn.onclick = () => closeWorkspaceBtn.click();
+    if (wsMobileMenuBtn) wsMobileMenuBtn.onclick = () => setWsSidebar(true);
+    if (wsCloseMobileMenuBtn) wsCloseMobileMenuBtn.onclick = () => setWsSidebar(false);
+    if (wsSidebarOverlay) wsSidebarOverlay.onclick = () => setWsSidebar(false);
 
     const headerGrantBtn = document.getElementById('header-grant-lecturer-btn');
     if (headerGrantBtn) {
@@ -561,6 +931,38 @@ window.kickMember = async (groupId, userId) => {
     });
 };
 
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function timeAgo(date) {
+    if (!date) return '';
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+window.deleteAnnouncement = async (announcementId) => {
+    if (!currentGroup) return;
+    showConfirm('Delete this announcement?', async () => {
+        try {
+            await deleteDoc(doc(db, 'groups', currentGroup.id, 'announcements', announcementId));
+            showToast('Announcement deleted.');
+        } catch (err) {
+            console.error('Delete announcement failed:', err);
+            showToast('Could not delete announcement.', 'error');
+        }
+    });
+};
+
 function setupModals() {
     document.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -670,7 +1072,7 @@ function setupCommunityForms(user, profile) {
 
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
+    toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 ${type === 'success' ? 'bg-[#0D0D1A]' : 'bg-red-600'} text-white text-[11px] font-bold rounded-full shadow-2xl z-[200] animate-in slide-in-from-bottom duration-300`;
     toast.innerText = msg;
     document.body.appendChild(toast);
     setTimeout(() => {

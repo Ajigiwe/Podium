@@ -48,3 +48,7 @@ next-env.d.ts
 
 # one-off deploy helper (contained hardcoded VPS credentials; purged from history)
 /deploy-key.mjs
+scripts/vps/firebase-svc.json
+
+# local-only VPS ops (contains credentials)
+scripts/vps/run-bootstrap.py
