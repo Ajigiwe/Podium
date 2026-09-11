@@ -45,3 +45,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# one-off deploy helper (contained hardcoded VPS credentials; purged from history)
+/deploy-key.mjs
