@@ -189,6 +189,13 @@
                     </div>
                     <i class="fas fa-chevron-right text-[8px] text-[#8888A8] group-hover:translate-x-0.5 transition-transform"></i>
                 </a>
+                <button id="alerts-bell" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-semibold transition-all text-[#8888A8] hover:bg-[#F5F6FA] dark:hover:bg-slate-800">
+                    <span class="relative inline-flex">
+                        <i class="fas fa-bell w-4 h-4"></i>
+                        <span data-alerts-count class="hidden absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full bg-red-500 text-white text-[8px] font-black items-center justify-center">0</span>
+                    </span>
+                    <span>Alerts</span>
+                </button>
                 <button id="logout-btn" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] font-semibold text-[#8888A8] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
                     <i class="fas fa-sign-out-alt w-4 h-4"></i>
                     <span>Sign out</span>
@@ -202,9 +209,24 @@
         <!-- Mobile Header -->
         <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-950 border-b border-[#DDE0F0] dark:border-slate-800 flex items-center justify-between px-5 z-40">
             <a href="/" class="font-serif font-black text-[#1845D4] text-lg tracking-tighter">Podium</a>
-            <button id="mobile-menu-btn" class="p-2 text-[#0D0D1A] dark:text-white bg-[#F5F6FA] dark:bg-slate-800 rounded-lg">
-                <i class="fas fa-bars"></i>
-            </button>
+            <div class="flex items-center gap-2">
+                <button id="alerts-bell-mobile" class="relative p-2 text-[#0D0D1A] dark:text-white bg-[#F5F6FA] dark:bg-slate-800 rounded-lg">
+                    <i class="fas fa-bell"></i>
+                    <span data-alerts-count class="hidden absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black items-center justify-center">0</span>
+                </button>
+                <button id="mobile-menu-btn" class="p-2 text-[#0D0D1A] dark:text-white bg-[#F5F6FA] dark:bg-slate-800 rounded-lg">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Class alerts panel -->
+        <div id="alerts-panel" class="hidden fixed right-4 top-20 lg:top-24 w-[min(22rem,calc(100vw-2rem))] z-[130] bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-[#DDE0F0] dark:border-slate-800">
+                <p class="text-[10px] font-black uppercase tracking-widest text-[#8888A8]">Class alerts</p>
+                <button id="alerts-mark-read" class="text-[10px] font-bold text-[#1845D4] hover:underline">Mark all read</button>
+            </div>
+            <div id="alerts-list" class="max-h-80 overflow-y-auto divide-y divide-[#F5F6FA] dark:divide-slate-800"></div>
         </div>
 
         <!-- Main Content -->
@@ -238,13 +260,13 @@
 
                     <!-- Live now (community classes in session) -->
                     <div id="home-live-banner" class="hidden">
-                        <div class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/25 border-l-4 border-l-red-500 rounded-xl px-4 py-3 shadow-sm">
+                        <div id="home-live-card" class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/25 border-l-4 border-l-red-500 rounded-xl px-4 py-3 shadow-sm">
                             <span class="relative flex w-2 h-2 shrink-0">
-                                <span class="absolute inline-flex w-full h-full rounded-full bg-red-400 opacity-60 animate-ping"></span>
-                                <span class="relative inline-flex w-2 h-2 rounded-full bg-red-500"></span>
+                                <span id="home-live-ping" class="absolute inline-flex w-full h-full rounded-full bg-red-400 opacity-60 animate-ping"></span>
+                                <span id="home-live-dot" class="relative inline-flex w-2 h-2 rounded-full bg-red-500"></span>
                             </span>
                             <div class="flex-1 min-w-0">
-                                <p class="text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-[0.2em]">Live now</p>
+                                <p id="home-live-label" class="text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-[0.2em]">Live now</p>
                                 <p id="home-live-line" class="text-[13px] font-bold text-[#0D0D1A] dark:text-white truncate leading-snug"></p>
                             </div>
                             <a id="home-live-join" href="#" class="shrink-0 px-4 py-2 rounded-lg bg-[#1845D4] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#0F2FA8] transition-all">Join</a>
@@ -806,9 +828,9 @@
             if (el) el.textContent = greeting;
         })();
     </script>
-    <script type="module" src="./js/sidebar.js?v=16"></script>
-    <script type="module" src="./js/dashboard.js?v=16"></script>
-    <script type="module" src="./js/attendance.js?v=16"></script>
+    <script type="module" src="./js/sidebar.js?v=17"></script>
+    <script type="module" src="./js/dashboard.js?v=17"></script>
+    <script type="module" src="./js/attendance.js?v=17"></script>
     
     <!-- Top-Up Modal -->
     <div id="modal-topup" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
@@ -841,7 +863,7 @@
     <script src="./js/theme-toggle.js"></script>
 
     <script type="module">
-        import { auth, db } from './js/firebase-config.js?v=16';
+        import { auth, db } from './js/firebase-config.js?v=17';
         import { doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         let currentUser = null;
         auth.onAuthStateChanged((user) => { if (user) { currentUser = user; loadWalletBalance(); } });

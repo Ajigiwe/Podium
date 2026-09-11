@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=16';
+import { auth, db } from './firebase-config.js?v=17';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -42,6 +42,7 @@ const liveGroupInfo = {};    // groupId -> { sessionId, title, lecturerName } of
 const liveGroupNames = {};   // groupId -> community display name
 const lastLiveId = {};       // groupId -> sessionId seen last snapshot (baseline = no alert on load)
 const notifiedLiveIds = new Set(); // sessionIds already alerted in this page session
+const groupClassInfo = {};  // groupId -> { isLive, openCount, next: { sessionId, title, when } }
 
 let chimeCtx = null;
 function playClassChime() {
@@ -112,21 +113,99 @@ function maybePromptEnableNotifications() {
     setTimeout(remove, 20000); // auto-hide if ignored
 }
 
-function applyLiveState(cardEl, live) {
-    const badge = cardEl.querySelector('[data-live-badge]');
-    if (badge) badge.style.display = live ? 'inline-flex' : 'none';
-    cardEl.classList.toggle('border-red-300', !!live);
-    cardEl.classList.toggle('dark:border-red-500/40', !!live);
+// "today 14:00" / "tomorrow 09:00" / "12 Sep · 14:00"
+function describeClassTime(ms) {
+    if (!ms) return 'waiting to start';
+    const d = new Date(ms);
+    const now = new Date();
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    const tomorrow = new Date(now.getTime() + 86400000);
+    if (sameDay(d, now)) return `today ${time}`;
+    if (sameDay(d, tomorrow)) return `tomorrow ${time}`;
+    return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} · ${time}`;
 }
 
-function refreshCardLiveBadges() {
+// A community card carries three states: live now, classes ready to start, or nothing.
+function applyClassState(cardEl, info) {
+    const isLive = !!(info && info.isLive);
+    const badge = cardEl.querySelector('[data-live-badge]');
+    if (badge) badge.style.display = isLive ? 'inline-flex' : 'none';
+    cardEl.classList.toggle('border-red-300', isLive);
+    cardEl.classList.toggle('dark:border-red-500/40', isLive);
+
+    const chip = cardEl.querySelector('[data-class-chip]');
+    const line = cardEl.querySelector('[data-class-line]');
+    const openCount = (info && info.openCount) || 0;
+    const next = (info && info.next) || null;
+
+    if (chip) {
+        if (isLive || openCount === 0) {
+            chip.style.display = 'none';
+        } else {
+            chip.textContent = openCount === 1 ? '1 class' : `${openCount} classes`;
+            chip.style.display = 'inline-flex';
+        }
+    }
+
+    if (line) {
+        if (!next || isLive) {
+            line.style.display = 'none';
+            line.textContent = '';
+        } else {
+            line.textContent = `${next.title} · ${describeClassTime(next.when)}`;
+            line.style.display = 'block';
+        }
+    }
+}
+
+function refreshCardClassBadges() {
     document.querySelectorAll('[data-community-card]').forEach(el => {
-        applyLiveState(el, liveGroupState[el.dataset.communityId] === true);
+        applyClassState(el, groupClassInfo[el.dataset.communityId]);
     });
 }
 
-// Sidebar dot + home "Live now" banner
-function updateGlobalLiveUI() {
+// Keeps the per-community class picture (live class + classes waiting to start).
+function updateGroupClassInfo(groupId, sessions) {
+    const live = sessions.find(s => s.isActive === true) || null;
+    const open = sessions.filter(s => !s.isActive && s.status !== 'ended' && s.status !== 'deleted');
+    const now = Date.now();
+    const upcoming = open
+        .filter(s => (s.scheduledStartTime?.toMillis?.() || 0) > now)
+        .sort((a, b) => a.scheduledStartTime.toMillis() - b.scheduledStartTime.toMillis());
+    const next = upcoming[0] || open.slice().sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))[0] || null;
+
+    groupClassInfo[groupId] = {
+        isLive: !!live,
+        openCount: open.length,
+        next: next ? {
+            sessionId: next.id,
+            title: next.title || 'Untitled class',
+            when: next.scheduledStartTime?.toMillis?.() || null,
+        } : null,
+    };
+}
+
+const BANNER_LIVE_CARD = 'flex items-center gap-3 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/25 border-l-4 border-l-red-500 rounded-xl px-4 py-3 shadow-sm';
+const BANNER_UPCOMING_CARD = 'flex items-center gap-3 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-500/25 border-l-4 border-l-[#1845D4] rounded-xl px-4 py-3 shadow-sm';
+
+function setBannerVariant(kind, els) {
+    const isLive = kind === 'live';
+    const { card, label, ping, dotInner } = els;
+    if (card) card.className = isLive ? BANNER_LIVE_CARD : BANNER_UPCOMING_CARD;
+    if (label) {
+        label.textContent = isLive ? 'Live now' : 'Upcoming class';
+        label.className = isLive
+            ? 'text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-[0.2em]'
+            : 'text-[9px] font-black text-[#1845D4] dark:text-blue-400 uppercase tracking-[0.2em]';
+    }
+    if (ping) ping.className = isLive ? 'absolute inline-flex w-full h-full rounded-full bg-red-400 opacity-60 animate-ping' : 'hidden';
+    if (dotInner) dotInner.className = isLive ? 'relative inline-flex w-2 h-2 rounded-full bg-red-500' : 'relative inline-flex w-2 h-2 rounded-full bg-[#1845D4]';
+}
+
+// Sidebar dot + home banner. Live classes win; when nothing is live we surface the next
+// class a member's community is waiting for, so a scheduled class is never invisible.
+function updateGlobalClassUI() {
     const anyLive = Object.keys(liveGroupState).some(g => liveGroupState[g]);
     const dot = document.getElementById('communities-live-dot');
     if (dot) dot.classList.toggle('hidden', !anyLive);
@@ -135,25 +214,47 @@ function updateGlobalLiveUI() {
     const line = document.getElementById('home-live-line');
     const joinBtn = document.getElementById('home-live-join');
     if (!banner || !line || !joinBtn) return;
+    const bannerEls = {
+        card: document.getElementById('home-live-card'),
+        label: document.getElementById('home-live-label'),
+        ping: document.getElementById('home-live-ping'),
+        dotInner: document.getElementById('home-live-dot'),
+    };
 
     const liveGroups = Object.keys(liveGroupState).filter(g => liveGroupState[g] && liveGroupInfo[g]);
-    if (liveGroups.length === 0) {
+    if (liveGroups.length > 0) {
+        setBannerVariant('live', bannerEls);
+        joinBtn.onclick = null;
+        if (liveGroups.length === 1) {
+            const info = liveGroupInfo[liveGroups[0]];
+            line.innerHTML = `${escapeHtml(info.title)} <span class="font-semibold text-[#8888A8] dark:text-slate-400">· ${escapeHtml(liveGroupNames[liveGroups[0]] || '')} · ${escapeHtml(info.lecturerName)}</span>`;
+            joinBtn.textContent = 'Join';
+            joinBtn.href = `/classroom/${info.sessionId}`;
+        } else {
+            line.textContent = `${liveGroups.length} classes are live in your communities`;
+            joinBtn.textContent = 'View';
+            joinBtn.href = '#';
+            joinBtn.onclick = (e) => { e.preventDefault(); if (window.navTo) window.navTo('communities'); };
+        }
+        banner.classList.remove('hidden');
+        return;
+    }
+
+    const candidates = Object.keys(groupClassInfo)
+        .map(group => ({ group, info: groupClassInfo[group] }))
+        .filter(x => x.info && !x.info.isLive && x.info.next)
+        .sort((a, b) => (a.info.next.when || Infinity) - (b.info.next.when || Infinity));
+    if (candidates.length === 0) {
         banner.classList.add('hidden');
         return;
     }
 
-    joinBtn.onclick = null;
-    if (liveGroups.length === 1) {
-        const info = liveGroupInfo[liveGroups[0]];
-        line.innerHTML = `${escapeHtml(info.title)} <span class="font-semibold text-[#8888A8] dark:text-slate-400">· ${escapeHtml(liveGroupNames[liveGroups[0]] || '')} · ${escapeHtml(info.lecturerName)}</span>`;
-        joinBtn.textContent = 'Join';
-        joinBtn.href = `/classroom/${info.sessionId}`;
-    } else {
-        line.textContent = `${liveGroups.length} classes are live in your communities`;
-        joinBtn.textContent = 'View';
-        joinBtn.href = '#';
-        joinBtn.onclick = (e) => { e.preventDefault(); if (window.navTo) window.navTo('communities'); };
-    }
+    const { group, info } = candidates[0];
+    setBannerVariant('upcoming', bannerEls);
+    line.innerHTML = `${escapeHtml(info.next.title)} <span class="font-semibold text-[#8888A8] dark:text-slate-400">· ${escapeHtml(liveGroupNames[group] || '')} · ${escapeHtml(describeClassTime(info.next.when))}</span>`;
+    joinBtn.textContent = 'View';
+    joinBtn.href = '#';
+    joinBtn.onclick = (e) => { e.preventDefault(); if (window.navTo) window.navTo('communities'); };
     banner.classList.remove('hidden');
 }
 
@@ -188,8 +289,9 @@ function ensureLiveMonitor(groupId, groupName) {
             title: liveData.title || 'Class in session',
             lecturerName: liveData.lecturerName || 'Lecturer',
         } : null;
-        refreshCardLiveBadges();
-        updateGlobalLiveUI();
+        updateGroupClassInfo(groupId, snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(s => !s.isDeleted));
+        refreshCardClassBadges();
+        updateGlobalClassUI();
     }, (err) => console.error('[CardLiveMonitor]', err));
 }
 
@@ -228,6 +330,7 @@ export function initCommunities(user, profile) {
     setupModals();
     setupCommunityForms(user, profile);
     setupWorkspaceActions(user, profile);
+    initAlerts(user);
 }
 
 // --- WORKSPACE MOBILE MENU ---
@@ -329,9 +432,11 @@ function createCommunityCard(group, isMember) {
                         <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live
                     </span>
                     <span class="text-[10px] font-bold text-[#8888A8]">${group.memberCount || 0} members</span>
+                    <span data-class-chip style="display:none" class="items-center gap-1 bg-[#E8EEFF] dark:bg-blue-500/10 text-[#1845D4] dark:text-blue-400 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest"></span>
                 </div>
             </div>
             <p class="text-[12px] text-[#8888A8] line-clamp-2 leading-relaxed">${group.description}</p>
+            <p data-class-line style="display:none" class="text-[11px] font-semibold text-[#1845D4] dark:text-blue-400 truncate"></p>
         </div>
         <button class="w-full mt-4 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${isMember ? 'bg-[#E8EEFF] text-[#1845D4] hover:bg-[#1845D4] hover:text-white' : 'bg-[#1845D4] text-white hover:bg-[#0F2FA8]'}">
             ${isMember ? 'Enter' : 'Request to Join'}
@@ -341,7 +446,7 @@ function createCommunityCard(group, isMember) {
     // Members can see live-class status in real time; non-members can't read a community's sessions
     if (isMember) {
         ensureLiveMonitor(group.id, group.name);
-        applyLiveState(div, liveGroupState[group.id] === true);
+        applyClassState(div, groupClassInfo[group.id]);
     }
     
     div.querySelector('button').onclick = () => {
@@ -1079,4 +1184,144 @@ function showToast(msg, type = 'success') {
         toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// --- IN-APP CLASS ALERTS (bell) ---
+// Alerts are persisted per member, so a class created or started while a member was
+// offline is still waiting for them when they next open the dashboard.
+let alertsUnsub = null;
+let alertsReady = false;
+const seenAlertIds = new Set();
+
+function alertsEls() {
+    return {
+        bells: ['alerts-bell', 'alerts-bell-mobile'].map(id => document.getElementById(id)).filter(Boolean),
+        panel: document.getElementById('alerts-panel'),
+        list: document.getElementById('alerts-list'),
+        markRead: document.getElementById('alerts-mark-read'),
+    };
+}
+
+function closeAlertsPanel() {
+    const { panel } = alertsEls();
+    if (panel) panel.classList.add('hidden');
+}
+
+function toggleAlertsPanel() {
+    const { panel } = alertsEls();
+    if (!panel) return;
+    panel.classList.toggle('hidden');
+}
+
+async function markAlertRead(notificationId) {
+    try {
+        await updateDoc(doc(db, 'notifications', notificationId), { read: true });
+    } catch (err) {
+        console.error('[Alerts] mark read failed:', err);
+    }
+}
+
+async function markAllAlertsRead() {
+    try {
+        const snap = await getDocs(query(collection(db, 'notifications'), where('userId', '==', auth.currentUser?.uid)));
+        const unread = snap.docs.filter(d => d.data().read !== true);
+        await Promise.all(unread.map(d => updateDoc(doc(db, 'notifications', d.id), { read: true })));
+    } catch (err) {
+        console.error('[Alerts] mark all read failed:', err);
+    }
+}
+
+function renderAlerts(items) {
+    const { bells, list } = alertsEls();
+    const count = items.length;
+
+    bells.forEach(bell => {
+        bell.querySelectorAll('[data-alerts-count]').forEach(badge => {
+            badge.textContent = count > 9 ? '9+' : String(count);
+            badge.classList.toggle('hidden', count === 0);
+            badge.classList.toggle('flex', count > 0);
+        });
+    });
+
+    if (!list) return;
+    if (count === 0) {
+        list.innerHTML = `
+            <div class="px-4 py-10 text-center">
+                <i class="fas fa-bell-slash text-[#8888A8] text-base"></i>
+                <p class="text-[11px] font-semibold text-[#8888A8] mt-2">No class alerts yet.</p>
+                <p class="text-[10px] text-[#8888A8]/80 mt-0.5">You'll be alerted here when a class is scheduled or goes live.</p>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = '';
+    items.forEach(n => {
+        const isLive = n.kind === 'live';
+        const row = document.createElement('button');
+        row.className = 'w-full text-left px-4 py-3 hover:bg-[#F8F9FC] dark:hover:bg-slate-800/60 transition-all flex items-start gap-3';
+        row.innerHTML = `
+            <span class="mt-0.5 w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] ${isLive ? 'bg-red-50 dark:bg-red-500/10 text-red-600' : 'bg-[#E8EEFF] dark:bg-blue-500/10 text-[#1845D4]'}">
+                <i class="fas ${isLive ? 'fa-tower-broadcast' : 'fa-calendar-day'}"></i>
+            </span>
+            <span class="flex-1 min-w-0">
+                <span class="block text-[12px] font-bold text-[#0D0D1A] dark:text-white truncate">${escapeHtml(n.title || 'A class')}</span>
+                <span class="block text-[11px] text-[#8888A8] truncate">${escapeHtml(n.body || '')}</span>
+            </span>
+        `;
+        row.onclick = () => {
+            markAlertRead(n.id);
+            closeAlertsPanel();
+            if (isLive && n.sessionId) window.location.href = `/classroom/${n.sessionId}`;
+            else if (window.navTo) window.navTo('communities');
+        };
+        list.appendChild(row);
+    });
+}
+
+function initAlerts(user) {
+    const { bells, panel, markRead } = alertsEls();
+    if (!panel) return;
+
+    bells.forEach(bell => {
+        if (bell.dataset.alertsWired === '1') return;
+        bell.dataset.alertsWired = '1';
+        bell.onclick = (e) => { e.stopPropagation(); toggleAlertsPanel(); };
+    });
+    if (markRead && markRead.dataset.alertsWired !== '1') {
+        markRead.dataset.alertsWired = '1';
+        markRead.onclick = (e) => { e.stopPropagation(); markAllAlertsRead(); };
+    }
+    document.addEventListener('click', (e) => {
+        const p = document.getElementById('alerts-panel');
+        if (!p || p.classList.contains('hidden')) return;
+        if (p.contains(e.target)) return;
+        if (e.target.closest && e.target.closest('#alerts-bell, #alerts-bell-mobile')) return;
+        p.classList.add('hidden');
+    });
+
+    if (alertsUnsub) return; // one listener per page session
+    const q = query(collection(db, 'notifications'), where('userId', '==', user.uid));
+    alertsUnsub = onSnapshot(q, (snap) => {
+        const unread = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(n => n.read !== true)
+            .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+
+        // Announce only genuinely new alerts — the first snapshot is the backlog.
+        if (alertsReady) {
+            unread.forEach(n => {
+                if (seenAlertIds.has(n.id)) return;
+                seenAlertIds.add(n.id);
+                const isLive = n.kind === 'live';
+                const toast = window.showToast || showToast;
+                try { toast(isLive ? `🔴 ${n.title || 'A class'} is live` : `📅 ${n.title || 'A class'} scheduled`); } catch (e) { /* ignore */ }
+                if (isLive) playClassChime();
+            });
+        } else {
+            unread.forEach(n => seenAlertIds.add(n.id));
+            alertsReady = true;
+        }
+
+        renderAlerts(unread.slice(0, 25));
+    }, (err) => console.error('[Alerts]', err));
 }
