@@ -1,0 +1,6 @@
+[Unit]
+Description=Retire community classes that were created but never started
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/close-stale-classes.sh
