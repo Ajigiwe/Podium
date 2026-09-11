@@ -39,7 +39,17 @@ export async function POST(request: NextRequest) {
         const session = sessionSnap.data() || {};
         const isAdmin = callerProfile.role === 'admin';
         const isHost = session.hostId === decoded.uid || session.lecturerId === decoded.uid;
-        if (!isAdmin && !isHost) return NextResponse.json({ error: 'Only the session lecturer can manage this class' }, { status: 403 });
+
+        // A community owner curates their own community, so they may remove a class from it
+        // even when another lecturer created it — but only remove, never run it.
+        let isCommunityOwner = false;
+        if (!isAdmin && !isHost && session.groupId) {
+            const groupSnap = await adminDb.collection('groups').doc(String(session.groupId)).get();
+            isCommunityOwner = groupSnap.exists && groupSnap.data()?.ownerId === decoded.uid;
+        }
+        if (!isAdmin && !isHost && !(isCommunityOwner && action === 'archive')) {
+            return NextResponse.json({ error: 'Only the session lecturer can manage this class' }, { status: 403 });
+        }
 
         if (action === 'start' && session.isActive === true) {
             return NextResponse.json({ error: 'This class is already live' }, { status: 409 });

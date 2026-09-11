@@ -1,5 +1,5 @@
 // public/js/communities.js
-import { auth, db } from './firebase-config.js?v=17';
+import { auth, db } from './firebase-config.js?v=18';
 import { 
     collection, query, where, onSnapshot, addDoc, serverTimestamp, 
     setDoc, doc, updateDoc, getDoc, getDocs, orderBy, increment, deleteDoc, Timestamp
@@ -514,8 +514,10 @@ function setupWorkspaceListeners(groupId) {
         const liveList = document.getElementById('workspace-live-list');
         liveList.innerHTML = '';
         
+        // Ended classes belong to history, not to the "waiting to start" list — without this
+        // every test class ever created here would pile up as a permanent ghost card.
         const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-            .filter(s => !s.isDeleted);
+            .filter(s => !s.isDeleted && s.status !== 'ended' && s.status !== 'deleted');
         const activeSessions = sessions.filter(s => s.isActive);
         
         liveIndicator.classList.toggle('hidden', activeSessions.length === 0);
@@ -705,24 +707,66 @@ function setupWorkspaceListeners(groupId) {
     }
 }
 
+// The community owner curates their community; lecturers manage their own classes; admins everything.
+function canManageSession(s) {
+    if (isOwner) return true;
+    if (currentProfile?.role === 'admin') return true;
+    const uid = auth.currentUser?.uid;
+    return !!uid && (s.hostId === uid || s.lecturerId === uid);
+}
+
 function createWorkspaceSessionCard(s) {
     const div = document.createElement('div');
     div.className = `bg-white dark:bg-slate-900 border rounded-xl p-6 transition-all ${s.isActive ? 'border-[#1845D4]/40' : 'border-[#DDE0F0] dark:border-slate-800 opacity-75'}`;
-    
+    const canDelete = canManageSession(s);
+
     div.innerHTML = `
-        <div class="flex items-center justify-between gap-3 mb-4">
-            <h4 class="text-[15px] font-bold tracking-tight leading-tight text-[#0D0D1A] dark:text-white">${s.title}</h4>
-            ${s.isActive ? `<span class="shrink-0 flex items-center gap-1.5 text-red-600 text-[10px] font-bold uppercase tracking-widest">
-                <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live
-            </span>` : ''}
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <h4 class="text-[15px] font-bold tracking-tight leading-tight text-[#0D0D1A] dark:text-white">${escapeHtml(s.title || 'Untitled class')}</h4>
+            <div class="flex items-center gap-2 shrink-0">
+                ${s.isActive ? `<span class="flex items-center gap-1.5 text-red-600 text-[10px] font-bold uppercase tracking-widest">
+                    <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live
+                </span>` : ''}
+                ${canDelete ? `<button data-del-class title="Delete this class" class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                    <i class="fas fa-trash text-[10px]"></i>
+                </button>` : ''}
+            </div>
         </div>
-        <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest mb-4">${s.lecturerName}</p>
+        <p class="text-[11px] font-bold text-[#8888A8] uppercase tracking-widest mb-4">${escapeHtml(s.lecturerName || 'Lecturer')}</p>
         <button onclick="window.location.href='/classroom/${s.id}'" class="w-full py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${s.isActive ? 'bg-[#1845D4] text-white hover:bg-[#0F2FA8]' : 'bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] cursor-not-allowed'}" ${!s.isActive ? 'disabled' : ''}>
             ${s.isActive ? 'Join Classroom' : 'Waiting to start...'}
         </button>
     `;
+
+    div.querySelectorAll('[data-del-class]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.deleteCommunityClass(s.id, s.title);
+        });
+    });
+
     return div;
 }
+
+// Soft delete (archive): the class leaves the community, history is preserved.
+window.deleteCommunityClass = async (sessionId, title) => {
+    showConfirm(`Remove “${title || 'this class'}” from this community? Attendance and payment records are kept.`, async () => {
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/sessions/lifecycle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ sessionId, action: 'archive' }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Could not remove the class');
+            showToast('Class removed from the community.');
+        } catch (err) {
+            console.error('Delete community class failed:', err);
+            showToast(err.message || 'Could not remove the class.', 'error');
+        }
+    });
+};
 
 // --- COMMUNITY CLASS CREATION ---
 function canTeachInCommunity() {
