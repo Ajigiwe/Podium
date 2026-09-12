@@ -57,7 +57,9 @@ apt-get install -y nginx certbot python3-certbot-nginx
 echo "Setting up application folders..."
 mkdir -p /opt/podium
 mkdir -p /var/recordings
-chmod 777 /var/recordings
+# LiveKit egress container writes recordings as uid/gid 1001 (user 'egress')
+chown 1001:1001 /var/recordings
+chmod 775 /var/recordings
 
 # Extract Project
 echo "Extracting project files..."
