@@ -115,7 +115,14 @@ export function InnerVideoLayout(props: InnerVideoLayoutProps) {
 
     return (
         <div className="flex flex-col h-full bg-black relative">
-            <style>{`.lk-video-conference .lk-control-bar{display:none!important}`}</style>
+            <style>{`.lk-video-conference .lk-control-bar{display:none!important}
+            /* Keep participant name tags readable and clear of the floating control bar:
+               pin them to the tile's top edge as a compact pill in every layout. */
+            .lk-participant-metadata{
+                top:.5rem!important; bottom:auto!important; left:.5rem!important; right:auto!important;
+                width:auto; max-width:calc(100% - 1rem);
+                background:rgba(0,0,0,.55); border-radius:.5rem; padding:.25rem .5rem;
+            }`}</style>
 
             {!isDocked && (
                 <div className="h-12 bg-black/80 border-b border-white/5 px-4 flex items-center z-[100] backdrop-blur-md">

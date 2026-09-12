@@ -54,7 +54,7 @@ export const TileWrapper = memo(({ track, participant, onTileClick, className, .
             )}
 
             {isSpeaking && (
-                <div className="absolute top-2 right-2 z-20 bg-emerald-500 text-white p-1 rounded-full pointer-events-none">
+                <div className="absolute bottom-2 right-2 z-20 bg-emerald-500 text-white p-1 rounded-full pointer-events-none">
                     <Mic className="w-3 h-3" />
                 </div>
             )}
