@@ -359,24 +359,33 @@
     }
 
     // ===== DASHBOARD =====
+    // Small helper for admin GET endpoints (adds the auth header, parses JSON).
+    async function adminGet(path) {
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch(path, { headers: { 'Authorization': 'Bearer ' + token } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+    }
+
     async function loadDashboard() {
         // Load each stat independently so one failure doesn't block others
         try { const snap = await getDocs(query(collection(db, 'profiles'), limit(1))); document.getElementById('stat-total-users').textContent = (await getCountFromServer(collection(db, 'profiles')).catch(() => ({ data: () => ({ count: '?' }) }))).data().count; } catch { document.getElementById('stat-total-users').textContent = '?'; }
-        try { const snap = await getDocs(query(collection(db, 'sessions'), where('isActive', '==', true))); document.getElementById('stat-active-sessions').textContent = snap.size; } catch { document.getElementById('stat-active-sessions').textContent = '?'; }
+        try { const d = await adminGet('/api/admin/sessions?filter=active'); document.getElementById('stat-active-sessions').textContent = (d.sessions || []).length; } catch { document.getElementById('stat-active-sessions').textContent = '?'; }
         try { const snap = await getDocs(query(collection(db, 'transactions'), where('status', '==', 'success'))); let t = 0; snap.forEach(d => t += d.data().amount || 0); document.getElementById('stat-revenue').textContent = t.toLocaleString(); } catch { document.getElementById('stat-revenue').textContent = '?'; }
         try { document.getElementById('stat-recordings').textContent = (await getCountFromServer(collection(db, 'recordings')).catch(() => ({ data: () => ({ count: '?' }) }))).data().count; } catch { document.getElementById('stat-recordings').textContent = '?'; }
 
-        // Active sessions list
+        // Active sessions list (via Admin SDK-backed endpoint — same rules issue as the Sessions tab)
         try {
-            const activeSnap = await getDocs(query(collection(db, 'sessions'), where('isActive', '==', true)));
+            const d = await adminGet('/api/admin/sessions?filter=active');
             const list = document.getElementById('dashboard-sessions-list');
-            if (activeSnap.empty) {
+            const active = d.sessions || [];
+            if (active.length === 0) {
                 list.innerHTML = '<div class="text-sm text-[#8888A8] text-center py-4">No active sessions</div>';
             } else {
-                list.innerHTML = activeSnap.docs.map(d => {
-                    const s = d.data();
+                list.innerHTML = active.map((s) => {
                     return `<div class="flex items-center justify-between p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-lg">
-                        <div class="min-w-0"><p class="text-xs font-bold truncate">${s.title}</p><p class="text-[9px] text-[#8888A8]">${s.lecturerName || ''} &middot; ${s.participantCount || 0} participants</p></div>
+                        <div class="min-w-0"><p class="text-xs font-bold truncate">${escHtml(s.title)}</p><p class="text-[9px] text-[#8888A8]">${escHtml(s.lecturerName || '')} &middot; ${s.participantCount || 0} participants</p></div>
                         <button onclick="openSessionModal('${s.id}')" class="text-[9px] font-bold text-[#1845D4] uppercase tracking-widest shrink-0 ml-3">Audit</button>
                     </div>`;
                 }).join('');
@@ -397,50 +406,46 @@
         } catch { document.getElementById('dashboard-users-list').innerHTML = '<div class="text-sm text-[#8888A8] text-center py-4">Could not load</div>'; }
     }
 
-    // Session duration helpers shared by the sessions list and modal.
+    // Helpers shared by the sessions list and audit modal.
     const REFUND_THRESHOLD_MINUTES = 30;
     function escHtml(str) {
         return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
-    function sessionDurationMinutes(s) {
-        const start = s.startedAt?.toDate?.() || s.createdAt?.toDate?.();
-        if (!start) return null;
-        const end = s.endedAt?.toDate?.() || (s.isActive ? new Date() : null);
-        if (!end) return null;
-        return Math.max(0, Math.round((end - start) / 60000));
-    }
-    function sessionDurationBadge(s) {
-        const mins = sessionDurationMinutes(s);
-        if (mins === null) return '';
-        const short = mins < REFUND_THRESHOLD_MINUTES;
-        return `<span class="px-1.5 py-0.5 rounded font-bold ${short ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30'}">${mins} min${short ? ' · under 30m' : ''}</span>`;
-    }
 
     // ===== SESSIONS =====
+    // Reads go through /api/admin/sessions (Admin SDK) because the client-side
+    // Firestore rules cannot prove list access for these queries.
     window.loadSessions = async function() {
         const list = document.getElementById('sessions-list');
         list.innerHTML = '<div class="text-sm text-[#8888A8] text-center py-12">Loading...</div>';
         const filter = document.getElementById('session-status-filter')?.value || 'active';
         try {
-            let q;
-            if (filter === 'active') q = query(collection(db, 'sessions'), where('isActive', '==', true));
-            else if (filter === 'ended') q = query(collection(db, 'sessions'), where('status', '==', 'ended'), orderBy('createdAt', 'desc'), limit(50));
-            else q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'), limit(50));
-            const snap = await getDocs(q);
-            if (snap.empty) { list.innerHTML = '<div class="text-sm text-[#8888A8] text-center py-12">No sessions found.</div>'; return; }
-            list.innerHTML = snap.docs.map(d => {
-                const s = d.data();
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/admin/sessions?filter=' + encodeURIComponent(filter), {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to load sessions');
+            const sessions = data.sessions || [];
+            if (sessions.length === 0) { list.innerHTML = '<div class="text-sm text-[#8888A8] text-center py-12">No sessions found.</div>'; return; }
+            list.innerHTML = sessions.map((s) => {
+                const ms = s.durationMinutes;
+                const durBadge = ms !== null && ms !== undefined
+                    ? `<span class="px-1.5 py-0.5 rounded font-bold ${s.metThreshold ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30'}">${ms} min${s.metThreshold ? '' : ' · under 30m'}</span>`
+                    : '';
+                const refundBadge = s.refundProcessed ? '<span class="px-1.5 py-0.5 rounded font-bold bg-slate-100 text-slate-600 dark:bg-slate-800">refunded</span>' : '';
                 return `<div class="p-4 bg-white dark:bg-slate-900 border border-[#DDE0F0] dark:border-slate-800 rounded-xl flex items-center justify-between gap-4">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="w-1.5 h-1.5 rounded-full ${s.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}"></span>
-                            <p class="text-sm font-bold truncate">${s.title}</p>
+                            <p class="text-sm font-bold truncate">${escHtml(s.title)}</p>
                         </div>
-                        <div class="flex flex-wrap gap-x-3 text-[10px] text-[#8888A8] font-medium">
-                            <span>${s.lecturerName || ''}</span>
+                        <div class="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#8888A8] font-medium">
+                            <span>${escHtml(s.lecturerName || '')}</span>
                             <span>${s.participantCount || 0} joined</span>
-                            ${s.createdAt ? `<span>${s.createdAt.toDate().toLocaleDateString()}</span>` : ''}
-                            ${sessionDurationBadge(s)}
+                            ${s.createdAt ? `<span>${new Date(s.createdAt).toLocaleDateString()}</span>` : ''}
+                            ${durBadge}
+                            ${refundBadge}
                         </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
@@ -449,7 +454,7 @@
                     </div>
                 </div>`;
             }).join('');
-        } catch (e) { console.error(e); list.innerHTML = '<div class="text-sm text-red-500 text-center py-12">Failed to load.</div>'; }
+        } catch (e) { console.error(e); list.innerHTML = '<div class="text-sm text-red-500 text-center py-12">Failed to load: ' + escHtml(e.message || 'unknown error') + '</div>'; }
     };
 
     window.endSessionAdmin = async function(sessionId) {
