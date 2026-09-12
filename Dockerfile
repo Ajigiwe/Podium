@@ -15,6 +15,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV NEXT_PUBLIC_LIVEKIT_URL=${NEXT_PUBLIC_LIVEKIT_URL}
+# Regenerate the static Tailwind CSS from the current public/**/*.{html,js} so
+# classes added to static pages (modals, panels) always ship with real styles.
+RUN npm run build:css:static
 RUN npm run build
 
 # Production image, copy all the files and run next
