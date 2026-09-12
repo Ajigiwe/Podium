@@ -24,7 +24,9 @@ export function FocusView({
     onExitFocus,
     onTileClick,
 }: FocusViewProps) {
-    const [pipPosition, setPipPosition] = useState({ x: 16, y: 16 });
+    // Starts above the floating control bar (~76px tall on mobile) so the PiP is
+    // never hidden behind it; users can still drag it anywhere.
+    const [pipPosition, setPipPosition] = useState({ x: 16, y: 96 });
     const [isDraggingPip, setIsDraggingPip] = useState(false);
     const pipDragRef = useRef<{ startX: number; startY: number; startPipX: number; startPipY: number } | null>(null);
 

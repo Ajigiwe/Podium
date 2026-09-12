@@ -54,7 +54,9 @@ export function VideoGrid({
     }
 
     return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-8">
+        // Bottom padding mirrors the floating control bar's footprint (bar ~76px on
+        // mobile, ~60px on sm+) so tile name tags are never covered by it.
+        <div className="absolute inset-0 flex flex-col items-center justify-center pb-[104px] sm:pb-[88px] pt-4 px-4 sm:pt-8 sm:px-8">
             <div className={`grid ${gridCols} gap-2 sm:gap-3 w-full max-w-6xl`}>
                 {tracks.map((trackRef) => (
                     <div
