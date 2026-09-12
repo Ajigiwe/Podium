@@ -80,7 +80,8 @@ export function FocusWrapper({ trackRef, onParticipantClick, ...props }: any) {
                             </span>
                         )}
                     </div>
-                    <div className="absolute bottom-8 left-8 flex items-center gap-3 bg-black/50 backdrop-blur-2xl rounded-xl px-5 py-2.5 border border-white/10">
+                    {/* Pinned to the top so the floating control bar never covers it */}
+                    <div className="absolute top-16 left-4 z-[60] flex items-center gap-3 bg-black/50 backdrop-blur-2xl rounded-xl px-5 py-2.5 border border-white/10">
                         {!trackRef.participant.isMicrophoneEnabled && <MicOff className="w-5 h-5 text-red-500" />}
                         <span className="text-white text-lg font-bold">
                             {trackRef.participant.name || trackRef.participant.identity || 'Participant'}
