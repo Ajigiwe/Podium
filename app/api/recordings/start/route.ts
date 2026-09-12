@@ -29,16 +29,25 @@ export async function POST(req: NextRequest) {
         const roomName = `podium_${roomId}`;
         console.log(`Starting recording for room ${roomName}`);
 
+        // LiveKit's hosted recorder templates (templates.livekit.io) no longer resolve,
+        // so we self-host the composite template and point the egress at it. The egress
+        // worker loads this page in headless Chrome with ?url=&token= appended.
+        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://podiumclass.online';
+        const customBaseUrl = process.env.EGRESS_TEMPLATE_BASE_URL || `${APP_URL}/recorder/`;
+
         const egressInfo = await egressClient.startRoomCompositeEgress(
             roomName,
             {
                 fileType: 1, // EncodedFileType.MP4
                 filepath: filepath,
             } as any,
-            'grid', // layout
-            EncodingOptionsPreset.H264_1080P_30, // preset
-            false, // audioOnly
-            false  // videoOnly
+            {
+                layout: 'grid',
+                encodingOptions: EncodingOptionsPreset.H264_1080P_30,
+                audioOnly: false,
+                videoOnly: false,
+                customBaseUrl,
+            },
         );
 
         if (!egressInfo || !egressInfo.egressId) {
