@@ -291,8 +291,10 @@
                 <h4 class="text-[10px] font-black text-[#8888A8] uppercase tracking-widest mb-3">Participants</h4>
                 <div id="modal-participants-list" class="space-y-2"></div>
             </div>
+            <div id="modal-refund-section"></div>
         </div>
         <div class="p-4 border-t border-[#DDE0F0] dark:border-slate-800 flex gap-3">
+            <button id="modal-refund-btn" class="hidden flex-1 py-2.5 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all">Trigger Refund</button>
             <button id="modal-end-btn" class="flex-1 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all">End Session</button>
             <button onclick="closeSessionModal()" class="flex-1 py-2.5 bg-[#F5F6FA] dark:bg-slate-800 text-[#8888A8] rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#DDE0F0] dark:hover:bg-slate-700 transition-all">Close</button>
         </div>
@@ -375,7 +377,7 @@
                     const s = d.data();
                     return `<div class="flex items-center justify-between p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-lg">
                         <div class="min-w-0"><p class="text-xs font-bold truncate">${s.title}</p><p class="text-[9px] text-[#8888A8]">${s.lecturerName || ''} &middot; ${s.participantCount || 0} participants</p></div>
-                        <button onclick="openSessionModal('${s.id}')" class="text-[9px] font-bold text-[#1845D4] uppercase tracking-widest shrink-0 ml-3">View</button>
+                        <button onclick="openSessionModal('${s.id}')" class="text-[9px] font-bold text-[#1845D4] uppercase tracking-widest shrink-0 ml-3">Audit</button>
                     </div>`;
                 }).join('');
             }
@@ -393,6 +395,25 @@
                 </div>`;
             }).join('');
         } catch { document.getElementById('dashboard-users-list').innerHTML = '<div class="text-sm text-[#8888A8] text-center py-4">Could not load</div>'; }
+    }
+
+    // Session duration helpers shared by the sessions list and modal.
+    const REFUND_THRESHOLD_MINUTES = 30;
+    function escHtml(str) {
+        return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function sessionDurationMinutes(s) {
+        const start = s.startedAt?.toDate?.() || s.createdAt?.toDate?.();
+        if (!start) return null;
+        const end = s.endedAt?.toDate?.() || (s.isActive ? new Date() : null);
+        if (!end) return null;
+        return Math.max(0, Math.round((end - start) / 60000));
+    }
+    function sessionDurationBadge(s) {
+        const mins = sessionDurationMinutes(s);
+        if (mins === null) return '';
+        const short = mins < REFUND_THRESHOLD_MINUTES;
+        return `<span class="px-1.5 py-0.5 rounded font-bold ${short ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30'}">${mins} min${short ? ' · under 30m' : ''}</span>`;
     }
 
     // ===== SESSIONS =====
@@ -419,10 +440,11 @@
                             <span>${s.lecturerName || ''}</span>
                             <span>${s.participantCount || 0} joined</span>
                             ${s.createdAt ? `<span>${s.createdAt.toDate().toLocaleDateString()}</span>` : ''}
+                            ${sessionDurationBadge(s)}
                         </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <button onclick="openSessionModal('${s.id}')" class="px-3 py-1.5 bg-[#1845D4] text-white rounded-lg text-[9px] font-bold uppercase tracking-widest">View</button>
+                        <button onclick="openSessionModal('${s.id}')" class="px-3 py-1.5 bg-[#1845D4] text-white rounded-lg text-[9px] font-bold uppercase tracking-widest">Audit</button>
                         ${s.isActive ? `<button onclick="endSessionAdmin('${s.id}')" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all">End</button>` : ''}
                     </div>
                 </div>`;
@@ -697,43 +719,90 @@
 
         document.getElementById('modal-session-title').textContent = 'Loading...';
         document.getElementById('modal-quick-stats').innerHTML = '';
+        document.getElementById('modal-refund-section').innerHTML = '';
         document.getElementById('modal-participants-list').innerHTML = '<div class="text-sm text-[#8888A8] text-center py-4">Loading...</div>';
         document.getElementById('modal-end-btn').classList.add('hidden');
+        const refundBtn = document.getElementById('modal-refund-btn');
+        refundBtn.classList.add('hidden');
 
         try {
-            const [sessionSnap, logsSnap] = await Promise.all([
-                getDoc(doc(db, 'sessions', sessionId)),
-                getDocs(query(collection(db, 'attendance_logs'), where('sessionId', '==', sessionId)))
-            ]);
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/admin/session-audit?sessionId=' + encodeURIComponent(sessionId), {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const audit = await res.json();
+            if (!res.ok) throw new Error(audit.error || 'Failed to load audit');
 
-            if (!sessionSnap.exists()) {
-                document.getElementById('modal-session-title').textContent = 'Session not found';
-                return;
-            }
-
-            const s = sessionSnap.data();
+            const s = audit.session;
             document.getElementById('modal-session-title').textContent = s.title || 'Untitled Session';
-            const startDate = s.scheduledStartTime?.toDate?.() || s.createdAt?.toDate?.() || new Date();
-            const participants = logsSnap.docs.map(d => d.data());
+
+            const durBadge = s.durationMinutes !== null && s.durationMinutes !== undefined
+                ? `<span class="px-1.5 py-0.5 rounded font-bold ${s.metThreshold ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30'}">${s.durationMinutes} min ${s.metThreshold ? '· met 30m' : '· under 30m'}</span>`
+                : '';
+            const refundStateBadge = s.refundProcessed
+                ? '<span class="px-1.5 py-0.5 rounded font-bold bg-slate-100 text-slate-600 dark:bg-slate-800">refund processed</span>'
+                : '';
 
             document.getElementById('modal-quick-stats').innerHTML = `
                 <div class="p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-xl">
-                    <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Started</p>
-                    <p class="text-xs font-bold mt-1">${startDate.toLocaleString()}</p>
+                    <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Created by</p>
+                    <p class="text-xs font-bold mt-1 truncate" title="${escHtml(audit.creator.email || '')}">${escHtml(audit.creator.name)}</p>
+                    <p class="text-[9px] text-[#8888A8] truncate">${escHtml(audit.creator.email || '')}</p>
                 </div>
                 <div class="p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-xl">
-                    <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Lecturer</p>
-                    <p class="text-xs font-bold mt-1">${s.lecturerName || 'Unknown'}</p>
+                    <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Started</p>
+                    <p class="text-xs font-bold mt-1">${s.startedAt ? new Date(s.startedAt).toLocaleString() : 'Never started'}</p>
+                </div>
+                <div class="p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-xl">
+                    <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Duration</p>
+                    <p class="text-xs font-bold mt-1">${durBadge || '—'}</p>
                 </div>
                 <div class="p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-xl">
                     <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Status</p>
-                    <p class="text-xs font-bold mt-1"><span class="w-1.5 h-1.5 rounded-full inline-block mr-1.5 ${s.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}"></span>${s.isActive ? 'Live' : s.status || 'Ended'}</p>
-                </div>
-                <div class="p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-xl">
-                    <p class="text-[9px] font-black text-[#8888A8] uppercase tracking-widest">Joined</p>
-                    <p class="text-xs font-bold mt-1">${participants.length} people</p>
+                    <p class="text-xs font-bold mt-1"><span class="w-1.5 h-1.5 rounded-full inline-block mr-1.5 ${s.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}"></span>${s.isActive ? 'Live' : s.status || 'Ended'} ${refundStateBadge}</p>
                 </div>
             `;
+
+            // --- Refund analysis ---
+            const refundSection = document.getElementById('modal-refund-section');
+            const refundRows = audit.refunds.rows;
+            if (refundRows.length === 0) {
+                refundSection.innerHTML = '<div class="text-[11px] text-[#8888A8]">No paid enrollments for this class — nothing to refund.</div>';
+            } else {
+                const fmt = (p) => (p ? new Date(p).toLocaleTimeString() : '—');
+                refundSection.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-[10px] font-black text-[#8888A8] uppercase tracking-widest">Payments & refunds</h4>
+                        <div class="text-[10px] font-bold text-[#8888A8]">
+                            ${audit.refunds.refundableTotal > 0 ? `<span class="text-amber-700">GHS ${(audit.refunds.refundableTotal / 100).toFixed(2)} refundable</span> · ` : ''}
+                            ${audit.refunds.refundedTotal > 0 ? `<span class="text-emerald-600">GHS ${(audit.refunds.refundedTotal / 100).toFixed(2)} refunded</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        ${refundRows.map((r) => `
+                            <div class="flex items-center justify-between p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-lg">
+                                <div class="min-w-0">
+                                    <p class="text-xs font-bold truncate">${escHtml(r.name)}</p>
+                                    <p class="text-[9px] text-[#8888A8]">Paid GHS ${(r.amount / 100).toFixed(2)} · stayed ${r.stayMinutes !== null ? r.stayMinutes + ' min' : 'unknown'} · joined ${fmt(r.paidAt)}</p>
+                                </div>
+                                <div class="shrink-0">
+                                    ${r.alreadyRefunded
+                                        ? '<span class="text-[9px] font-bold text-slate-500 uppercase">Refunded</span>'
+                                        : r.refundEligible
+                                            ? '<span class="text-[9px] font-bold text-amber-700 uppercase">Refund eligible</span>'
+                                            : '<span class="text-[9px] font-bold text-emerald-600 uppercase">No refund</span>'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // Manual refund: show whenever the server says there is something to do.
+            if (audit.refunds.canTrigger) {
+                refundBtn.classList.remove('hidden');
+                refundBtn.onclick = () => triggerRefund(sessionId, s.title);
+            }
 
             if (s.isActive) {
                 document.getElementById('modal-end-btn').classList.remove('hidden');
@@ -748,20 +817,22 @@
             }
 
             const plist = document.getElementById('modal-participants-list');
+            const participants = audit.participants;
             if (participants.length === 0) {
                 plist.innerHTML = '<div class="text-sm text-[#8888A8] text-center py-4">No participants yet.</div>';
             } else {
-                plist.innerHTML = participants.map(p => `
+                plist.innerHTML = participants.map((p) => `
                     <div class="flex items-center justify-between p-3 bg-[#F5F6FA] dark:bg-slate-800 rounded-lg">
                         <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-8 h-8 rounded-full bg-[#1845D4] flex items-center justify-center text-white text-[10px] font-bold shrink-0">${(p.userName || '?')[0].toUpperCase()}</div>
+                            <div class="w-8 h-8 rounded-full bg-[#1845D4] flex items-center justify-center text-white text-[10px] font-bold shrink-0">${escHtml((p.name || '?')[0].toUpperCase())}</div>
                             <div class="min-w-0">
-                                <p class="text-xs font-bold truncate">${p.userName || 'Unknown'}</p>
-                                <p class="text-[9px] text-[#8888A8]">${p.userEmail || ''} &middot; ${p.role || 'student'}</p>
+                                <p class="text-xs font-bold truncate">${escHtml(p.name || 'Unknown')}</p>
+                                <p class="text-[9px] text-[#8888A8]">${escHtml(p.email || '')}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 text-[10px] text-[#8888A8] font-medium">
-                            <span>Joined ${p.joinedAt?.toDate?.().toLocaleTimeString?.() || '---'}</span>
+                            <span>Joined ${p.joinedAt ? new Date(p.joinedAt).toLocaleTimeString() : '—'}</span>
+                            ${p.stayMinutes !== null ? `<span class="${p.stayMinutes < REFUND_THRESHOLD_MINUTES ? 'text-amber-700 font-bold' : 'text-emerald-600 font-bold'}">${p.stayMinutes} min</span>` : ''}
                             ${p.verificationPercentage > 0 ? `<span class="text-emerald-600 font-bold">${p.verificationPercentage}% verified</span>` : ''}
                         </div>
                     </div>
@@ -770,6 +841,31 @@
         } catch (e) {
             console.error(e);
             document.getElementById('modal-session-title').textContent = 'Error loading session';
+            showToast(e.message || 'Failed to load session audit.', 'error');
+        }
+    };
+
+    window.triggerRefund = async function(sessionId, title) {
+        if (!confirm(`Manually refund eligible students for "${title || 'this class'}"?\n\nOnly students who stayed under 30 minutes and were not yet refunded will get their money back to their wallet.`)) return;
+        const btn = document.getElementById('modal-refund-btn');
+        btn.disabled = true;
+        btn.textContent = 'Refunding...';
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/wallet/refund', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ sessionId })
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error || 'Refund failed');
+            showToast(d.refunded > 0 ? `Refunded ${d.refunded} student${d.refunded === 1 ? '' : 's'} back to their wallets.` : 'No eligible students to refund.');
+            openSessionModal(sessionId); // reload the audit so badges flip to "Refunded"
+        } catch (e) {
+            showToast(e.message || 'Refund failed.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Trigger Refund';
         }
     };
 
