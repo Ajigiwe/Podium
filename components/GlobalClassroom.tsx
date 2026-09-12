@@ -120,7 +120,7 @@ export default function GlobalClassroom() {
         sessionId, title, userName, userRole, userId, isActive,
         isMini, isFloating, toggleMinimize, leaveClass,
         setLiveKitRoom, toggleChat, isChatOpen, unreadChatCount,
-        token, setToken, isHost,
+        token, setToken, isHost, photoURL,
     } = useClassroom();
     const { showAlert, customAlert } = useAlert();
 
@@ -168,6 +168,7 @@ export default function GlobalClassroom() {
                         participantId: userId,
                         role: userRole,
                         userId: userId,
+                        photoURL: photoURL || undefined,
                     }),
                 });
                 if (!response.ok) throw new Error('Failed to get token');
@@ -180,7 +181,7 @@ export default function GlobalClassroom() {
             }
         };
         fetchToken();
-    }, [isActive, sessionId, userName, userRole, userId, token, setToken]);
+    }, [isActive, sessionId, userName, userRole, userId, token, setToken, photoURL]);
 
     const [position, setPosition] = useState({ x: 20, y: 0 });
     const [size, setSize] = useState({ width: 400, height: 300 });
